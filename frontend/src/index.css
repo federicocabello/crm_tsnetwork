@@ -1,0 +1,65 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+html, body, #root { height: 100%; }
+body { margin: 0; }
+h1 { font-size: x-large; font-weight: 700;}
+h3 {margin-top: 20px;}
+button {font-size: small; font-weight: 700; padding: 8px; border-radius: 8px; transition: all 0.2s ease-in-out; gap: 6px; cursor: pointer;}
+
+.cuadro {
+  @apply shadow-lg shadow-black/20 bg-zinc-900 rounded-2xl border border-white/10 p-4;
+}
+
+.boton {
+  @apply px-3 py-2 text-sm rounded-lg;
+}
+
+.speech-titulo {
+  @apply font-bold text-orange-400 rounded-lg text-center text-xl w-full focus:outline-none focus:text-green-500 transition-all
+}
+
+.speech-descripcion {
+  @apply text-sm text-gray-300 w-full resize-none overflow-hidden focus:outline-none focus:text-green-500 transition-all
+}
+
+@keyframes roleGlow {
+  0% {
+    box-shadow: 0 0 0px rgba(249, 115, 22, 0);
+    opacity: 0.85;
+  }
+  50% {
+    box-shadow: 0 0 14px rgba(249, 115, 22, 0.55);
+    opacity: 1;
+  }
+  100% {
+    box-shadow: 0 0 0px rgba(249, 115, 22, 0);
+    opacity: 0.85;
+  }
+}
+
+.animate-role-glow {
+  animation: roleGlow 2.6s ease-in-out infinite;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(249, 115, 22, 0.5);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(249, 115, 22, 0.8);
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(249, 115, 22, 0.5) transparent;
+}
