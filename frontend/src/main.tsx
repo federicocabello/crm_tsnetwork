@@ -12,6 +12,7 @@ import NuevoRegistro from "./pages/NuevoRegistro";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 import Layout from "./components/Layout";
+import Cotizador from "./pages/Cotizador";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -53,6 +54,16 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/cotizador"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Cotizador />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default */}
           <Route path="/" element={<Navigate to="/inicio" replace />} />
@@ -60,5 +71,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         </Routes>
       </BrowserRouter>
     </AuthProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
