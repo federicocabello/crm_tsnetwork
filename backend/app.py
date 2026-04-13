@@ -238,6 +238,27 @@ def nuevo_registro_guardar():
     cursor.close()
     return jsonify({"status": "ok"})
 
+@app.post("/api/nuevo-registro/camaras/tiene/nuevo")
+def nuevo_registro_camaras_tiene_nuevo():
+    data = request.get_json(silent=True) or {}
+    datos = data.get("datos")
+    telefono = re.sub(r'\D', '', datos["telefono"])
+    current_user = data.get("user")["id"]
+    preguntas = data.get("preguntas")
+    cursor = mysql.connection.cursor()
+    cursor.execute("INSERT INTO clientes (nombre, telefono, domicilio, email, fecha, agente) VALUES (%s, %s, %s, %s, now(), %s)", (datos["nombre"].strip().upper(), telefono, datos["direccion"].strip().upper(), datos["email"].strip().lower(), current_user))
+    id_cliente = cursor.lastrowid
+    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas) VALUES (%s, %s, %s, %s, 'camaras-tiene-nuevo-'+%s, 1, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, data.get("opcionTipoInstalacion"), datos["asignado"], data.get("notas").strip()))
+    id_cita = cursor.lastrowid
+    for pregunta, respuesta in preguntas.items():
+        if isinstance(respuesta, bool):
+            if respuesta:
+                cursor.execute("INSERT INTO citas_preguntas (cita, pregunta, respuesta) VALUES (%s, %s, %s)", (id_cita, pregunta, respuesta))
+    mysql.connection.commit()
+    cursor.close()
+
+    return jsonify({"status": "ok"})
+
 @app.post("/api/configuracion/nuevo-estado")
 def configuracion_nuevo_estado():
     data = request.get_json(silent=True) or {}

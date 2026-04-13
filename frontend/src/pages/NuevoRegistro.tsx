@@ -4,7 +4,8 @@ import type { Usuarios } from "../types/auth";
 import type { Speech } from "../types/speech";
 import Loading from "../components/Loading";
 import SortableSpeechCard from "../components/SortableSpeechCard";
-import FormularioCamarasDesdeCero from "../pages/FormularioCamarasDesdeCero"
+import FormularioCamarasDesdeCero from "../pages/FormularioCamarasDesdeCero";
+import FormularioCamarasTieneClienteNuevo from "../pages/FormularioCamarasTieneClienteNuevo";
 import { NotebookTabs, Cctv, Globe, Save, Pencil, X, SquarePlus, Trash2, FileVideoCamera, Video, ClipboardList } from 'lucide-react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -346,7 +347,7 @@ async function guardarCambios() {
         )}
 
         {(opcionCamaras == "tiene" || opcionCamaras == "tieneclientenuevo" || opcionCamaras == "tieneclienteexistente") && (
-          <div className="flex justify-between items-center gap-2">
+          <div className="flex justify-between items-center gap-2 mb-3">
             <button className={`p-1! text-xs! w-full ${
                   opcionCamaras == "tieneclientenuevo"
                     ? "bg-green-600 text-white border"
@@ -456,13 +457,17 @@ async function guardarCambios() {
                     ))}
               </select>
             </div>
-              {formRegistro.nombre && formRegistro.direccion && formRegistro.telefono && formRegistro.fecha && hora && formDataCamaras.lugar && formDataCamaras.audio && formDataCamaras.area &&formDataCamaras.monitor && formDataCamaras.atico && formDataCamaras.cantidad && formDataCamaras.estructura && (
+              {formRegistro.nombre && formRegistro.telefono && formRegistro.fecha && hora && formDataCamaras.lugar && formDataCamaras.audio && formDataCamaras.area &&formDataCamaras.monitor && formDataCamaras.atico && formDataCamaras.estructura && (
                 <button className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-orange-600 cursor-pointer" onClick={handleSubmit} disabled={loading}>
                   {loading ? "Guardando..." : "Guardar"}
                 </button>
               )}
 
           </div>
+        )}
+
+        {(opcionCamaras == "tieneclientenuevo") && (
+          <FormularioCamarasTieneClienteNuevo />
         )}
       </div>
 
