@@ -16,7 +16,14 @@ const NAV: NavItem[] = [
     label: "Inicio",
     path: "/inicio",
     icon: Home,
-    roles: ["invitado", "usuario", "moderador", "administrador", "superadmin", "tecnico"],
+    roles: [
+      "invitado",
+      "usuario",
+      "moderador",
+      "administrador",
+      "superadmin",
+      "tecnico",
+    ],
   },
   {
     label: "Nuevo Registro",
@@ -56,8 +63,7 @@ export default function Sidebar() {
                     ? "bg-orange-500/15 border-orange-500/30 text-orange-400"
                     : "border-transparent text-white/70 hover:bg-white/10 hover:text-orange-300",
                 ].join(" ")
-              }
-            >
+              }>
               <Icon className="h-5 w-5 transition-transform group-hover:scale-110" />
             </NavLink>
           );

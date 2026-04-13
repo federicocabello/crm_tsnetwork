@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, json
 from flask_mysqldb import MySQL
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager, get_jwt_identity, jwt_required
@@ -12,7 +12,7 @@ app = Flask(__name__)
 #CORS(app, resources={r"/api/*": {"origins": "http://localhost:5174"}}, supports_credentials=True)
 CORS(
     app,
-    resources={r"/api/*": {"origins": "http://localhost:5174"}},
+    resources={r"/api/*": {"origins": "http://localhost:5175"}},
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],  # Aseguramos que Flask permita estos encabezados
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Permitimos todos los métodos
@@ -233,7 +233,32 @@ def nuevo_registro_guardar():
         cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas) VALUES (%s, %s, %s, %s, %s, 1, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipocita+tipocitacamaras, datos["asignado"], data.get("notas").strip()))
         id_cita = cursor.lastrowid
     for pregunta, respuesta in preguntas.items():
-        cursor.execute("INSERT INTO citas_preguntas (cita, pregunta, respuesta) VALUES (%s, %s, %s)", (id_cita, pregunta, respuesta))
+        if pregunta == "presupuesto":
+            productos_insert = []
+
+            for producto, info in respuesta.items():
+                productos_insert.append((
+                    id_cita,
+                    int(producto),
+                    int(info["cantidad"]),
+                    float(info["precioFinal"])
+                ))
+
+            cursor.executemany(
+                """
+                INSERT INTO hojas_productos (hoja, producto, cantidad, precio_final)
+                VALUES (%s, %s, %s, %s)
+                """,
+                productos_insert
+            )
+    
+        cursor.execute(
+            """
+            INSERT INTO citas_preguntas (cita, pregunta, respuesta)
+            VALUES (%s, %s, %s)
+            """,
+            (id_cita, pregunta, str(respuesta))
+        )
     mysql.connection.commit()
     cursor.close()
     return jsonify({"status": "ok"})
@@ -294,6 +319,74 @@ def agenda_cambiar_estado():
     mysql.connection.commit()
     cursor.close()
     return jsonify(), 201
+
+@app.get("/api/productos")
+def get_productos():
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM productos")
+    query_productos = cursor.fetchall()
+    productos = [
+    {
+        "id": producto["id"],
+        "descrip": producto["descrip"],
+        "precio": float(producto["precio"]),
+        "stock": producto["stock"]
+    }
+    for producto in query_productos
+]
+
+    cursor.close()
+    return jsonify(productos), 201
+
+@app.get("/api/cotizacion/<int:idCotizacion>")
+def get_cotizacion(idCotizacion):
+    cursor = mysql.connection.cursor()
+
+    # 🔹 Productos
+    cursor.execute(
+        """
+        SELECT 
+            hp.producto,
+            p.descrip,
+            hp.cantidad,
+            hp.precio_final
+        FROM hojas_productos hp
+        JOIN productos p ON hp.producto = p.id
+        WHERE hp.hoja = %s
+        """,
+        (idCotizacion,)
+    )
+
+    query_productos = cursor.fetchall()
+
+    productos = [
+        {
+            "id": hoja["producto"],
+            "cantidad": float(hoja["cantidad"]),
+            "precioFinal": float(hoja["precio_final"]),
+            "descrip": hoja["descrip"],
+        }
+        for hoja in query_productos
+    ]
+
+    # 🔹 Total
+    cursor.execute(
+        """
+        SELECT SUM(precio_final) as total
+        FROM hojas_productos
+        WHERE hoja = %s
+        """,
+        (idCotizacion,)
+    )
+
+    total = cursor.fetchone()["total"] or 0
+
+    cursor.close()
+
+    return jsonify({
+        "productos": productos,
+        "total": float(total)
+    }), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
