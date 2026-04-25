@@ -6,7 +6,8 @@ import Loading from "../components/Loading";
 import SortableSpeechCard from "../components/SortableSpeechCard";
 import FormularioCamarasDesdeCero from "../pages/FormularioCamarasDesdeCero";
 import FormularioCamarasTieneClienteNuevo from "../pages/FormularioCamarasTieneClienteNuevo";
-import { NotebookTabs, Cctv, Globe, Save, Pencil, X, SquarePlus, Trash2, FileVideoCamera, Video, ClipboardList } from 'lucide-react';
+import FormularioCamarasTieneClienteExistente from "../pages/FormularioCamarasExistente";
+import { NotebookTabs, Cctv, Globe, Save, Pencil, X, SquarePlus, Trash2, FileVideoCamera, Video, ClipboardList, SearchAlert } from 'lucide-react';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -99,7 +100,7 @@ export default function NuevoRegistro() {
       tipocita: selectedOption,
       tipocitacamaras: opcionCamaras,
       notas: notas,
-      hora: hora,
+      hora: hora
     };
     console.log(datosCompletos);
     try {
@@ -305,6 +306,27 @@ export default function NuevoRegistro() {
     setSaving(false);
   }
 
+const [alerta, setAlerta] = useState<string | null>(null);
+
+  const handleBlur = async () => {
+  if (!formRegistro.telefono) return; // Si el teléfono está vacío no hacer nada
+
+  try {
+    const response = await fetch(`/api/clientes/buscar-telefono?telefono=${encodeURIComponent(formRegistro.telefono)}`);
+
+    const data = await response.json();
+
+    if (data.existe) {
+      setAlerta(`Número de teléfono ya registrado con el cliente: ${data.cliente.nombre}`);
+    } else {
+      setAlerta(null); // Si no existe, limpiar la alerta
+    }
+  } catch (error) {
+    console.error("Error al buscar el teléfono:", error);
+    setAlerta("Hubo un error al buscar el teléfono.");
+  }
+};
+
   return (
     <div className="h-full min-h-0 flex gap-3">
       <div className="cuadro w-1/4 shrink-0 cuadro min-h-0 overflow-y-auto">
@@ -417,7 +439,11 @@ export default function NuevoRegistro() {
                 className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
                 value={formRegistro.telefono}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
               />
+              {alerta && (
+              <div className="text-red-500 text-xs flex items-center"><SearchAlert className="w-4 h-4 mr-1" />{alerta}</div>
+              )}
             </div>
 
             <div className="flex flex-col gap-1">
@@ -505,6 +531,10 @@ export default function NuevoRegistro() {
         {(opcionCamaras == "tieneclientenuevo") && (
           <FormularioCamarasTieneClienteNuevo />
         )}
+
+        {(opcionCamaras == "tieneclienteexistente") && (
+          <FormularioCamarasTieneClienteExistente />
+        )}
       </div>
 
       {selectedOption &&
@@ -586,7 +616,7 @@ export default function NuevoRegistro() {
         ))}
 
       {canEdit && selectedOption && (
-        <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
+        <div className="fixed bottom-2 right-8 flex flex-col gap-3 z-50">
           {/* Toggle editor */}
           <button
             onClick={() => cancelarEditor(isEditing)}

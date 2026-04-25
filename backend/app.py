@@ -12,7 +12,7 @@ app = Flask(__name__)
 #CORS(app, resources={r"/api/*": {"origins": "http://localhost:5174"}}, supports_credentials=True)
 CORS(
     app,
-    resources={r"/api/*": {"origins": "http://localhost:5175"}},
+    resources={r"/api/*": {"origins": "http://localhost:5174"}},
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],  # Aseguramos que Flask permita estos encabezados
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Permitimos todos los métodos
@@ -140,12 +140,64 @@ def configuracion_gestion_de_usuarios():
     cursor.close()
     return jsonify({"msg": "Usuario modificado con éxito."}), 201
 
+@app.get("/api/clientes/buscar")
+def buscar_clientes():
+    q = request.args.get("q", "").strip()
+
+    if not q:
+        return jsonify([]), 200
+
+    cursor = mysql.connection.cursor()
+    try:
+        like = f"%{q}%"
+        cursor.execute("""
+            SELECT id, nombre, telefono, domicilio, email
+            FROM clientes
+            WHERE nombre LIKE %s
+               OR telefono LIKE %s
+            ORDER BY nombre ASC
+            LIMIT 10
+        """, (like, like))
+        clientes = cursor.fetchall()
+        return jsonify(clientes), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
 @app.get("/api/inicio")
 def inicio():
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT id, fullname FROM auth WHERE habilitado = 1 ORDER BY fullname;")
     usuarios = cursor.fetchall()
-    cursor.execute("SELECT citas.id AS idcita, clientes.id AS idcliente, clientes.nombre AS nombre, DATE_FORMAT(citas.dia, '%Y-%m-%d') AS dia, DATE_FORMAT(citas.hora, '%H:%i') AS hora, DATE_FORMAT(citas.hora, '%H:%i %p') AS hora_format, citas.notas AS notas, auth.id AS idagente, auth.fullname AS fullname, citas.tipo AS tipo, citas.estado AS idestado, citas_estados.estado AS estado, citas_estados.color AS color FROM citas JOIN clientes ON clientes.id=citas.cliente JOIN auth ON auth.id=citas.asignado JOIN citas_estados ON citas_estados.id=citas.estado;")
+    cursor.execute("""
+                   SELECT 
+                        citas.id AS idcita,
+                        clientes.id AS idcliente,
+                        clientes.nombre AS nombre,
+                        DATE_FORMAT(citas.dia, '%Y-%m-%d') AS dia,
+                        DATE_FORMAT(citas.hora, '%H:%i') AS hora,
+                        DATE_FORMAT(citas.hora, '%h:%i %p') AS hora_format,
+                        citas.notas AS notas,
+                        auth.id AS idagente,
+                        auth.fullname AS fullname,
+                        citas.tipo AS tipo,
+                        citas.estado AS idestado,
+                        citas_estados.estado AS estado,
+                        citas_estados.color AS color,
+                        clientes.telefono AS telefono,
+                        clientes.domicilio AS direccion,
+                        hojas.id AS idhoja,
+                        CASE 
+                            WHEN hojas.id IS NOT NULL THEN 1
+                            ELSE 0
+                        END AS tiene_hoja
+                    FROM citas
+                    JOIN clientes ON clientes.id = citas.cliente
+                    JOIN auth ON auth.id = citas.asignado
+                    JOIN citas_estados ON citas_estados.id = citas.estado
+                    LEFT JOIN hojas ON hojas.cita = citas.id;
+                   """)
     citas = cursor.fetchall()
     cursor.execute("SELECT * FROM citas_estados;")
     citas_estados = cursor.fetchall()
@@ -217,12 +269,11 @@ def sync_speech():
 @app.post("/api/nuevo-registro/guardar")
 def nuevo_registro_guardar():
     data = request.get_json(silent=True) or {}
+    print(data)
     datos = data.get("datos")
     telefono = re.sub(r'\D', '', datos["telefono"])
     current_user = data.get("user")["id"]
     tipocita = data.get("tipocita")
-    
-    preguntas = data.get("preguntas")
     cursor = mysql.connection.cursor()
     
     if tipocita == "camaras":
@@ -232,13 +283,69 @@ def nuevo_registro_guardar():
             id_cliente = cursor.lastrowid
         cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas) VALUES (%s, %s, %s, %s, %s, 1, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipocita+tipocitacamaras, datos["asignado"], data.get("notas").strip()))
         id_cita = cursor.lastrowid
-    for pregunta, respuesta in preguntas.items():
-        if pregunta == "presupuesto":
-            productos_insert = []
+    
+    preguntas = data.get("preguntas")
+    if preguntas:
+        for pregunta, respuesta in preguntas.items():
+            if respuesta not in [None, ""]:
+                cursor.execute("INSERT INTO citas_preguntas (cita, pregunta, respuesta) VALUES (%s, %s, %s)", (id_cita, pregunta, respuesta))
 
-            for producto, info in respuesta.items():
+    presupuesto = preguntas.get("presupuesto")
+    if presupuesto:
+        cursor.execute("INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalación')", (id_cita,))
+        id_hoja = cursor.lastrowid
+        
+        productos_insert = []
+        for producto, info in presupuesto.items():
+            productos_insert.append((
+                id_hoja,
+                int(producto),
+                int(info["cantidad"]),
+                float(info["precioFinal"])
+            ))
+
+        cursor.executemany(
+            """
+            INSERT INTO hojas_productos (hoja, producto, cantidad, precio_final)
+            VALUES (%s, %s, %s, %s)
+            """,
+            productos_insert
+        )
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"status": "ok"})
+
+@app.post("/api/nuevo-registro/camaras/tiene/nuevo")
+def nuevo_registro_camaras_tiene_nuevo():
+    data = request.get_json(silent=True) or {}
+    datos = data.get("datos")
+    telefono = re.sub(r'\D', '', datos["telefono"])
+    current_user = data.get("user")["id"]
+    
+    cursor = mysql.connection.cursor()
+    cursor.execute("INSERT INTO clientes (nombre, telefono, domicilio, email, fecha, agente) VALUES (%s, %s, %s, %s, now(), %s)", (datos["nombre"].strip().upper(), telefono, datos["direccion"].strip().upper(), datos["email"].strip().lower(), current_user))
+    id_cliente = cursor.lastrowid
+    
+    tipo = 'camaras-tiene-nuevo-'+data.get("opcionTipoInstalacion")
+    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas) VALUES (%s, %s, %s, %s, %s, 1, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipo, datos["asignado"], data.get("notas").strip()))
+    id_cita = cursor.lastrowid
+    
+    if tipo == "camaras-tiene-nuevo-instalacion":
+        preguntas = data.get("preguntas")
+        if preguntas:
+            for pregunta, respuesta in preguntas.items():
+                if respuesta not in [None, ""]:
+                    cursor.execute("INSERT INTO citas_preguntas (cita, pregunta, respuesta) VALUES (%s, %s, %s)", (id_cita, pregunta, respuesta))
+        
+        presupuesto = data.get("presupuesto")
+        if presupuesto:
+            cursor.execute("INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalación')", (id_cita,))
+            id_hoja = cursor.lastrowid
+            
+            productos_insert = []
+            for producto, info in presupuesto.items():
                 productos_insert.append((
-                    id_cita,
+                    id_hoja,
                     int(producto),
                     int(info["cantidad"]),
                     float(info["precioFinal"])
@@ -251,34 +358,71 @@ def nuevo_registro_guardar():
                 """,
                 productos_insert
             )
-    
-        cursor.execute(
-            """
-            INSERT INTO citas_preguntas (cita, pregunta, respuesta)
-            VALUES (%s, %s, %s)
-            """,
-            (id_cita, pregunta, str(respuesta))
-        )
+            
     mysql.connection.commit()
     cursor.close()
+
     return jsonify({"status": "ok"})
 
-@app.post("/api/nuevo-registro/camaras/tiene/nuevo")
-def nuevo_registro_camaras_tiene_nuevo():
-    data = request.get_json(silent=True) or {}
-    datos = data.get("datos")
-    telefono = re.sub(r'\D', '', datos["telefono"])
-    current_user = data.get("user")["id"]
-    preguntas = data.get("preguntas")
+@app.get("/api/clientes/buscar-telefono")
+def buscar_telefono():
+    telefono = request.args.get("telefono")
+    if not telefono:
+        return jsonify({"error": "Número de teléfono no proporcionado"}), 400
+
     cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO clientes (nombre, telefono, domicilio, email, fecha, agente) VALUES (%s, %s, %s, %s, now(), %s)", (datos["nombre"].strip().upper(), telefono, datos["direccion"].strip().upper(), datos["email"].strip().lower(), current_user))
-    id_cliente = cursor.lastrowid
-    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas) VALUES (%s, %s, %s, %s, 'camaras-tiene-nuevo-'+%s, 1, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, data.get("opcionTipoInstalacion"), datos["asignado"], data.get("notas").strip()))
+    cursor.execute("SELECT id, nombre FROM clientes WHERE telefono = %s", (telefono,))
+    cliente = cursor.fetchone()
+    
+    cursor.close()
+    
+    if cliente:
+        return jsonify({"existe": True, "cliente": cliente}), 200
+    else:
+        return jsonify({"existe": False}), 200
+
+@app.post("/api/nuevo-registro/camaras/tiene/existente")
+def nuevo_registro_camaras_tiene_existente():
+    data = request.get_json(silent=True) or {}
+    print(data)
+    datos = data.get("datos")
+    current_user = data.get("user")["id"]
+    
+    cursor = mysql.connection.cursor()
+    id_cliente = data.get("clienteSeleccionado")["id"]
+    
+    tipo = 'camaras-tiene-existente-'+data.get("opcionTipoInstalacion")
+    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas) VALUES (%s, %s, %s, %s, %s, 1, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipo, datos["asignado"], data.get("notas").strip()))
     id_cita = cursor.lastrowid
-    for pregunta, respuesta in preguntas.items():
-        if isinstance(respuesta, bool):
-            if respuesta:
-                cursor.execute("INSERT INTO citas_preguntas (cita, pregunta, respuesta) VALUES (%s, %s, %s)", (id_cita, pregunta, respuesta))
+    
+    if tipo == "camaras-tiene-existente-instalacion":
+        preguntas = data.get("preguntas")
+        if preguntas:
+            for pregunta, respuesta in preguntas.items():
+                if respuesta not in [None, ""]:
+                    cursor.execute("INSERT INTO citas_preguntas (cita, pregunta, respuesta) VALUES (%s, %s, %s)", (id_cita, pregunta, respuesta))
+    
+        presupuesto = data.get("presupuesto")
+        if presupuesto:
+            cursor.execute("INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalación')", (id_cita,))
+            id_hoja = cursor.lastrowid
+            
+            productos_insert = []
+            for producto, info in presupuesto.items():
+                productos_insert.append((
+                    id_hoja,
+                    int(producto),
+                    int(info["cantidad"]),
+                    float(info["precioFinal"])
+                ))
+
+            cursor.executemany(
+                """
+                INSERT INTO hojas_productos (hoja, producto, cantidad, precio_final)
+                VALUES (%s, %s, %s, %s)
+                """,
+                productos_insert
+            )
     mysql.connection.commit()
     cursor.close()
 
@@ -382,6 +526,7 @@ def get_cotizacion(idCotizacion):
     total = cursor.fetchone()["total"] or 0
 
     cursor.close()
+    print(idCotizacion, productos, total)
 
     return jsonify({
         "productos": productos,

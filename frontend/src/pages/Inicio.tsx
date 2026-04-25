@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Usuarios } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
-import { FilePlusCorner, Cctv, Globe } from "lucide-react";
+import { FilePlusCorner, Cctv, Globe, Home, Phone, User, TriangleAlert, Wrench } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 //npm install react-datepicker
@@ -22,6 +22,10 @@ type AgendaItem = {
   idestado: string;
   estado: string;
   color: string;
+  telefono: string,
+  direccion: string,
+  idhoja: string,
+  tiene_hoja: number,
 };
 
 type CitasEstados = {
@@ -371,7 +375,7 @@ export default function Inicio() {
                 key={it.idcita}
                 className="rounded-2xl border border-white/10 bg-zinc-950/30 p-3 hover:bg-zinc-950/40 transition">
                 <div>
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
                       <DatePicker
                         value={it.hora_format}
@@ -385,7 +389,6 @@ export default function Inicio() {
                         selected={hora}
                         onChange={handleHoraChange.bind(null, it.idcita)}
                       />
-                      <div className="text-sm font-extrabold">{it.nombre}</div>
                       <select
                         value={it.idestado}
                         className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2"
@@ -414,12 +417,23 @@ export default function Inicio() {
                           ))}
                       </select>
 
-                      {it.tipo == "camarasdesdecero" && (
-                        <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
-                          <Cctv className="h-4 w-4" />
-                          <span>INSTALACIÓN DE CÁMARAS</span>
+                      {(it.tipo == "camarasdesdecero" || it.tipo == "camaras-tiene-nuevo-instalacion" || it.tipo == "camaras-tiene-existente-instalacion") && (
+                        <div className="flex items-center gap-2">
+                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
+                            <Cctv className="h-4 w-4" />
+                            <span>INSTALACIÓN DE CÁMARAS</span>
+                          </div>
+                          {(it.tipo == "camaras-tiene-nuevo-instalacion" || it.tipo == "camaras-tiene-existente-instalacion") && (<span className="text-xs text-yellow-500 font-bold italic flex items-center gap-1"><TriangleAlert className="h-4 w-4" />Ya tiene cámaras instaladas</span>)}
                         </div>
                       )}
+
+                      {(it.tipo == "camaras-tiene-nuevo-soporte" || it.tipo == "camaras-tiene-existente-soporte") && (
+                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
+                            <Wrench className="h-4 w-4" />
+                            <span>SOPORTE</span>
+                          </div>
+                      )}
+
                     </div>
 
                     <div>
@@ -427,22 +441,24 @@ export default function Inicio() {
                         Asignado a <strong>{it.fullname}</strong>
                       </span>
                     </div>
-                    {it.idcita && (
-                      <button
-                        className="p-2 bg-green-600"
-                        onClick={() => {
-                          setOpenCotizacion(true);
-                          setIdCotizacion(parseInt(it.idcita));
-                        }}>
-                        Ver Cotizacion
-                      </button>
-                    )}
                   </div>
 
                   <div>
+                    <div className="flex gap-1 items-center">
+                      <div className="text-sm font-extrabold flex items-center gap-1"><User className="h-4 w-4" />{it.nombre}</div>
+                      {it.telefono && (<div className="text-sm flex items-center gap-1">• <Phone className="h-4 w-4" /> {it.telefono}</div>)}
+                      {it.direccion && (<div className="text-sm flex items-center gap-1">• <Home className="h-4 w-4" /> {it.direccion}</div>)}
+                      {it.tiene_hoja == 1 && (<div className="text-sm">• <span className="hover:underline cursor-pointer text-orange-600 font-bold" onClick={() => {
+                        setOpenCotizacion(true);
+                        setIdCotizacion(parseInt(it.idhoja));
+                      }}>Ver cotización</span></div>)}
+                    </div>
+                    
+                    {it.notas && (
                     <div className="text-sm text-white/80 mt-1 whitespace-pre-wrap w-full">
                       {it.notas}
                     </div>
+                    )}
                   </div>
                 </div>
               </div>

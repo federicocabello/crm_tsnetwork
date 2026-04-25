@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Cotizador from "./Cotizador";
+import { CircleDollarSign } from 'lucide-react';
 
 type FormularioProps = {
   onChange: (data: FormData) => void; // Callback para el submit
@@ -11,9 +12,9 @@ interface Presupuesto {
   precioFinal: string;
 }
 
+
 type FormData = {
   lugar: "casa" | "negocio" | "traila" | "foodtruck" | "apartamento" | null;
-  cantidad: string;
   audio: "si" | "no" | null;
   area: "interior" | "exterior" | null;
   atico: "espacioso" | "espuma" | "no tiene" | null;
@@ -49,18 +50,17 @@ export default function FormularioCamarasDesdeCero({
          : "bg-zinc-950/40 text-white border-white/10 hover:border-orange-500/50"
      }`;
 
-  const handleSubmitPresupuesto = (data) => {
+  const handleSubmitPresupuesto = (data: Presupuesto) => {
     setPresupuesto(data);
   };
 
-  const handleCloseModal = (close) => {
+  const handleCloseModal = (close: boolean) => {
     setOpenPresupuesto(close);
   };
 
   useEffect(() => {
     onChange({
       lugar,
-      // cantidad,
       audio,
       area,
       atico,
@@ -68,7 +68,7 @@ export default function FormularioCamarasDesdeCero({
       estructura,
       presupuesto,
     });
-  }, [lugar, audio, area, atico, monitor, estructura, presupuesto]);
+  }, [lugar, audio, area, atico, monitor, estructura, presupuesto, onChange]);
 
   return (
     <div className="flex flex-col gap-3 w-full">
@@ -240,20 +240,21 @@ export default function FormularioCamarasDesdeCero({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-white/60">Presupuesto</label>
             {/* <input
           type="number"
           onChange={(e) => setPresupuesto(e.target.value)}
           className="w-32 rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
         /> */}
+        <div className="flex flex-col justify-end">
             <button
               onChange={handleSubmitPresupuesto}
               onClick={() => setOpenPresupuesto(true)}
-              className="capitalize bg-gray-700 text-white p-2 rounded-md cursor-pointer w-full">
+              className="boton bg-green-600 hover:bg-green-800 cursor-pointer flex gap-1 items-center">
+              <CircleDollarSign className="h-4 w-4" />
               Presupuesto
             </button>
-          </div>
+            </div>
+
         </div>
 
         {estructura && (
