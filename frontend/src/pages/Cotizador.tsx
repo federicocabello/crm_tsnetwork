@@ -18,9 +18,12 @@ interface Props {
 }
 
 export default function Cotizador({ onClose, setCotizacion }: Props) {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const [data, setData] = useState<Producto[]>([]);
   const [rows, setRows] = useState<Record<number, RowData>>({});
+  const [precio, setPrecio] = useState(0);
+  const [editPrice, setEditPrice] = useState(false);
+  const [newPrice, setNewPrice] = useState(0);
 
   const roundUp = (num: number) => Math.ceil(num * 100) / 100;
 
@@ -37,29 +40,75 @@ export default function Cotizador({ onClose, setCotizacion }: Props) {
   };
 
   const handleChange = (id: number, price: number, cantidad: number) => {
-    let safeCantidad = Number.isNaN(cantidad) ? 0 : cantidad;
-    const result = calculate(price, safeCantidad);
+  const safeCantidad = Number.isNaN(cantidad) ? 0 : cantidad;
 
-    if (cantidad < 0) {
-      alert("el numero debe ser mayor a 0");
-      safeCantidad = 0;
-      return;
-    }
+  if (safeCantidad < 0) {
+    alert("El número debe ser mayor a 0");
+    return;
+  }
 
-    setRows((prev) => ({
-      ...prev,
-      [id]: {
-        cantidad: safeCantidad,
-        ...result,
-      },
-    }));
+  const result =
+    id === 56 || id === 57
+      ? {
+          costo: (price * safeCantidad).toFixed(2),
+          precioFinal: id==57 ? ((price+price) * safeCantidad).toFixed(2) : (price * safeCantidad).toFixed(2),
+        }
+      : calculate(price, safeCantidad);
+
+  setRows((prev) => ({
+    ...prev,
+    [id]: {
+      cantidad: safeCantidad,
+      costo: result.costo,
+      precioFinal: result.precioFinal,
+    },
+  }));
+};
+
+
+  const handleDoubleClick = () => {
+    setEditPrice(true); 
   };
 
-  function sendCotizacion() {
-    setCotizacion(rows);
-    onClose(false);
-    console.log("Se guardo");
+  const handleSavePrice = () => {
+  if (newPrice > 0) {
+    setPrecio(newPrice);
   }
+
+  setEditPrice(false);
+};
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value);
+    if (!isNaN(value)) {
+      setNewPrice(value);
+    }
+  };
+
+ function sendCotizacion() {
+  const precioManual = precio > 0 ? precio : newPrice;
+
+  let cotizacionFinal: Record<number, RowData> = rows;
+
+  if (precioManual > 0) {
+    const entries = Object.entries(rows);
+
+    cotizacionFinal = entries.reduce(
+      (acc, [id, row], index) => {
+        acc[Number(id)] = {
+          ...row,
+          precioFinal: index === 0 ? precioManual.toFixed(2) : "0.00",
+        };
+
+        return acc;
+      },
+      {} as Record<number, RowData>,
+    );
+  }
+
+  setCotizacion?.(cotizacionFinal);
+  onClose(false);
+}
 
   useEffect(() => {
     try {
@@ -76,17 +125,22 @@ export default function Cotizador({ onClose, setCotizacion }: Props) {
 
       fetchApi();
     } catch {
-      alert("Ocurrio un error");
+      alert("Ocurrió un error");
     }
   }, [API_URL]);
 
+  // El total general sigue calculando el total sumando las líneas
   const totalGeneral = useMemo(() => {
-    const total = Object.values(rows).reduce((acc, row) => {
-      return acc + (parseFloat(row.precioFinal) || 0);
-    }, 0);
-
+    let total = 0;
+    if (precio === 0) {
+      total = Object.values(rows).reduce((acc, row) => {
+        return acc + (parseFloat(row.precioFinal) || 0);
+      }, 0);
+    } else {
+      total = precio;
+    }
     return total.toFixed(2);
-  }, [rows]);
+  }, [rows, precio]);
 
   return (
     <div className="fixed inset-0 flex flex-col justify-around bg-black z-[70]">
@@ -146,8 +200,21 @@ export default function Cotizador({ onClose, setCotizacion }: Props) {
         </table>
       </div>
       <div className="w-2/3 mx-auto flex flex-col gap-4 items-center">
-        <p className="text-2xl text-end p-5 border w-full">
-          TOTAL GENERAL $ {totalGeneral}
+        <p className="text-2xl text-end p-5 border w-full" onDoubleClick={handleDoubleClick}
+              >
+                {editPrice ? (
+                  <input
+                    type="number"
+                    value={newPrice}
+                    onChange={handlePriceChange}
+                    onBlur={handleSavePrice}
+                    autoFocus
+                  />
+                ) : (
+                  `TOTAL GENERAL ${totalGeneral}`
+                )}
+          {/* {changePrecio ? `TOTAL GENERAL $ ${totalGeneral}` : <><p>Modificar Precio</p><input className="p-1 text-black bg-gray-300 rounded " type="number" onChange={e=>setPrecio(e.target.valueAsNumber)}/></>} */}
+          
         </p>
         <p
           className="w-1/4 hover:cursor-pointer  font-bold text-center bg-orange-700 p-5 rounded-b-md"

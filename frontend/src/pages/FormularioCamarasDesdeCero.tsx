@@ -59,6 +59,7 @@ export default function FormularioCamarasDesdeCero({
   };
 
   useEffect(() => {
+    console.log(presupuesto)
     onChange({
       lugar,
       audio,
@@ -66,7 +67,7 @@ export default function FormularioCamarasDesdeCero({
       atico,
       monitor,
       estructura,
-      presupuesto,
+      presupuesto
     });
   }, [lugar, audio, area, atico, monitor, estructura, presupuesto, onChange]);
 
