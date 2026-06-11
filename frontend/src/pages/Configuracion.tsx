@@ -162,11 +162,11 @@ export default function Users() {
                     {user.rol == "tecnico" && (
                       <ContactRoundIcon className="h-5 w-5 inline mr-1" />
                     )}
-                    {user.fullname} <PencilIcon className="h-4 w-4 inline ml-1 text-blue-500 hover:text-white hover:scale-120 transition-all cursor-pointer" onClick={() => handleGestionUsuario(user.id, user.fullname, 2, true)} /></td>
-                  <td className="py-2 px-4">{user.user} <PencilIcon className="h-4 w-4 inline ml-1 text-blue-500 hover:text-white hover:scale-120 transition-all cursor-pointer" onClick={() => handleGestionUsuario(user.id, user.user, 0, true)} /></td>
-                  <td className="py-2 px-4">{user.password} <PencilIcon className="h-4 w-4 inline ml-1 text-blue-500 hover:text-white hover:scale-120 transition-all cursor-pointer" onClick={() => handleGestionUsuario(user.id, user.password, 1, true)} /></td>
+                    {user.fullname} <PencilIcon className="h-4 w-4 inline ml-1 text-blue-500 hover:text-white hover:scale-120 transition-all cursor-pointer" onClick={() => handleGestionUsuario(Number(user.id), user.fullname, 2, true)} /></td>
+                  <td className="py-2 px-4">{user.user} <PencilIcon className="h-4 w-4 inline ml-1 text-blue-500 hover:text-white hover:scale-120 transition-all cursor-pointer" onClick={() => handleGestionUsuario(Number(user.id), user.user, 0, true)} /></td>
+                  <td className="py-2 px-4">{user.password} <PencilIcon className="h-4 w-4 inline ml-1 text-blue-500 hover:text-white hover:scale-120 transition-all cursor-pointer" onClick={() => handleGestionUsuario(Number(user.id), user.password, 1, true)} /></td>
                     <td className="py-2 px-4">
-                      <select className="capitalize bg-gray-700 text-white p-2 rounded-md cursor-pointer w-full" onChange={(e) => handleGestionUsuario(user.id, e.target.value, 3, false)}>
+                      <select className="capitalize bg-gray-700 text-white p-2 rounded-md cursor-pointer w-full" onChange={(e) => handleGestionUsuario(Number(user.id), e.target.value, 3, false)}>
                         <option value={user.rol} selected>{user.rol}</option>
                         {ROLES.filter(role => role !== user.rol).map((role) => (
                           <option key={role} value={role}>{role}</option>
@@ -182,7 +182,7 @@ export default function Users() {
                     >
                       <span className="font-bold">{user.habilitado ? "Habilitado" : "Deshabilitado"}</span>
                     </span>
-                    <span title="Habilitar/deshabilitar" className="border border-transparent hover:border-white rounded-full transition-all p-1 hover:scale-120"><ArrowRightLeftIcon className="h-4 w-4 cursor-pointer" onClick={() => handleGestionUsuario(user.id, !user.habilitado, 4, false)} /></span>
+                    <span title="Habilitar/deshabilitar" className="border border-transparent hover:border-white rounded-full transition-all p-1 hover:scale-120"><ArrowRightLeftIcon className="h-4 w-4 cursor-pointer" onClick={() => handleGestionUsuario(Number(user.id), String(!user.habilitado), 4, false)} /></span>
                     </div>
                   </td>
                 </tr>

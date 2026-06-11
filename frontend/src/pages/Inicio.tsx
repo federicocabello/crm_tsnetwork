@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Usuarios } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
-import { FilePlusCorner, Cctv, Globe, Home, Phone, User, TriangleAlert, Wrench } from "lucide-react";
+import { FilePlusCorner, Cctv, Globe, Home, Phone, User, TriangleAlert, Wrench, Pencil, ListChevronsUpDown, ListChevronsDownUp, FileInput, File, Folder, FolderOpen, UserRoundSearch, CircleCheck } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 //npm install react-datepicker
 import { darkenColor } from "../utils/colores";
-import ModalCotizacion from "../components/ModalCotizacion";
+import Cotizador from "./Cotizador";
+import ModalEditarRegistro from "../components/ModalEditarRegistro";
+import GaleriaCita from "../components/GaleriaCita";
+import EditarDetalles from "../components/EditarDetalles";
+import Loading from "../components/Loading";
+import { useNavigate } from "react-router-dom";
 
 type AgendaItem = {
   idcita: string;
@@ -22,10 +27,13 @@ type AgendaItem = {
   idestado: string;
   estado: string;
   color: string;
-  telefono: string,
-  direccion: string,
-  idhoja: string,
-  tiene_hoja: number,
+  telefono: string;
+  direccion: string;
+  idhoja: string;
+  tiene_hoja: number;
+  detalles: boolean;
+  preguntas?: { pregunta: string; respuesta: string }[];
+  mostrarImagenes: boolean;
 };
 
 type CitasEstados = {
@@ -33,6 +41,18 @@ type CitasEstados = {
   estado: string;
   color: string;
 };
+
+type Cliente = {
+  id: number;
+  nombre: string;
+};
+
+type BuscarCitas = {
+  id: string;
+  dia: string;
+  hora: string;
+  dia_original: string;
+}
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -66,43 +86,57 @@ function formatHeader(dateKey: string) {
 export default function Inicio() {
   const { user } = useAuth();
   const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const navigate = useNavigate();
 
   const todayKey = useMemo(() => toDateKey(new Date()), []);
 
   const [selectedDay, setSelectedDay] = useState<string>(todayKey);
-  const [selectedDayNuevaCita, setSelectedDayNuevaCita] =
-    useState<string>(todayKey);
+  const [selectedDayNuevaCita, setSelectedDayNuevaCita] = useState<string>(todayKey);
 
   const [time, setTime] = useState("09:00");
   const [notes, setNotes] = useState("");
   const [openCotizacion, setOpenCotizacion] = useState(false);
-  const [idCotizacion, setIdCotizacion] = useState(0);
+  const [idCotizacion, setIdCotizacion] = useState<number | null>(null);
+  const [modoCotizacion, setModoCotizacion] = useState<"nuevo" | "editar">("nuevo");
+  const [idCitaSeleccionada, setIdCitaSeleccionada] = useState<string | null>(null);
   const [users, setUsers] = useState<Usuarios[]>([]);
   const [items, setItems] = useState<AgendaItem[]>([]);
+
   const dayItems = useMemo(() => {
     return items
       .filter((i) => i.dia === selectedDay)
       .sort((a, b) => a.hora.localeCompare(b.hora));
   }, [items, selectedDay]);
+
   const [citasEstados, setCitasEstados] = useState<CitasEstados[]>([]);
+
   type InicioResponse = {
     usuarios: Usuarios[];
     citas: AgendaItem[];
     citas_estados: CitasEstados[];
+    dias: string[];
   };
 
-  const closeModal = (valor: boolean) => {
-    setOpenCotizacion(valor);
-  };
+  const [loading, setLoading] = useState(true);
+  const [loading2, setLoading2] = useState(false);
+
   const cargarInicio = async () => {
+    setLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/inicio`);
 
       if (res.status === 200) {
         const data: InicioResponse = await res.json();
+        const citasConDetalles = data.citas.map((cita) => ({
+          ...cita,
+          detalles: false,
+        }));
+
         setUsers(data.usuarios);
-        setItems(data.citas);
+        setItems(citasConDetalles);
         setCitasEstados(data.citas_estados);
+        setLoading(false);
+        
       } else {
         console.error("Error al traer datos. Código:", res.status);
       }
@@ -138,7 +172,7 @@ export default function Inicio() {
   };
 
   useEffect(() => {
-    if (user.rol == "tecnico") {
+    if (user?.rol == "tecnico") {
       setSelectedOptionEventos("my");
     } else {
       setSelectedOptionEventos("all");
@@ -191,6 +225,170 @@ export default function Inicio() {
     }
   };
 
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
+
+  const abrirEditar = (item: AgendaItem) => {
+    setSelectedItem(item);
+    setModalOpen(true);
+  };
+
+  const guardarCita = async (data: AgendaItem): Promise<void> => {
+    console.log("Guardar:", data);
+
+    try {
+      const res = await fetch(`${API_URL}/api/agenda/editar-cita`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (res.ok) {
+        setModalOpen(false);
+        cargarInicio();
+      } else {
+        console.error("Error al cambiar el estado. Código:", res.status);
+      }
+    } catch (err) {
+      console.error("Error de conexión al cambiar estado:", err);
+    }
+  };
+
+  const toggleDetalles = async (id: string) => {
+    const item = items.find((i) => i.idcita === id);
+    if (item && !item.preguntas) {
+      const res = await fetch(`${API_URL}/api/citas_preguntas/${id}`);
+      const data = await res.json();
+
+      setItems((prev) =>
+        prev.map((i) =>
+          i.idcita === id
+            ? {
+                ...i,
+                preguntas: data,
+                detalles: true,
+              }
+            : i
+        )
+      );
+
+      return;
+    }
+    setItems((prev) =>
+      prev.map((i) =>
+        i.idcita === id
+          ? { ...i, detalles: !i.detalles }
+          : i
+      )
+    );
+  };
+
+  const toggleImagenes = (id: string) => {
+    setItems((prevItems) =>
+      prevItems.map((item) => {
+        if (item.idcita === id) {
+          return { ...item, mostrarImagenes: !item.mostrarImagenes };
+        }
+        return item;
+      })
+    );
+  };
+
+  const [modalDetalles, setModalDetalles] = useState<boolean>(false);
+
+  const handleSeleccionarCita = (idCita: string) => {
+    setIdCitaSeleccionada(idCita);
+    setModalDetalles(true);
+  };
+
+  function cerrarModalDetalles() {
+    setModalDetalles(false);
+    cargarInicio();
+  }
+
+  const editarNvr = (modelo: string, idcita: string) => async () => {
+    const nuevoModelo = prompt("Editar modelo de NVR", modelo);
+
+    if (nuevoModelo === null) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/editar_modelo_nvr`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          idcita: idcita, 
+          nuevoModelo 
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        console.log("Modelo actualizado:", data);
+        cargarInicio();
+      } else {
+        console.error("Error al editar modelo NVR:", data);
+      }
+    } catch (error) {
+      console.error("Error de conexión:", error);
+    }
+  };
+
+  const [query, setQuery] = useState("");
+  const [resultados, setResultados] = useState<Cliente[]>([]);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<Number | null>(null);
+
+  const buscarClientes = async (q: string) => {
+    console.log("Buscando clientes con query:", q);
+    if (!q) {
+      setResultados([]);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/api/clientes/buscar/info?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error("Error al buscar clientes");
+      const data = await res.json();
+      setResultados(data.clientes);
+      console.log("Resultados obtenidos:", data.clientes);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      buscarClientes(query);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [query]);
+
+
+  const [buscarCitasCliente, setBuscarCitasCliente] = useState<BuscarCitas[]>([]);
+  const [nombreClienteSeleccionado, setNombreClienteSeleccionado] = useState<string>("");
+
+  const seleccionarCliente = async (idCliente: number, nombre: string) => {
+    setClienteSeleccionado(idCliente);
+    setLoading2(true);
+
+    try {
+    const res = await fetch(`${API_URL}/api/clientes/buscar/citas/${idCliente}`);
+    if (!res.ok) {
+      console.error("Error al traer citas del cliente:", res.status);
+      return;
+    }
+
+    const data = await res.json();
+    console.log("Datos de citas del cliente:", data);
+    setBuscarCitasCliente(data.citas);
+    setNombreClienteSeleccionado(nombre);
+    setLoading2(false);
+    } catch (error) {
+      console.error("Error de conexión con el backend:", error);
+    }
+  }
+
   return (
     <div className="w-full h-full min-h-0 flex gap-3">
       <div className="w-1/4 h-full shrink-0">
@@ -223,7 +421,8 @@ export default function Inicio() {
               <input
                 type="date"
                 value={selectedDay}
-                onChange={(e) => setSelectedDay(e.target.value)}
+                onChange={(e) => (setSelectedDay(e.target.value))}
+                //onChange={(e) => console.log("Selected day:", e.target.value)}
                 className="bg-transparent text-sm outline-none"
               />
             </div>
@@ -231,8 +430,7 @@ export default function Inicio() {
         </div>
 
         <div
-          className="mt-3 grid grid-cols-1 gap-3 w-full cuadro shrink-0"
-          hidden>
+          className="mt-3 grid grid-cols-1 gap-3 w-full cuadro shrink-0" hidden>
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-extrabold tracking-tight flex items-center gap-1">
               <FilePlusCorner className="w-4 h-4" />
@@ -303,9 +501,9 @@ export default function Inicio() {
                 />
               </div>
 
-              {user.rol == "moderador" ||
-                user.rol == "administrador" ||
-                (user.rol == "superadmin" && (
+              {user?.rol == "moderador" ||
+                user?.rol == "administrador" ||
+                (user?.rol == "superadmin" && (
                   <div>
                     <label className="block text-xs text-white/60 mb-1">
                       Asignado a
@@ -331,6 +529,62 @@ export default function Inicio() {
             </div>
           )}
         </div>
+
+        <div className="mt-3 grid grid-cols-1 gap-2 w-full cuadro shrink-0">
+          <div className="font-bold flex items-center gap-1"><UserRoundSearch className="w-4 h-4" />Buscar cliente</div>
+          <div className="flex items-center gap-2">
+            <input type="text" className="bg-zinc-900 text-white placeholder:text-white/60 border border-white/10 focus:border-orange-500/40 text-sm p-2 rounded-lg w-full uppercase" placeholder="Nombre, teléfono o domicilio" value={query} onChange={(e) => setQuery(e.target.value)} />
+          </div>
+
+          {resultados?.length > 0 && (
+            <ul className="bg-zinc-800 mt-2 max-h-60 overflow-y-auto rounded-lg border border-white/10 text-xs">
+              {resultados.map((c) => {
+                const esSeleccionado = c.id === clienteSeleccionado;
+                return (
+                <li
+                  key={c.id}
+                  //className="p-2 text-white hover:bg-orange-600 hover:text-white/90 cursor-pointer"
+                  className={`p-2 text-white cursor-pointer flex items-center gap-2 transition-all ${
+                    esSeleccionado
+                      ? "bg-green-600 text-white font-bold"
+                      : "hover:bg-orange-600 hover:text-white/90"
+                  }`}
+                  onClick={() => {seleccionarCliente(c.id, c.nombre)}}
+                >
+                  <span>{c.nombre}</span>
+                  <span hidden={!esSeleccionado}><CircleCheck className="w-4 h-4" /></span>
+                </li>
+                )}
+              )}
+            </ul>
+          )}
+      
+          {loading2 ? (
+            <Loading />
+          ) : (
+            clienteSeleccionado && (
+              <div className="mt-2 rounded-lg bg-zinc-950/30 text-sm">
+                <div className="font-bold text-center italic p-2 bg-zinc-800 rounded-t-lg border border-white/10">Citas de <strong>{nombreClienteSeleccionado}</strong></div>
+                {buscarCitasCliente.length > 0 ? (
+                  <ul className="overflow-auto border border-white/10">
+                    {buscarCitasCliente.map((cita) => (
+                      <li key={cita.id} className="p-4 text-white hover:bg-orange-500/70 hover:text-white cursor-pointer flex gap-2 items-center justify-between transition-all"
+                      onClick={() => setSelectedDay(cita.dia_original)}
+                      //onClick={() => console.log("Seleccionar cita con ID:", cita.dia_original)}
+                      >
+                        <span className="font-bold text-lg">{cita.dia}</span>
+                        <span className="rounded-full border border-white bg-green-700 px-2 py-1 text-xs font-bold text-center w-20 transition-all">{cita.hora}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-white/60">No hay citas para este cliente.</div>
+                )}
+              </div>
+            )
+          )}
+
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 cuadro flex flex-col w-full">
@@ -348,9 +602,9 @@ export default function Inicio() {
               }`}>
               Mis eventos
             </button>
-            {user.rol == "moderador" ||
-              user.rol == "administrador" ||
-              (user.rol == "superadmin" && (
+            {user?.rol == "moderador" ||
+              user?.rol == "administrador" ||
+              (user?.rol == "superadmin" && (
                 <button
                   onClick={() => handleSelectionEventos("all")}
                   className={`boton border border-white/10 ${
@@ -366,14 +620,16 @@ export default function Inicio() {
 
         <div className="flex-1 min-h-0 overflow-y-auto space-y-2 mt-3 pr-2 items-start">
           {dayItems.length === 0 ? (
+            loading ? <Loading /> : (
             <div className="rounded-xl border border-white/10 bg-zinc-950/30 p-3 text-white/60">
               No hay eventos para este día.
             </div>
+            )
           ) : (
             dayItems.map((it) => (
               <div
                 key={it.idcita}
-                className="rounded-2xl border border-white/10 bg-zinc-950/30 p-3 hover:bg-zinc-950/40 transition">
+                className="rounded-2xl border border-white/10 bg-zinc-950/30 p-3 transition">
                 <div>
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
@@ -445,29 +701,157 @@ export default function Inicio() {
 
                   <div>
                     <div className="flex gap-1 items-center">
-                      <div className="text-sm font-extrabold flex items-center gap-1"><User className="h-4 w-4" />{it.nombre}</div>
+                      <div className="text-sm font-extrabold flex items-center gap-1 cursor-pointer hover:scale-103 transition-all hover:underline hover:text-orange-500" onClick={() => navigate(`/clientes/${it.idcliente}`)}><User className="h-4 w-4" />{it.nombre}</div>
                       {it.telefono && (<div className="text-sm flex items-center gap-1">• <Phone className="h-4 w-4" /> {it.telefono}</div>)}
                       {it.direccion && (<div className="text-sm flex items-center gap-1">• <Home className="h-4 w-4" /> {it.direccion}</div>)}
-                      {it.tiene_hoja == 1 && (<div className="text-sm">• <span className="hover:underline cursor-pointer text-orange-600 font-bold" onClick={() => {
-                        setOpenCotizacion(true);
-                        setIdCotizacion(parseInt(it.idhoja));
-                      }}>Ver cotización</span></div>)}
+
+                      {(it.tipo == "camarasdesdecero" || it.tipo == "camaras-tiene-nuevo-instalacion" || it.tipo == "camaras-tiene-existente-instalacion") && (
+                        it.tiene_hoja ? (
+                          <div className="text-sm flex items-center gap-1">•<File className="h-4 w-4 text-green-500" /><span className="text-green-500 font-bold hover:underline cursor-pointer" onClick={() => {
+                            setOpenCotizacion(true);
+                            setIdCotizacion(parseInt(it.idhoja));
+                            setModoCotizacion("editar");
+                          }}>Ver cotización</span></div>
+                          ) : (
+                          <div className="text-sm flex items-center gap-1">•<FileInput className="h-4 w-4 text-red-500" /><span className="hover:underline cursor-pointer text-red-600 font-bold" onClick={() => {
+                            setOpenCotizacion(true);
+                            setIdCotizacion(null);
+                            setModoCotizacion("nuevo");
+                            setIdCitaSeleccionada(it.idcita);
+                          }}>Agregar cotización</span></div>
+                        )
+                      )}
+                      <button onClick={() => abrirEditar(it)} className="boton flex items-center justify-center border py-0.5! ml-1 hover:bg-white hover:text-black italic"><Pencil className="h-3 w-3" />Editar registro</button>
                     </div>
                     
                     {it.notas && (
-                    <div className="text-sm text-white/80 mt-1 whitespace-pre-wrap w-full">
+                    <div className="text-sm text-white/80 my-2 whitespace-pre-wrap w-full">
                       {it.notas}
                     </div>
                     )}
+
+                    <div className="flex items-center gap-2">
+                      {(it.tipo == "camarasdesdecero" || it.tipo == "camaras-tiene-nuevo-instalacion" || it.tipo == "camaras-tiene-existente-instalacion") && (
+                          <div
+                            className="text-xs hover:underline text-white/60 cursor-pointer flex items-center gap-1 mt-1"
+                            onClick={() => toggleDetalles(it.idcita)}
+                          >
+                            {it.detalles ? (
+                              <>
+                                <ListChevronsDownUp className="h-4 w-4" />
+                                Ocultar detalles
+                              </>
+                            ) : (
+                              <>
+                                <ListChevronsUpDown className="h-4 w-4" />
+                                Ver detalles
+                              </>
+                            )}
+                          </div>)}
+
+                          <div
+                            className="text-xs hover:underline text-white/60 cursor-pointer transition-all flex items-center gap-1 mt-1"
+                            onClick={() => toggleImagenes(it.idcita)}
+                          >
+                            {it.mostrarImagenes ? (
+                              <>
+                                <FolderOpen className="h-4 w-4" />
+                                Ocultar archivos
+                              </>
+                            ) : (
+                              <>
+                                <Folder className="h-4 w-4" />
+                                Ver archivos
+                              </>
+                            )}
+                          </div>
+                    </div>
+
                   </div>
+
+                  {it.detalles && (
+                    <div className=" mt-2 flex flex-wrap gap-2 items-center">
+                      {(it.preguntas?.length ?? 0) > 0 ? (
+                        it.preguntas!
+                        .filter((pregunta) => pregunta.pregunta !== "modelonvr")
+                        .map((pregunta, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition"
+                            style={{
+                              backgroundColor: darkenColor(it.color, 0.8),
+                              borderColor: darkenColor(it.color, 0.2),
+                            }}
+                          >
+                            <span className="text-white/70 capitalize">
+                              {pregunta.pregunta}:
+                            </span>
+                            <span className="text-white font-bold uppercase">
+                              {pregunta.respuesta}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs italic text-white/40">
+                          Sin detalles
+                        </div>
+                      )}
+
+                      {it.preguntas?.some((p) => p.pregunta === "modelonvr") && (
+                        <div
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition hover:scale-[1.03] cursor-pointer hover:bg-green-700! hover:border-green-900!"
+                            style={{
+                              backgroundColor: darkenColor(it.color, 0.8),
+                              borderColor: darkenColor(it.color, 0.2),
+                            }}
+                            onClick={editarNvr(it.preguntas!.find((p) => p.pregunta === "modelonvr")!.respuesta, it.idcita)}
+                          >
+                            <span className="text-white/70">
+                              Modelo de NVR:
+                            </span>
+                            <span className="text-white font-bold uppercase">
+                              {it.preguntas!.find((p) => p.pregunta === "modelonvr")!.respuesta}
+                            </span>
+                          </div>
+                        )}
+
+                      <div onClick={() => handleSeleccionarCita(it.idcita)} className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition hover:scale-[1.03] cursor-pointer text-white border-white bg-orange-700"><Pencil className="h-3 w-3" />Editar detalles</div>
+                      </div>
+                    )}
+
+                  {it.mostrarImagenes && (
+                    <div className="mt-2">
+                      <GaleriaCita idCita={it.idcita} color={it.color} />
+                    </div>
+                  )}
+
+                  <ModalEditarRegistro
+                    open={modalOpen}
+                    item={selectedItem}
+                    onClose={() => setModalOpen(false)}
+                    onSave={guardarCita}
+                  />
                 </div>
               </div>
             ))
           )}
         </div>
-        {openCotizacion && (
-          <ModalCotizacion onClose={closeModal} idCotizacion={idCotizacion} />
-        )}
+          {openCotizacion && (
+            <Cotizador
+              onClose={setOpenCotizacion}
+              idCotizacion={idCotizacion}
+              modo={modoCotizacion}
+              idCita={Number(idCitaSeleccionada)}
+              onSaved={cargarInicio}
+            />
+          )}
+
+          {modalDetalles && (
+            <EditarDetalles
+              idCita={String(idCitaSeleccionada)}
+              onClose={cerrarModalDetalles}
+            />
+          )}
       </div>
     </div>
   );

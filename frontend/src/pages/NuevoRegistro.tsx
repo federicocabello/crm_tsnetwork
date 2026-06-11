@@ -1,15 +1,12 @@
-import { useState, useRef, useLayoutEffect, useEffect } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { useAuth } from "../auth/AuthContext";
-import type { Usuarios } from "../types/auth";
 import type { Speech } from "../types/speech";
 import Loading from "../components/Loading";
 import SortableSpeechCard from "../components/SortableSpeechCard";
 import FormularioCamarasDesdeCero from "../pages/FormularioCamarasDesdeCero";
 import FormularioCamarasTieneClienteNuevo from "../pages/FormularioCamarasTieneClienteNuevo";
 import FormularioCamarasTieneClienteExistente from "../pages/FormularioCamarasExistente";
-import { NotebookTabs, Cctv, Globe, Save, Pencil, X, SquarePlus, Trash2, FileVideoCamera, Video, ClipboardList, SearchAlert } from 'lucide-react';
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import { NotebookTabs, Cctv, Globe, Save, Pencil, X, SquarePlus, Trash2, FileVideoCamera, Video } from 'lucide-react';
 
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import {
@@ -31,8 +28,6 @@ export default function NuevoRegistro() {
   const [speechItems, setSpeechItems] = useState<Speech[]>([]);
   const textareasRef = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
-  const [users, setUsers] = useState<Usuarios[]>([]);
-
   const [deletedSpeech, setDeletedSpeech] = useState<string[]>([]);
 
   const canEdit = ["moderador", "administrador", "superadmin"].includes(
@@ -40,96 +35,6 @@ export default function NuevoRegistro() {
   );
 
   const [isEditing, setIsEditing] = useState(false);
-
-  const [horaMostrar, setHoraMostrar] = useState<Date | null>(null);
-  const [hora, setHora] = useState("");
-
-  const handleHoraChange = (date: Date | null) => {
-    setHoraMostrar(date);
-    if (date) {
-      const formattedTime = `${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`;
-      setHora(formattedTime);
-    }
-  };
-
-  type Formulario = {
-    nombre: string;
-    direccion: string;
-    telefono: string;
-    email: string;
-    fecha: string;
-    asignado: string;
-  };
-
-  const [formRegistro, setFormRegistro] = useState<Formulario>({
-    nombre: "",
-    direccion: "",
-    telefono: "",
-    email: "",
-    fecha: "",
-    asignado: user?.id || "",
-  });
-
-  const [notas, setNotas] = useState("");
-  const [presupuesto, setPresupuesto] = useState({});
-
-  const [formDataCamaras, setFormDataCamaras] = useState({
-    lugar: null,
-    cantidad: "",
-    audio: null,
-    area: null,
-    atico: null,
-    monitor: null,
-    estructura: null,
-    presupuesto: "",
-  });
-
-  const handleFormularioSubmit = (data: FormData) => {
-    setFormDataCamaras(data);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log(formDataCamaras.presupuesto);
-
-    // Combina los datos de ambos formularios en un solo objeto
-    const datosCompletos = {
-      datos: formRegistro,
-      preguntas: formDataCamaras,
-      user: user,
-      tipocita: selectedOption,
-      tipocitacamaras: opcionCamaras,
-      notas: notas,
-      hora: hora
-    };
-    console.log(datosCompletos);
-    try {
-      const response = await fetch(`${API_URL}/api/nuevo-registro/guardar`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(datosCompletos),
-      });
-
-      if (response.ok) {
-        console.log("Formulario enviado correctamente");
-        window.location.href = "/inicio";
-      } else {
-        console.log("Hubo un error al enviar el formulario");
-      }
-    } catch (error) {
-      console.error("Error en la conexión con el backend", error);
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormRegistro((prevState) => ({
-      ...prevState,
-      [name]: value,
-    }));
-  };
 
   const handleSelection = (option: "camaras" | "internet") => {
     setSelectedOption((prev) => (prev === option ? null : option));
@@ -197,25 +102,6 @@ export default function NuevoRegistro() {
     iniciarLayout();
   }, [speechItems, selectedOption]);
 
-  const cargarUsuarios = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/usuarios`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (res.ok) {
-        const data: Usuarios[] = await res.json();
-        setUsers(data);
-      }
-    } catch (error) {
-      console.error("Error al cargar usuarios:", error);
-    }
-  };
-
-  useEffect(() => {
-    cargarUsuarios();
-  }, []);
-
   const [saving, setSaving] = useState(false);
 
   const cancelarEditor = async (condicional: boolean) => {
@@ -226,13 +112,15 @@ export default function NuevoRegistro() {
     }
   };
 
+  const generateUniqueId = () => Math.floor(Math.random() * 1000000); // Ejemplo simple
+
   const agregarSpeech = async () => {
-    const nuevoSpeech = {
-      //id: Date.now(),
+    const nuevoSpeech: Speech = {
+      id: generateUniqueId(),  // Generar un ID único (puedes usar una función para eso)
       titulo: "Titulo nuevo speech",
       descripcion: "Descripción...",
-      img: "",
-      seccion: selectedOption!,
+      img: "",  // Aquí puedes asignar la URL o nombre de la imagen
+      tipo: "default",  // Asignar un valor a 'tipo' como 'default' o cualquier otro tipo que uses
       orden: Math.max(...speechItems.map((s) => s.orden), 0) + 1,
     };
 
@@ -254,7 +142,7 @@ export default function NuevoRegistro() {
 
   const removeItem = (id: number) => {
     setSpeechItems((prev) => prev.filter((x) => x.id !== id));
-    setDeletedSpeech((prev) => [...prev, id]);
+    setDeletedSpeech((prev) => [...prev, String(id)]);
   };
 
   function formatBoldStars(text: string) {
@@ -306,27 +194,6 @@ export default function NuevoRegistro() {
     setSaving(false);
   }
 
-const [alerta, setAlerta] = useState<string | null>(null);
-
-  const handleBlur = async () => {
-  if (!formRegistro.telefono) return; // Si el teléfono está vacío no hacer nada
-
-  try {
-    const response = await fetch(`/api/clientes/buscar-telefono?telefono=${encodeURIComponent(formRegistro.telefono)}`);
-
-    const data = await response.json();
-
-    if (data.existe) {
-      setAlerta(`Número de teléfono ya registrado con el cliente: ${data.cliente.nombre}`);
-    } else {
-      setAlerta(null); // Si no existe, limpiar la alerta
-    }
-  } catch (error) {
-    console.error("Error al buscar el teléfono:", error);
-    setAlerta("Hubo un error al buscar el teléfono.");
-  }
-};
-
   return (
     <div className="h-full min-h-0 flex gap-3">
       <div className="cuadro w-1/4 shrink-0 cuadro min-h-0 overflow-y-auto">
@@ -354,7 +221,7 @@ const [alerta, setAlerta] = useState<string | null>(null);
                 selectedOption == "internet"
                   ? "bg-green-500 text-white"
                   : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-              }`}>
+              }`} hidden>
               <Globe className="w-4 h-4" />
               Internet
             </button>
@@ -405,127 +272,7 @@ const [alerta, setAlerta] = useState<string | null>(null);
         )}
 
         {opcionCamaras == "desdecero" && (
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Nombre</label>
-              <input
-                type="text"
-                name="nombre"
-                placeholder="Nombre completo"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
-                value={formRegistro.nombre}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Dirección</label>
-              <input
-                type="text"
-                name="direccion"
-                placeholder="Dirección"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
-                value={formRegistro.direccion}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Teléfono</label>
-              <input
-                type="tel"
-                name="telefono"
-                placeholder="(956) 000-0000"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
-                value={formRegistro.telefono}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-              />
-              {alerta && (
-              <div className="text-red-500 text-xs flex items-center"><SearchAlert className="w-4 h-4 mr-1" />{alerta}</div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Email</label>
-              <input
-                type="email"
-                name="email"
-                placeholder="correo@email.com"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 lowercase"
-                value={formRegistro.email}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <textarea
-                name="notas"
-                placeholder="Notas..."
-                rows={5}
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <h2 className="text-sm font-extrabold tracking-tight flex items-center gap-1 mb-3">
-                <ClipboardList className="w-4 h-4" />
-                <span>Datos de la instalación</span>
-              </h2>
-              <FormularioCamarasDesdeCero onChange={handleFormularioSubmit} />
-            </div>
-
-            <div>
-              <label className="text-xs text-white/60">
-                Fecha y hora de visita
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  name="fecha"
-                  className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer"
-                  value={formRegistro.fecha}
-                  onChange={handleInputChange}
-                />
-                <DatePicker
-                  showTimeSelect
-                  showTimeSelectOnly
-                  timeIntervals={15}
-                  timeCaption="Hora"
-                  dateFormat="h:mm aa"
-                  className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer"
-                  selected={horaMostrar}
-                  onChange={handleHoraChange}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-white/60">Asignar a</label>
-              <select
-                className="capitalize bg-gray-700 text-white p-2 rounded-md cursor-pointer w-full"
-                name="asignado"
-                onChange={handleInputChange}>
-                <option key={user?.id} value={user?.id} selected>
-                  {user?.fullname}
-                </option>
-                {users
-                  .filter((u) => u.id !== user?.id && u.habilitado == true)
-                  .map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.fullname}
-                    </option>
-                  ))}
-              </select>
-            </div>
-              {formRegistro.nombre && formRegistro.telefono && formRegistro.fecha && hora && formDataCamaras.lugar && formDataCamaras.audio && formDataCamaras.area &&formDataCamaras.monitor && formDataCamaras.atico && formDataCamaras.estructura && (
-                <button className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-orange-600 cursor-pointer" onClick={handleSubmit} disabled={loading}>
-                  {loading ? "Guardando..." : "Guardar"}
-                </button>
-              )}
-          </div>
+          <FormularioCamarasDesdeCero />
         )}
 
         {(opcionCamaras == "tieneclientenuevo") && (
@@ -598,9 +345,9 @@ const [alerta, setAlerta] = useState<string | null>(null);
                     </SortableSpeechCard>
                   ))}
 
-                  {(user.rol == "moderador" ||
-                    user.rol == "administrador" ||
-                    user.rol == "superadmin") &&
+                  {(user?.rol == "moderador" ||
+                    user?.rol == "administrador" ||
+                    user?.rol == "superadmin") &&
                     isEditing && (
                       <div
                         className="shadow-lg shadow-black/20 bg-zinc-900 rounded-2xl border border-white/10 hover:border-orange-500 p-4 flex items-center justify-center gap-1 cursor-pointer inset-shadow-sm hover:inset-shadow-orange-500 transition-all font-bold hover:text-orange-500"
@@ -617,7 +364,7 @@ const [alerta, setAlerta] = useState<string | null>(null);
 
       {canEdit && selectedOption && (
         <div className="fixed bottom-2 right-8 flex flex-col gap-3 z-50">
-          {/* Toggle editor */}
+          
           <button
             onClick={() => cancelarEditor(isEditing)}
             className={[
@@ -636,7 +383,6 @@ const [alerta, setAlerta] = useState<string | null>(null);
             {isEditing ? "Cancelar" : "Editar"}
           </button>
 
-          {/* Guardar */}
           {isEditing && (
             <button
               onClick={guardarCambios}
