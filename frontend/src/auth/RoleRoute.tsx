@@ -7,7 +7,7 @@ export default function RoleRoute({
   children,
 }: {
   allow: Role[];
-  children: JSX.Element;
+  children: React.ReactNode;
 }) {
   const { user, isLoading } = useAuth();
 

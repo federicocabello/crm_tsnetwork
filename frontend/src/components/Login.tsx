@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ApiError } from "../lib/api";
@@ -18,18 +18,9 @@ export default function Login() {
   const nav = useNavigate();
   const auth = useAuth();
 
-  const blobs = useMemo(
-    () => [
-      { className: "bg-brand-500/30", style: { top: "-8%", left: "-10%", width: 420, height: 420 } },
-      { className: "bg-brand-600/25", style: { bottom: "-12%", right: "-12%", width: 520, height: 520 } },
-      { className: "bg-zinc-400/20", style: { top: "35%", right: "8%", width: 360, height: 360 } },
-    ],
-    []
-  );
-
-useEffect(() => {
+  useEffect(() => {
     if (auth.user) nav("/inicio");
-  }, [auth.user]);
+  }, [auth.user, nav]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,12 +29,14 @@ useEffect(() => {
 
     try {
       await auth.login(user.trim(), password);
-      nav("/inicio"); // Redirige al dashboard
+      nav("/inicio");
     } catch (e: any) {
       if (e instanceof ApiError) {
-        if (e.status === 403)
+        if (e.status === 403) {
           setErr("Tu usuario está deshabilitado. Contacta al administrador.");
-        else setErr("Usuario o contraseña incorrectos.");
+        } else {
+          setErr("Usuario o contraseña incorrectos.");
+        }
       } else {
         setErr("Error inesperado. Revisa el backend.");
       }
@@ -54,34 +47,55 @@ useEffect(() => {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-zinc-950">
-      {/* Fondo: gradiente animado */}
-      <div className="absolute inset-0 bg-[radial-gradient(1100px_circle_at_10%_10%,rgba(249,115,22,0.22),transparent_55%),radial-gradient(900px_circle_at_90%_80%,rgba(234,88,12,0.20),transparent_55%),radial-gradient(800px_circle_at_40%_90%,rgba(161,161,170,0.18),transparent_55%)]" />
+      {/* Fondo tecnológico: red de internet */}
+      <div className="absolute inset-0 bg-zinc-950">
+        {/* Gradientes base */}
+        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_15%_15%,rgba(249,115,22,0.22),transparent_55%),radial-gradient(800px_circle_at_85%_75%,rgba(234,88,12,0.18),transparent_55%),radial-gradient(700px_circle_at_50%_100%,rgba(113,113,122,0.18),transparent_60%)]" />
 
-      {/* “Blobs” animados */}
-      <div className="absolute inset-0">
-        {blobs.map((b, i) => (
-          <div
-            key={i}
-            className={`absolute rounded-full blur-3xl ${b.className} animate-float`}
-            style={b.style as React.CSSProperties}
-          />
-        ))}
+        {/* Grid técnico */}
+        <div className="absolute inset-0 opacity-[0.12] bg-[linear-gradient(to_right,rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[size:44px_44px]" />
+
+        {/* Líneas de red */}
+        <div className="network-lines absolute inset-0 opacity-70">
+          <span className="line line-1" />
+          <span className="line line-2" />
+          <span className="line line-3" />
+          <span className="line line-4" />
+          <span className="line line-5" />
+        </div>
+
+        {/* Nodos */}
+        <div className="network-nodes absolute inset-0">
+          <span className="node node-1" />
+          <span className="node node-2" />
+          <span className="node node-3" />
+          <span className="node node-4" />
+          <span className="node node-5" />
+          <span className="node node-6" />
+          <span className="node node-7" />
+        </div>
+
+        {/* Paquetes de datos moviéndose */}
+        <div className="data-packets absolute inset-0">
+          <span className="packet packet-1" />
+          <span className="packet packet-2" />
+          <span className="packet packet-3" />
+          <span className="packet packet-4" />
+        </div>
+
+        {/* Brillo suave encima */}
+        <div className="absolute inset-0 bg-[linear-gradient(120deg,transparent_0%,rgba(249,115,22,0.07)_45%,transparent_70%)] animate-scan" />
       </div>
-
-      {/* Grid sutil */}
-      <div className="absolute inset-0 opacity-[0.12] bg-[linear-gradient(to_right,rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.12)_1px,transparent_1px)] bg-size-[42px_42px]" />
 
       {/* Contenido */}
       <div className="relative z-10 flex min-h-screen items-center justify-center px-5 py-10">
         <div className="w-full max-w-md">
-
           {/* Card */}
           <div className="relative rounded-3xl border border-white/10 bg-white/5 p-7 shadow-2xl backdrop-blur-xl">
-  
             <img
               src="/logo_tsnetwork.png"
-              alt="Login illustration"
-              className="absolute -top--32 right-8 w-32 opacity-90 drop-shadow-xl hidden sm:block pointer-events-none"
+              alt="TS Network"
+              className="absolute top-16 right-8 w-32 opacity-90 drop-shadow-xl hidden sm:block pointer-events-none"
             />
 
             {/* Header */}
@@ -110,7 +124,9 @@ useEffect(() => {
             {/* Form */}
             <form onSubmit={onSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-semibold text-white/80">Usuario</label>
+                <label className="text-sm font-semibold text-white/80">
+                  Usuario
+                </label>
                 <input
                   value={user}
                   onChange={(e) => setUser(e.target.value)}
@@ -122,7 +138,9 @@ useEffect(() => {
               </div>
 
               <div>
-                <label className="text-sm font-semibold text-white/80">Contraseña</label>
+                <label className="text-sm font-semibold text-white/80">
+                  Contraseña
+                </label>
                 <input
                   type="password"
                   value={password}
@@ -140,6 +158,7 @@ useEffect(() => {
                            transition hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer hover:border-orange-500/50 hover:ring-2 hover:ring-orange-500/15"
               >
                 <span className="absolute inset-0 opacity-0 transition group-hover:opacity-100 bg-[radial-gradient(600px_circle_at_30%_20%,rgba(255,255,255,0.22),transparent_45%)]" />
+
                 <span className="relative flex items-center justify-center gap-2">
                   {loading ? <Spinner /> : null}
                   {loading ? "Ingresando..." : "Entrar"}
@@ -152,20 +171,223 @@ useEffect(() => {
               © {new Date().getFullYear()} TS NETWORK · Solo personal autorizado
             </div>
           </div>
-
         </div>
       </div>
 
-      {/* Animación CSS (sin libs) */}
+      {/* Animaciones CSS */}
       <style>{`
-        @keyframes float {
-          0%   { transform: translate3d(0, 0, 0) scale(1); }
-          33%  { transform: translate3d(18px, -14px, 0) scale(1.03); }
-          66%  { transform: translate3d(-12px, 10px, 0) scale(0.98); }
-          100% { transform: translate3d(0, 0, 0) scale(1); }
+        @keyframes pulseNode {
+          0%, 100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.45);
+            opacity: 0.75;
+          }
+
+          50% {
+            transform: scale(1.35);
+            box-shadow: 0 0 28px 8px rgba(249, 115, 22, 0.2);
+            opacity: 1;
+          }
         }
-        .animate-float {
-          animation: float 10s ease-in-out infinite;
+
+        @keyframes movePacketHorizontal {
+          0% {
+            transform: translateX(-12vw);
+            opacity: 0;
+          }
+
+          15% {
+            opacity: 1;
+          }
+
+          85% {
+            opacity: 1;
+          }
+
+          100% {
+            transform: translateX(112vw);
+            opacity: 0;
+          }
+        }
+
+        @keyframes movePacketDiagonal {
+          0% {
+            transform: translate(-10vw, 12vh);
+            opacity: 0;
+          }
+
+          20% {
+            opacity: 1;
+          }
+
+          100% {
+            transform: translate(110vw, -35vh);
+            opacity: 0;
+          }
+        }
+
+        @keyframes scan {
+          0% {
+            transform: translateX(-100%);
+            opacity: 0;
+          }
+
+          35% {
+            opacity: 1;
+          }
+
+          100% {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+        }
+
+        .animate-scan {
+          animation: scan 8s ease-in-out infinite;
+        }
+
+        .network-lines .line {
+          position: absolute;
+          height: 1px;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(249, 115, 22, 0.45),
+            rgba(255, 255, 255, 0.18),
+            transparent
+          );
+          transform-origin: left center;
+          filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.35));
+        }
+
+        .line-1 {
+          width: 52vw;
+          top: 22%;
+          left: 8%;
+          transform: rotate(12deg);
+        }
+
+        .line-2 {
+          width: 46vw;
+          top: 36%;
+          right: 6%;
+          transform: rotate(-18deg);
+        }
+
+        .line-3 {
+          width: 58vw;
+          bottom: 26%;
+          left: 12%;
+          transform: rotate(-8deg);
+        }
+
+        .line-4 {
+          width: 38vw;
+          top: 62%;
+          right: 18%;
+          transform: rotate(23deg);
+        }
+
+        .line-5 {
+          width: 42vw;
+          top: 48%;
+          left: 28%;
+          transform: rotate(0deg);
+        }
+
+        .network-nodes .node {
+          position: absolute;
+          width: 11px;
+          height: 11px;
+          border-radius: 9999px;
+          background: rgba(249, 115, 22, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.45);
+          box-shadow: 0 0 18px rgba(249, 115, 22, 0.75);
+          animation: pulseNode 3.4s ease-in-out infinite;
+        }
+
+        .node-1 {
+          top: 18%;
+          left: 12%;
+          animation-delay: 0s;
+        }
+
+        .node-2 {
+          top: 28%;
+          left: 42%;
+          animation-delay: .4s;
+        }
+
+        .node-3 {
+          top: 18%;
+          right: 18%;
+          animation-delay: .8s;
+        }
+
+        .node-4 {
+          top: 52%;
+          left: 20%;
+          animation-delay: 1.2s;
+        }
+
+        .node-5 {
+          top: 60%;
+          right: 26%;
+          animation-delay: 1.6s;
+        }
+
+        .node-6 {
+          bottom: 18%;
+          left: 38%;
+          animation-delay: 2s;
+        }
+
+        .node-7 {
+          bottom: 24%;
+          right: 12%;
+          animation-delay: 2.4s;
+        }
+
+        .data-packets .packet {
+          position: absolute;
+          width: 48px;
+          height: 2px;
+          border-radius: 9999px;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.9),
+            rgba(249, 115, 22, 0.9),
+            transparent
+          );
+          box-shadow: 0 0 14px rgba(249, 115, 22, 0.65);
+        }
+
+        .packet-1 {
+          top: 25%;
+          left: 0;
+          animation: movePacketHorizontal 6s linear infinite;
+        }
+
+        .packet-2 {
+          top: 48%;
+          left: 0;
+          animation: movePacketHorizontal 8s linear infinite;
+          animation-delay: 1.5s;
+        }
+
+        .packet-3 {
+          bottom: 24%;
+          left: 0;
+          animation: movePacketHorizontal 7s linear infinite;
+          animation-delay: 3s;
+        }
+
+        .packet-4 {
+          top: 72%;
+          left: 0;
+          animation: movePacketDiagonal 9s linear infinite;
+          animation-delay: 2s;
         }
       `}</style>
     </div>

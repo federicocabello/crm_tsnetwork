@@ -12,7 +12,7 @@ import NuevoRegistro from "./pages/NuevoRegistro";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 import Layout from "./components/Layout";
-import Cotizador from "./pages/Cotizador";
+import Cliente from "./pages/Cliente";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -54,12 +54,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               </ProtectedRoute>
             }
           />
+
           <Route
-            path="/cotizador"
+            path="/clientes/:idCliente"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <Cotizador />
+                  <Cliente />
                 </Layout>
               </ProtectedRoute>
             }

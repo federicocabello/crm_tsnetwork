@@ -1,0 +1,93 @@
+INSERT INTO gestion_equipo_legal.clientes (nombre, telefono1, telefono2, razon_cita, registrado, oficina, referido, status, tipo_cita, tipo_caso) SELECT TRIM(REPLACE(CONCAT(first_name,' ',last_name), '  ', ' ')) as nombre, phone_home as telefono1, phone_mobile as telefono2, description as razon_cita, date_entered as registrado, 0 as oficina, 0 as referido, 0 as status, 0 as tipo_cita, 0 as tipo_caso FROM suite_dotgital.contacts WHERE first_name is not null and last_name is not null order by date_entered;
+
+INSERT INTO citas (idcliente, fecha, hora)
+SELECT 
+    id AS idcliente,
+    DATE_ADD('2024-01-01', INTERVAL FLOOR(RAND() * 730) DAY) AS fecha, -- Fecha aleatoria entre 2024 y 2025
+    TIME_FORMAT(SEC_TO_TIME(FLOOR(RAND() * 9) * 3600 + 36000), '%H:%i:%s') AS hora -- Hora aleatoria entre 10:00 y 18:00
+FROM 
+    clientes;
+
+INSERT INTO casos (idcliente, idbeneficiario, fecha, caso, descripcion, idtipo, idclasificacion, idestado)
+SELECT 1, 1, date_entered, name, description, 1, 1, 1 from suite_dotgital.cases where date_entered is not null
+
+/*
+LISTO agrega en la barra de busqueda para cambiar la consulta y buscar por numero de telefono
+LISTO capturar datos = telefono obligatorio nombre obligatorio menos telefono 2 y carga de decouemtnso, agregar (*)
+LISTO bloquear una fecha en el calendario
+LISTO gestion de lead = fecha de registrado
+LISTO cambiar Caso por consulta en Tiene consultaas de captura de datos
+LISTO gestion de lead cambiar tipoi de caso por tipo de consulta
+LISTO en informacion/caso, si es consultado cambiar por Caso y consulta
+LISTO cuando cambia el estado de nombre todo en mayuscula
+LISTO sacar status si es una consulta
+LISTO sacar califica si es un caso, sacar tipo de caso
+LISTO subclase para los de inmigracion, que aparezcan otros select
+LISTO ir agregando las subclases a las vistas en los selects de captura de datos REVISAR Editar datos
+
+DOCUMENTOS
+agregar clasificacion cuando se cargue un documento
+
+AGENDA
+LISTO en calendario, marcar con rojo las fechas bloqueadas y quitar cursor, cuando la fecha esté blouqeada, agregar un cartel
+LISTO saltear dia cuando esté bloqueado
+LISTO cuando una cita se cancela que se librere un espacio
+LISTO motivo para la cita que canceló o reprogramó
+LISTO que me muestre el motivo cuando hay hover en el canceló en el boton
+LISTO funcionalidada para agenda cambiar status
+LISTO fucionalidad para reprogramar la cita
+LISTO agregar motivo de cancelacion en las vistas de caso
+LISTO funcionalidad para cambiar status desde la vista de caso
+LISTO recargar agenda automaticamente solo esa vista
+LISTO funcionalidad de boton guardar para reprogramar la cita, buscar axion.post y despues enviarlo a la ruta del backend
+
+LISTO pedir resultado de la cita cuando se cambie el estatus de la cita, ver error al cambiarlo en caso, motivo_cancelacion no puede hacer strip si viene vacio
+LISTO agregar resultado de la cita en actualizaciones
+LISTO califica del caso, abrir el cartel para poner motivo
+LISTO hipervinculos en gestionde clientes
+LISTO mostrar porque no califica en el gestionde leads y caso
+comenzar a constuir log
+
+*/
+
+style={{ backgroundColor: '#'+caso.colorstatuscaso }}
+DC2626
+22C55E
+azul 3B82F6
+aeb6bf
+
+fecha = request.args.get('fecha', default=datetime.today().strftime('%Y-%m-%d'))
+
+subir modulo de pagos a produccion
+REvisar en CRM Los Andes la entrega que se agregue como un pago
+
+const registrarPago = (idpago, monto) => {
+                monto = parseFloat(monto)
+                let pago = prompt("Ingrese el monto del pago:", monto);
+                pago = parseFloat(pago.replace(",", "."));
+                if (pago === null || pago <= 0) {
+                    alert("El monto ingresado no es válido.");
+                    return;
+                }
+                if (pago != monto) {
+                    let pago_formateado = <FormatearNumero numero={pago} />
+                    let pagoString = pago_formateado.props.numero.toLocaleString('de-DE'); 
+                    let confirmacion = confirm("¿Está seguro que desea modificar y registrar el pago por $ "+pagoString+" ?")
+                    if (confirmacion == false) {
+                        return;
+                    } else {
+                        monto = pago;
+                    }
+                }
+                const deuda = parseFloat(deudaTotal) - monto;
+                const data = { idpago: idpago, monto: monto, deuda: deuda, idcontrol: pagosControl.id };
+                axios.post(`${backendUrl}/caso/pago/registrar`, data, { withCredentials: true })
+                    .then((response) => {
+                        console.log(response.data.mensaje)
+                        cargarSitioCaso();
+                    })
+                    .catch((error) => {
+                        console.error("Error al registrar el pago: ", error);
+                        alert("Error al registrar el pago. Reintente.");
+                    });
+            }
