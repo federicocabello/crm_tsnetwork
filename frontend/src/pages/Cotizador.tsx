@@ -182,12 +182,17 @@ useEffect(() => {
 }, [API_URL, modo, idCotizacion]);
 
   const filteredData = useMemo(() => {
-    if (!search.trim()) return data;
+    let baseData = data;
+    if (bloqueada) {
+      baseData = data.filter((item) => rows[item.id] && rows[item.id].cantidad > 0);
+    }
 
-    return data.filter((item) =>
+    if (!search.trim()) return baseData;
+
+    return baseData.filter((item) =>
       item.descrip.toLowerCase().includes(search.toLowerCase())
     );
-  }, [data, search]);
+  }, [data, search, bloqueada, rows]);
 
   const totalGeneral = useMemo(() => {
     const total = Object.values(rows).reduce((acc, row) => {
