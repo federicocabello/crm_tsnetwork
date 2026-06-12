@@ -1,7 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Usuarios } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
-import { FilePlusCorner, Cctv, Globe, Home, Phone, User, TriangleAlert, Wrench, Pencil, ListChevronsUpDown, ListChevronsDownUp, FileInput, File, Folder, FolderOpen, UserRoundSearch, CircleCheck } from "lucide-react";
+import {
+  FilePlusCorner,
+  Cctv,
+  Globe,
+  Home,
+  Phone,
+  User,
+  TriangleAlert,
+  Wrench,
+  Pencil,
+  ListChevronsUpDown,
+  ListChevronsDownUp,
+  FileInput,
+  File,
+  Folder,
+  FolderOpen,
+  UserRoundSearch,
+  CircleCheck,
+} from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 //npm install react-datepicker
@@ -12,6 +30,7 @@ import GaleriaCita from "../components/GaleriaCita";
 import EditarDetalles from "../components/EditarDetalles";
 import Loading from "../components/Loading";
 import { useNavigate } from "react-router-dom";
+import ModalConfirm from "../components/ModalConfirm";
 
 type AgendaItem = {
   idcita: string;
@@ -30,6 +49,7 @@ type AgendaItem = {
   telefono: string;
   direccion: string;
   idhoja: string;
+  tipo_hoja?: string;
   tiene_hoja: number;
   detalles: boolean;
   preguntas?: { pregunta: string; respuesta: string }[];
@@ -52,7 +72,7 @@ type BuscarCitas = {
   dia: string;
   hora: string;
   dia_original: string;
-}
+};
 
 function pad2(n: number) {
   return String(n).padStart(2, "0");
@@ -91,14 +111,20 @@ export default function Inicio() {
   const todayKey = useMemo(() => toDateKey(new Date()), []);
 
   const [selectedDay, setSelectedDay] = useState<string>(todayKey);
-  const [selectedDayNuevaCita, setSelectedDayNuevaCita] = useState<string>(todayKey);
-
+  const [selectedDayNuevaCita, setSelectedDayNuevaCita] =
+    useState<string>(todayKey);
+  const [openModalConfirm, setOpenModalConfirm] = useState(false);
+  const [idHojaConfirmar, setIdHojaConfirmar] = useState<number | null>(null);
   const [time, setTime] = useState("09:00");
   const [notes, setNotes] = useState("");
   const [openCotizacion, setOpenCotizacion] = useState(false);
   const [idCotizacion, setIdCotizacion] = useState<number | null>(null);
-  const [modoCotizacion, setModoCotizacion] = useState<"nuevo" | "editar">("nuevo");
-  const [idCitaSeleccionada, setIdCitaSeleccionada] = useState<string | null>(null);
+  const [modoCotizacion, setModoCotizacion] = useState<"nuevo" | "editar">(
+    "nuevo",
+  );
+  const [idCitaSeleccionada, setIdCitaSeleccionada] = useState<string | null>(
+    null,
+  );
   const [users, setUsers] = useState<Usuarios[]>([]);
   const [items, setItems] = useState<AgendaItem[]>([]);
 
@@ -136,7 +162,6 @@ export default function Inicio() {
         setItems(citasConDetalles);
         setCitasEstados(data.citas_estados);
         setLoading(false);
-        
       } else {
         console.error("Error al traer datos. Código:", res.status);
       }
@@ -170,6 +195,49 @@ export default function Inicio() {
   const handleSelectionEventos = (option: "my" | "all") => {
     setSelectedOptionEventos((prev) => (prev === option ? null : option));
   };
+
+  function abrirConfirmarInstalacion(idHoja: string) {
+    setIdHojaConfirmar(Number(idHoja));
+    setOpenModalConfirm(true);
+  }
+
+  async function handleConfirmInstalacion() {
+    if (!idHojaConfirmar) {
+      setOpenModalConfirm(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${API_URL}/api/cotizaciones/${idHojaConfirmar}/confirmar-instalacion`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setOpenModalConfirm(false);
+        setIdHojaConfirmar(null);
+        cargarInicio();
+        return;
+      }
+
+      alert(data.error || "No se pudo confirmar la instalacion");
+    } catch (error) {
+      console.error("Error confirmando instalacion:", error);
+      alert("Error de conexion al confirmar la instalacion");
+    }
+
+    setOpenModalConfirm(false);
+  }
+
+  function handleCancelModal() {
+    setOpenModalConfirm(false);
+    setIdHojaConfirmar(null);
+  }
 
   useEffect(() => {
     if (user?.rol == "tecnico") {
@@ -268,18 +336,14 @@ export default function Inicio() {
                 preguntas: data,
                 detalles: true,
               }
-            : i
-        )
+            : i,
+        ),
       );
 
       return;
     }
     setItems((prev) =>
-      prev.map((i) =>
-        i.idcita === id
-          ? { ...i, detalles: !i.detalles }
-          : i
-      )
+      prev.map((i) => (i.idcita === id ? { ...i, detalles: !i.detalles } : i)),
     );
   };
 
@@ -290,7 +354,7 @@ export default function Inicio() {
           return { ...item, mostrarImagenes: !item.mostrarImagenes };
         }
         return item;
-      })
+      }),
     );
   };
 
@@ -315,9 +379,9 @@ export default function Inicio() {
       const res = await fetch(`${API_URL}/api/editar_modelo_nvr`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          idcita: idcita, 
-          nuevoModelo 
+        body: JSON.stringify({
+          idcita: idcita,
+          nuevoModelo,
         }),
       });
 
@@ -336,7 +400,9 @@ export default function Inicio() {
 
   const [query, setQuery] = useState("");
   const [resultados, setResultados] = useState<Cliente[]>([]);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState<Number | null>(null);
+  const [clienteSeleccionado, setClienteSeleccionado] = useState<Number | null>(
+    null,
+  );
 
   const buscarClientes = async (q: string) => {
     console.log("Buscando clientes con query:", q);
@@ -346,7 +412,9 @@ export default function Inicio() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/clientes/buscar/info?q=${encodeURIComponent(q)}`);
+      const res = await fetch(
+        `${API_URL}/api/clientes/buscar/info?q=${encodeURIComponent(q)}`,
+      );
       if (!res.ok) throw new Error("Error al buscar clientes");
       const data = await res.json();
       setResultados(data.clientes);
@@ -364,30 +432,34 @@ export default function Inicio() {
     return () => clearTimeout(timeout);
   }, [query]);
 
-
-  const [buscarCitasCliente, setBuscarCitasCliente] = useState<BuscarCitas[]>([]);
-  const [nombreClienteSeleccionado, setNombreClienteSeleccionado] = useState<string>("");
+  const [buscarCitasCliente, setBuscarCitasCliente] = useState<BuscarCitas[]>(
+    [],
+  );
+  const [nombreClienteSeleccionado, setNombreClienteSeleccionado] =
+    useState<string>("");
 
   const seleccionarCliente = async (idCliente: number, nombre: string) => {
     setClienteSeleccionado(idCliente);
     setLoading2(true);
 
     try {
-    const res = await fetch(`${API_URL}/api/clientes/buscar/citas/${idCliente}`);
-    if (!res.ok) {
-      console.error("Error al traer citas del cliente:", res.status);
-      return;
-    }
+      const res = await fetch(
+        `${API_URL}/api/clientes/buscar/citas/${idCliente}`,
+      );
+      if (!res.ok) {
+        console.error("Error al traer citas del cliente:", res.status);
+        return;
+      }
 
-    const data = await res.json();
-    console.log("Datos de citas del cliente:", data);
-    setBuscarCitasCliente(data.citas);
-    setNombreClienteSeleccionado(nombre);
-    setLoading2(false);
+      const data = await res.json();
+      console.log("Datos de citas del cliente:", data);
+      setBuscarCitasCliente(data.citas);
+      setNombreClienteSeleccionado(nombre);
+      setLoading2(false);
     } catch (error) {
       console.error("Error de conexión con el backend:", error);
     }
-  }
+  };
 
   return (
     <div className="w-full h-full min-h-0 flex gap-3">
@@ -421,7 +493,7 @@ export default function Inicio() {
               <input
                 type="date"
                 value={selectedDay}
-                onChange={(e) => (setSelectedDay(e.target.value))}
+                onChange={(e) => setSelectedDay(e.target.value)}
                 //onChange={(e) => console.log("Selected day:", e.target.value)}
                 className="bg-transparent text-sm outline-none"
               />
@@ -430,7 +502,8 @@ export default function Inicio() {
         </div>
 
         <div
-          className="mt-3 grid grid-cols-1 gap-3 w-full cuadro shrink-0" hidden>
+          className="mt-3 grid grid-cols-1 gap-3 w-full cuadro shrink-0"
+          hidden>
           <div className="flex justify-between items-center">
             <h2 className="text-sm font-extrabold tracking-tight flex items-center gap-1">
               <FilePlusCorner className="w-4 h-4" />
@@ -505,7 +578,7 @@ export default function Inicio() {
                 user?.rol == "administrador" ||
                 (user?.rol == "superadmin" && (
                   <div>
-                    <label className="block text-xs text-white/60 mb-1">
+                    <label className="block text-xs text-white/60 mb-1 ">
                       Asignado a
                     </label>
                     <select className="capitalize bg-gray-700 text-white p-2 rounded-md cursor-pointer w-full">
@@ -531,9 +604,18 @@ export default function Inicio() {
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2 w-full cuadro shrink-0">
-          <div className="font-bold flex items-center gap-1"><UserRoundSearch className="w-4 h-4" />Buscar cliente</div>
+          <div className="font-bold flex items-center gap-1">
+            <UserRoundSearch className="w-4 h-4" />
+            Buscar cliente
+          </div>
           <div className="flex items-center gap-2">
-            <input type="text" className="bg-zinc-900 text-white placeholder:text-white/60 border border-white/10 focus:border-orange-500/40 text-sm p-2 rounded-lg w-full uppercase" placeholder="Nombre, teléfono o domicilio" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input
+              type="text"
+              className="bg-zinc-900 text-white placeholder:text-white/60 border border-white/10 focus:border-orange-500/40 text-sm p-2 rounded-lg w-full uppercase"
+              placeholder="Nombre, teléfono o domicilio"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
           </div>
 
           {resultados?.length > 0 && (
@@ -541,49 +623,59 @@ export default function Inicio() {
               {resultados.map((c) => {
                 const esSeleccionado = c.id === clienteSeleccionado;
                 return (
-                <li
-                  key={c.id}
-                  //className="p-2 text-white hover:bg-orange-600 hover:text-white/90 cursor-pointer"
-                  className={`p-2 text-white cursor-pointer flex items-center gap-2 transition-all ${
-                    esSeleccionado
-                      ? "bg-green-600 text-white font-bold"
-                      : "hover:bg-orange-600 hover:text-white/90"
-                  }`}
-                  onClick={() => {seleccionarCliente(c.id, c.nombre)}}
-                >
-                  <span>{c.nombre}</span>
-                  <span hidden={!esSeleccionado}><CircleCheck className="w-4 h-4" /></span>
-                </li>
-                )}
-              )}
+                  <li
+                    key={c.id}
+                    //className="p-2 text-white hover:bg-orange-600 hover:text-white/90 cursor-pointer"
+                    className={`p-2 text-white cursor-pointer flex items-center gap-2 transition-all ${
+                      esSeleccionado
+                        ? "bg-green-600 text-white font-bold"
+                        : "hover:bg-orange-600 hover:text-white/90"
+                    }`}
+                    onClick={() => {
+                      seleccionarCliente(c.id, c.nombre);
+                    }}>
+                    <span>{c.nombre}</span>
+                    <span hidden={!esSeleccionado}>
+                      <CircleCheck className="w-4 h-4" />
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           )}
-      
+
           {loading2 ? (
             <Loading />
           ) : (
             clienteSeleccionado && (
               <div className="mt-2 rounded-lg bg-zinc-950/30 text-sm">
-                <div className="font-bold text-center italic p-2 bg-zinc-800 rounded-t-lg border border-white/10">Citas de <strong>{nombreClienteSeleccionado}</strong></div>
+                <div className="font-bold text-center italic p-2 bg-zinc-800 rounded-t-lg border border-white/10">
+                  Citas de <strong>{nombreClienteSeleccionado}</strong>
+                </div>
                 {buscarCitasCliente.length > 0 ? (
                   <ul className="overflow-auto border border-white/10">
                     {buscarCitasCliente.map((cita) => (
-                      <li key={cita.id} className="p-4 text-white hover:bg-orange-500/70 hover:text-white cursor-pointer flex gap-2 items-center justify-between transition-all"
-                      onClick={() => setSelectedDay(cita.dia_original)}
-                      //onClick={() => console.log("Seleccionar cita con ID:", cita.dia_original)}
+                      <li
+                        key={cita.id}
+                        className="p-4 text-white hover:bg-orange-500/70 hover:text-white cursor-pointer flex gap-2 items-center justify-between transition-all"
+                        onClick={() => setSelectedDay(cita.dia_original)}
+                        //onClick={() => console.log("Seleccionar cita con ID:", cita.dia_original)}
                       >
                         <span className="font-bold text-lg">{cita.dia}</span>
-                        <span className="rounded-full border border-white bg-green-700 px-2 py-1 text-xs font-bold text-center w-20 transition-all">{cita.hora}</span>
+                        <span className="rounded-full border border-white bg-green-700 px-2 py-1 text-xs font-bold text-center w-20 transition-all">
+                          {cita.hora}
+                        </span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="text-white/60">No hay citas para este cliente.</div>
+                  <div className="text-white/60">
+                    No hay citas para este cliente.
+                  </div>
                 )}
               </div>
             )
           )}
-
         </div>
       </div>
 
@@ -620,10 +712,12 @@ export default function Inicio() {
 
         <div className="flex-1 min-h-0 overflow-y-auto space-y-2 mt-3 pr-2 items-start">
           {dayItems.length === 0 ? (
-            loading ? <Loading /> : (
-            <div className="rounded-xl border border-white/10 bg-zinc-950/30 p-3 text-white/60">
-              No hay eventos para este día.
-            </div>
+            loading ? (
+              <Loading />
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-zinc-950/30 p-3 text-white/60">
+                No hay eventos para este día.
+              </div>
             )
           ) : (
             dayItems.map((it) => (
@@ -663,6 +757,7 @@ export default function Inicio() {
                         </option>
                         {citasEstados
                           .filter((estado) => estado.id !== it.idestado)
+                          .filter((estado) => estado.estado !== "YA INSTALÓ")
                           .map((estado) => (
                             <option
                               key={estado.id}
@@ -673,23 +768,32 @@ export default function Inicio() {
                           ))}
                       </select>
 
-                      {(it.tipo == "camarasdesdecero" || it.tipo == "camaras-tiene-nuevo-instalacion" || it.tipo == "camaras-tiene-existente-instalacion") && (
+                      {(it.tipo == "camarasdesdecero" ||
+                        it.tipo == "camaras-tiene-nuevo-instalacion" ||
+                        it.tipo == "camaras-tiene-existente-instalacion") && (
                         <div className="flex items-center gap-2">
                           <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
                             <Cctv className="h-4 w-4" />
                             <span>INSTALACIÓN DE CÁMARAS</span>
                           </div>
-                          {(it.tipo == "camaras-tiene-nuevo-instalacion" || it.tipo == "camaras-tiene-existente-instalacion") && (<span className="text-xs text-yellow-500 font-bold italic flex items-center gap-1"><TriangleAlert className="h-4 w-4" />Ya tiene cámaras instaladas</span>)}
+                          {(it.tipo == "camaras-tiene-nuevo-instalacion" ||
+                            it.tipo ==
+                              "camaras-tiene-existente-instalacion") && (
+                            <span className="text-xs text-yellow-500 font-bold italic flex items-center gap-1">
+                              <TriangleAlert className="h-4 w-4" />
+                              Ya tiene cámaras instaladas
+                            </span>
+                          )}
                         </div>
                       )}
 
-                      {(it.tipo == "camaras-tiene-nuevo-soporte" || it.tipo == "camaras-tiene-existente-soporte") && (
-                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
-                            <Wrench className="h-4 w-4" />
-                            <span>SOPORTE</span>
-                          </div>
+                      {(it.tipo == "camaras-tiene-nuevo-soporte" ||
+                        it.tipo == "camaras-tiene-existente-soporte") && (
+                        <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
+                          <Wrench className="h-4 w-4" />
+                          <span>SOPORTE</span>
+                        </div>
                       )}
-
                     </div>
 
                     <div>
@@ -700,124 +804,186 @@ export default function Inicio() {
                   </div>
 
                   <div>
-                    <div className="flex gap-1 items-center">
-                      <div className="text-sm font-extrabold flex items-center gap-1 cursor-pointer hover:scale-103 transition-all hover:underline hover:text-orange-500" onClick={() => navigate(`/clientes/${it.idcliente}`)}><User className="h-4 w-4" />{it.nombre}</div>
-                      {it.telefono && (<div className="text-sm flex items-center gap-1">• <Phone className="h-4 w-4" /> {it.telefono}</div>)}
-                      {it.direccion && (<div className="text-sm flex items-center gap-1">• <Home className="h-4 w-4" /> {it.direccion}</div>)}
+                    <div className="flex justify-between items-center">
+                      <div className="flex gap-1 items-center">
+                        <div
+                          className="text-sm font-extrabold flex items-center gap-1 cursor-pointer hover:scale-103 transition-all hover:underline hover:text-orange-500"
+                          onClick={() => navigate(`/clientes/${it.idcliente}`)}>
+                          <User className="h-4 w-4" />
+                          {it.nombre}
+                        </div>
+                        {it.telefono && (
+                          <div className="text-sm flex items-center gap-1">
+                            • <Phone className="h-4 w-4" /> {it.telefono}
+                          </div>
+                        )}
+                        {it.direccion && (
+                          <div className="text-sm flex items-center gap-1">
+                            • <Home className="h-4 w-4" /> {it.direccion}
+                          </div>
+                        )}
 
-                      {(it.tipo == "camarasdesdecero" || it.tipo == "camaras-tiene-nuevo-instalacion" || it.tipo == "camaras-tiene-existente-instalacion") && (
-                        it.tiene_hoja ? (
-                          <div className="text-sm flex items-center gap-1">•<File className="h-4 w-4 text-green-500" /><span className="text-green-500 font-bold hover:underline cursor-pointer" onClick={() => {
-                            setOpenCotizacion(true);
-                            setIdCotizacion(parseInt(it.idhoja));
-                            setModoCotizacion("editar");
-                          }}>Ver cotización</span></div>
+                        {(it.tipo == "camarasdesdecero" ||
+                          it.tipo == "camaras-tiene-nuevo-instalacion" ||
+                          it.tipo == "camaras-tiene-existente-instalacion") &&
+                          (it.tiene_hoja ? (
+                            <div className="text-sm flex items-center gap-1">
+                              •<File className="h-4 w-4 text-green-500" />
+                              <span
+                                className="text-green-500 font-bold hover:underline cursor-pointer"
+                                onClick={() => {
+                                  setOpenCotizacion(true);
+                                  setIdCotizacion(parseInt(it.idhoja));
+                                  setModoCotizacion("editar");
+                                }}>
+                                Ver cotización
+                              </span>
+                            </div>
                           ) : (
-                          <div className="text-sm flex items-center gap-1">•<FileInput className="h-4 w-4 text-red-500" /><span className="hover:underline cursor-pointer text-red-600 font-bold" onClick={() => {
-                            setOpenCotizacion(true);
-                            setIdCotizacion(null);
-                            setModoCotizacion("nuevo");
-                            setIdCitaSeleccionada(it.idcita);
-                          }}>Agregar cotización</span></div>
-                        )
+                            <div className="text-sm flex items-center gap-1">
+                              •<FileInput className="h-4 w-4 text-red-500" />
+                              <span
+                                className="hover:underline cursor-pointer text-red-600 font-bold"
+                                onClick={() => {
+                                  setOpenCotizacion(true);
+                                  setIdCotizacion(null);
+                                  setModoCotizacion("nuevo");
+                                  setIdCitaSeleccionada(it.idcita);
+                                }}>
+                                Agregar cotización
+                              </span>
+                            </div>
+                          ))}
+                        <button
+                          onClick={() => abrirEditar(it)}
+                          className="boton flex items-center justify-center border py-0.5! ml-1 hover:bg-white hover:text-black italic">
+                          <Pencil className="h-3 w-3" />
+                          Editar registro
+                        </button>
+                      </div>
+                      {it.tiene_hoja &&
+                      it.tipo_hoja !== "instalacion_confirmada" ? (
+                        <div>
+                          <button
+                            onClick={() => abrirConfirmarInstalacion(it.idhoja)}
+                            className="boton flex items-center justify-center border py-0.5! ml-1 hover:bg-green-300 hover:text-black italic">
+                            <Pencil className="h-3 w-3" />
+                            Confirmar Instalación
+                          </button>
+                        </div>
+                      ) : (
+                        ""
                       )}
-                      <button onClick={() => abrirEditar(it)} className="boton flex items-center justify-center border py-0.5! ml-1 hover:bg-white hover:text-black italic"><Pencil className="h-3 w-3" />Editar registro</button>
                     </div>
-                    
+
                     {it.notas && (
-                    <div className="text-sm text-white/80 my-2 whitespace-pre-wrap w-full">
-                      {it.notas}
-                    </div>
+                      <div className="text-sm text-white/80 my-2 whitespace-pre-wrap w-full">
+                        {it.notas}
+                      </div>
                     )}
 
                     <div className="flex items-center gap-2">
-                      {(it.tipo == "camarasdesdecero" || it.tipo == "camaras-tiene-nuevo-instalacion" || it.tipo == "camaras-tiene-existente-instalacion") && (
-                          <div
-                            className="text-xs hover:underline text-white/60 cursor-pointer flex items-center gap-1 mt-1"
-                            onClick={() => toggleDetalles(it.idcita)}
-                          >
-                            {it.detalles ? (
-                              <>
-                                <ListChevronsDownUp className="h-4 w-4" />
-                                Ocultar detalles
-                              </>
-                            ) : (
-                              <>
-                                <ListChevronsUpDown className="h-4 w-4" />
-                                Ver detalles
-                              </>
-                            )}
-                          </div>)}
+                      {(it.tipo == "camarasdesdecero" ||
+                        it.tipo == "camaras-tiene-nuevo-instalacion" ||
+                        it.tipo == "camaras-tiene-existente-instalacion") && (
+                        <div
+                          className="text-xs hover:underline text-white/60 cursor-pointer flex items-center gap-1 mt-1"
+                          onClick={() => toggleDetalles(it.idcita)}>
+                          {it.detalles ? (
+                            <>
+                              <ListChevronsDownUp className="h-4 w-4" />
+                              Ocultar detalles
+                            </>
+                          ) : (
+                            <>
+                              <ListChevronsUpDown className="h-4 w-4" />
+                              Ver detalles
+                            </>
+                          )}
+                        </div>
+                      )}
 
-                          <div
-                            className="text-xs hover:underline text-white/60 cursor-pointer transition-all flex items-center gap-1 mt-1"
-                            onClick={() => toggleImagenes(it.idcita)}
-                          >
-                            {it.mostrarImagenes ? (
-                              <>
-                                <FolderOpen className="h-4 w-4" />
-                                Ocultar archivos
-                              </>
-                            ) : (
-                              <>
-                                <Folder className="h-4 w-4" />
-                                Ver archivos
-                              </>
-                            )}
-                          </div>
+                      <div
+                        className="text-xs hover:underline text-white/60 cursor-pointer transition-all flex items-center gap-1 mt-1"
+                        onClick={() => toggleImagenes(it.idcita)}>
+                        {it.mostrarImagenes ? (
+                          <>
+                            <FolderOpen className="h-4 w-4" />
+                            Ocultar archivos
+                          </>
+                        ) : (
+                          <>
+                            <Folder className="h-4 w-4" />
+                            Ver archivos
+                          </>
+                        )}
+                      </div>
                     </div>
-
                   </div>
 
                   {it.detalles && (
                     <div className=" mt-2 flex flex-wrap gap-2 items-center">
                       {(it.preguntas?.length ?? 0) > 0 ? (
-                        it.preguntas!
-                        .filter((pregunta) => pregunta.pregunta !== "modelonvr")
-                        .map((pregunta, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition"
-                            style={{
-                              backgroundColor: darkenColor(it.color, 0.8),
-                              borderColor: darkenColor(it.color, 0.2),
-                            }}
-                          >
-                            <span className="text-white/70 capitalize">
-                              {pregunta.pregunta}:
-                            </span>
-                            <span className="text-white font-bold uppercase">
-                              {pregunta.respuesta}
-                            </span>
-                          </div>
-                        ))
+                        it
+                          .preguntas!.filter(
+                            (pregunta) => pregunta.pregunta !== "modelonvr",
+                          )
+                          .map((pregunta, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition"
+                              style={{
+                                backgroundColor: darkenColor(it.color, 0.8),
+                                borderColor: darkenColor(it.color, 0.2),
+                              }}>
+                              <span className="text-white/70 capitalize">
+                                {pregunta.pregunta}:
+                              </span>
+                              <span className="text-white font-bold uppercase">
+                                {pregunta.respuesta}
+                              </span>
+                            </div>
+                          ))
                       ) : (
                         <div className="text-xs italic text-white/40">
                           Sin detalles
                         </div>
                       )}
 
-                      {it.preguntas?.some((p) => p.pregunta === "modelonvr") && (
+                      {it.preguntas?.some(
+                        (p) => p.pregunta === "modelonvr",
+                      ) && (
                         <div
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition hover:scale-[1.03] cursor-pointer hover:bg-green-700! hover:border-green-900!"
-                            style={{
-                              backgroundColor: darkenColor(it.color, 0.8),
-                              borderColor: darkenColor(it.color, 0.2),
-                            }}
-                            onClick={editarNvr(it.preguntas!.find((p) => p.pregunta === "modelonvr")!.respuesta, it.idcita)}
-                          >
-                            <span className="text-white/70">
-                              Modelo de NVR:
-                            </span>
-                            <span className="text-white font-bold uppercase">
-                              {it.preguntas!.find((p) => p.pregunta === "modelonvr")!.respuesta}
-                            </span>
-                          </div>
-                        )}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition hover:scale-[1.03] cursor-pointer hover:bg-green-700! hover:border-green-900!"
+                          style={{
+                            backgroundColor: darkenColor(it.color, 0.8),
+                            borderColor: darkenColor(it.color, 0.2),
+                          }}
+                          onClick={editarNvr(
+                            it.preguntas!.find(
+                              (p) => p.pregunta === "modelonvr",
+                            )!.respuesta,
+                            it.idcita,
+                          )}>
+                          <span className="text-white/70">Modelo de NVR:</span>
+                          <span className="text-white font-bold uppercase">
+                            {
+                              it.preguntas!.find(
+                                (p) => p.pregunta === "modelonvr",
+                              )!.respuesta
+                            }
+                          </span>
+                        </div>
+                      )}
 
-                      <div onClick={() => handleSeleccionarCita(it.idcita)} className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition hover:scale-[1.03] cursor-pointer text-white border-white bg-orange-700"><Pencil className="h-3 w-3" />Editar detalles</div>
+                      <div
+                        onClick={() => handleSeleccionarCita(it.idcita)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition hover:scale-[1.03] cursor-pointer text-white border-white bg-orange-700">
+                        <Pencil className="h-3 w-3" />
+                        Editar detalles
                       </div>
-                    )}
+                    </div>
+                  )}
 
                   {it.mostrarImagenes && (
                     <div className="mt-2">
@@ -836,22 +1002,30 @@ export default function Inicio() {
             ))
           )}
         </div>
-          {openCotizacion && (
-            <Cotizador
-              onClose={setOpenCotizacion}
-              idCotizacion={idCotizacion}
-              modo={modoCotizacion}
-              idCita={Number(idCitaSeleccionada)}
-              onSaved={cargarInicio}
-            />
-          )}
+        {openCotizacion && (
+          <Cotizador
+            onClose={setOpenCotizacion}
+            idCotizacion={idCotizacion}
+            modo={modoCotizacion}
+            idCita={Number(idCitaSeleccionada)}
+            onSaved={cargarInicio}
+          />
+        )}
 
-          {modalDetalles && (
-            <EditarDetalles
-              idCita={String(idCitaSeleccionada)}
-              onClose={cerrarModalDetalles}
-            />
-          )}
+        {modalDetalles && (
+          <EditarDetalles
+            idCita={String(idCitaSeleccionada)}
+            onClose={cerrarModalDetalles}
+          />
+        )}
+        {openModalConfirm && (
+          <ModalConfirm
+            descripcion="Se actualizará el stock"
+            message="¿Estás seguro de que deseas confirmar esta cotización?"
+            onConfirm={handleConfirmInstalacion}
+            onCancel={handleCancelModal}
+          />
+        )}
       </div>
     </div>
   );
