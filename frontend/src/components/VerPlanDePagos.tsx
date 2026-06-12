@@ -43,7 +43,17 @@ function formatVencimiento(raw: string | null): string {
   return `${year}-${month}-${day}`;
 }
 
-export default function VerPlanDePagos({ idPago, total, cuotas: cuotasIniciales, onActualizado }: Props) {
+function formatFechaPago(raw: string | null): string {
+  if (!raw) return "";
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${month}/${day}/${year}`;
+}
+
+export default function VerPlanDePagos({ idPago, cuotas: cuotasIniciales, onActualizado }: Props) {
   const [cuotas, setCuotas] = useState<Cuota[]>(
     cuotasIniciales.map((c) => ({
       ...c,
@@ -53,7 +63,6 @@ export default function VerPlanDePagos({ idPago, total, cuotas: cuotasIniciales,
       pagado: Boolean(c.pagado),
     }))
   );
-  const [montoTotal, setMontoTotal] = useState<number>(Number(total));
   const [error, setError] = useState("");
   const [expandido, setExpandido] = useState(true);
 
@@ -112,6 +121,8 @@ export default function VerPlanDePagos({ idPago, total, cuotas: cuotasIniciales,
             interes: c.interes,
             vencimiento: c.vencimiento,
             pagado: c.pagado,
+            fechapago: c.fechapago,
+            idmetodo: c.idmetodo,
           })),
         }),
       });
@@ -210,6 +221,7 @@ export default function VerPlanDePagos({ idPago, total, cuotas: cuotasIniciales,
             <div className="divide-y divide-white/5 max-h-80 overflow-y-auto">
               {cuotas.map((cuota, index) => {
                 const montoConInteres = cuota.monto;
+                const fechaPago = formatFechaPago(cuota.fechapago);
                 return (
                   <div
                     key={cuota.idcuota}
@@ -299,6 +311,14 @@ export default function VerPlanDePagos({ idPago, total, cuotas: cuotasIniciales,
                         <FormatearNumero numero={montoConInteres} />
                       </span>
                     </div>
+
+                    {cuota.pagado && fechaPago && (
+                      <div className="pl-16 -mt-1">
+                        <div className="inline-flex items-center rounded-lg border border-green-500/20 bg-green-500/10 px-2 py-1 text-xs font-semibold text-green-300">
+                          Pagado el {fechaPago}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -316,6 +336,9 @@ export default function VerPlanDePagos({ idPago, total, cuotas: cuotasIniciales,
 
             {/* Footer: error + botón guardar */}
             <div className="px-5 py-3 border-t border-white/10 bg-black/20 flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-red-400">
+                {error}
+              </div>
               <button
                 onClick={handleGuardar}
                 disabled={loading}
