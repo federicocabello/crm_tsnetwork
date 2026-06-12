@@ -979,12 +979,140 @@ def buscar_citas_cliente(id_cliente):
 def obtener_pagos_cliente(id_cita):
     cursor = mysql.connection.cursor()
     try:
-        cursor.execute("SELECT pagos_cuotas.id AS idcuota, pagos_cuotas.monto AS monto, pagos_cuotas.interes AS interes, pagos_cuotas.pagado AS pagado, pagos_cuotas.vencimiento AS vencimiento, pagos_cuotas.fechapago AS fechapago, pagos_cuotas.metodo AS idmetodo, pagos_metodos.metodo AS metodo FROM pagos JOIN pagos_cuotas ON pagos_cuotas.pago=pagos.id JOIN pagos_metodos ON pagos_metodos.id=pagos_cuotas.metodo WHERE pagos.cita = %s", (id_cita,))
+        # Traer el plan de pagos (registro padre)
+        cursor.execute(
+            "SELECT id AS id_pago, total FROM pagos WHERE cita = %s LIMIT 1",
+            (id_cita,)
+        )
+        plan = cursor.fetchone()
+
+        if not plan:
+            return jsonify({"cuotas": [], "id_pago": None, "total": 0}), 200
+
+        id_pago = plan["id_pago"]
+        total   = float(plan["total"])
+
+        cursor.execute(
+            """
+            SELECT pagos_cuotas.id AS idcuota,
+                   pagos_cuotas.monto AS monto,
+                   pagos_cuotas.interes AS interes,
+                   pagos_cuotas.pagado AS pagado,
+                   pagos_cuotas.vencimiento AS vencimiento,
+                   pagos_cuotas.fechapago AS fechapago,
+                   pagos_cuotas.metodo AS idmetodo,
+                   pagos_metodos.metodo AS metodo
+            FROM pagos_cuotas
+            JOIN pagos_metodos ON pagos_metodos.id = pagos_cuotas.metodo
+            WHERE pagos_cuotas.pago = %s
+            ORDER BY pagos_cuotas.vencimiento ASC
+            """,
+            (id_pago,)
+        )
         cuotas = cursor.fetchall()
-        print(cuotas)
-        return jsonify({"cuotas": cuotas}), 200
+        return jsonify({"cuotas": cuotas, "id_pago": id_pago, "total": total}), 200
     except Exception as e:
         print("Error interno:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.put("/api/plan-de-pagos/<int:id_pago>")
+def actualizar_plan_de_pagos(id_pago):
+    data = request.get_json(silent=True) or {}
+    print(data)
+    monto_total = data.get("montoTotal")
+    cuotas      = data.get("cuotas", [])
+
+    if monto_total is None or not cuotas:
+        return jsonify({"error": "Faltan datos obligatorios"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        # 1) Actualizar el total del plan padre
+        cursor.execute(
+            "UPDATE pagos SET total = %s WHERE id = %s",
+            (float(monto_total), id_pago)
+        )
+
+        # 2) Actualizar cada cuota individualmente (por idcuota)
+        for cuota in cuotas:
+            idcuota     = cuota.get("idcuota")
+            monto       = float(cuota.get("monto", 0))
+            interes     = float(cuota.get("interes", 0))
+            vencimiento = cuota.get("vencimiento")
+            pagado      = int(bool(cuota.get("pagado", False)))
+
+            if idcuota and idcuota > 0:
+                cursor.execute(
+                    """
+                    UPDATE pagos_cuotas
+                    SET monto = %s, interes = %s, vencimiento = %s, pagado = %s
+                    WHERE id = %s AND pago = %s
+                    """,
+                    (monto, interes, vencimiento, pagado, idcuota, id_pago)
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, metodo)
+                    VALUES (%s, %s, %s, %s, %s, 1)
+                    """,
+                    (id_pago, monto, interes, vencimiento, pagado)
+                )
+
+        mysql.connection.commit()
+        return jsonify({"msg": "Plan de pagos actualizado correctamente"}), 200
+
+    except Exception as e:
+        mysql.connection.rollback()
+        print("Error al actualizar plan de pagos:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.post("/api/plan-de-pagos")
+def crear_plan_de_pagos():
+    data = request.get_json(silent=True) or {}
+    print(data)
+
+    id_cliente = data.get("idCliente")
+    id_cita    = data.get("idCita")
+    monto_total = data.get("montoTotal")
+    cuotas      = data.get("cuotas", [])
+
+    if not id_cliente or not id_cita or monto_total is None or not cuotas:
+        return jsonify({"error": "Faltan datos obligatorios"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        # 1) Crear el registro de pago padre
+        cursor.execute(
+            "INSERT INTO pagos (cliente, cita, total) VALUES (%s, %s, %s)",
+            (id_cliente, id_cita, float(monto_total))
+        )
+        id_pago = cursor.lastrowid
+
+        # 2) Insertar cada cuota con su propio monto e interés
+        for cuota in cuotas:
+            monto     = float(cuota.get("monto", 0))
+            interes   = float(cuota.get("interes", 0))
+            vencimiento = cuota.get("vencimiento")
+
+            cursor.execute(
+                """
+                INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, metodo)
+                VALUES (%s, %s, %s, %s, 0, 1)
+                """,
+                (id_pago, monto, interes, vencimiento)
+            )
+
+        mysql.connection.commit()
+        return jsonify({"msg": "Plan de pagos guardado correctamente", "id_pago": id_pago}), 201
+
+    except Exception as e:
+        mysql.connection.rollback()
+        print("Error al crear plan de pagos:", e)
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()

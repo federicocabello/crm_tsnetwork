@@ -1,5 +1,4 @@
 const TOKEN_KEY = "B!1w6NAt1T^%kvhUI*S^rC";
-const API_URL = import.meta.env.VITE_API_BASE_URL; // ej: http://127.0.0.1:5000
 
 // =======================
 // Token helpers
@@ -42,7 +41,9 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const url = path.startsWith("http") ? path : `${API_URL}${path}`;
+  // Siempre usar rutas relativas para que el proxy de Vite maneje CORS
+  // Las URLs absolutas bypassean el proxy y causan errores CORS
+  const url = path.startsWith("/") ? path : `/${path}`;
 
   const res = await fetch(url, {
     ...options,
