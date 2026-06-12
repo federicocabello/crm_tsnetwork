@@ -119,6 +119,7 @@ export default function Inicio() {
   const [notes, setNotes] = useState("");
   const [openCotizacion, setOpenCotizacion] = useState(false);
   const [idCotizacion, setIdCotizacion] = useState<number | null>(null);
+  const [cotizacionBloqueada, setCotizacionBloqueada] = useState(false);
   const [modoCotizacion, setModoCotizacion] = useState<"nuevo" | "editar">(
     "nuevo",
   );
@@ -302,8 +303,6 @@ export default function Inicio() {
   };
 
   const guardarCita = async (data: AgendaItem): Promise<void> => {
-    console.log("Guardar:", data);
-
     try {
       const res = await fetch(`${API_URL}/api/agenda/editar-cita`, {
         method: "POST",
@@ -388,7 +387,6 @@ export default function Inicio() {
       const data = await res.json();
 
       if (res.ok) {
-        console.log("Modelo actualizado:", data);
         cargarInicio();
       } else {
         console.error("Error al editar modelo NVR:", data);
@@ -405,7 +403,6 @@ export default function Inicio() {
   );
 
   const buscarClientes = async (q: string) => {
-    console.log("Buscando clientes con query:", q);
     if (!q) {
       setResultados([]);
       return;
@@ -418,7 +415,6 @@ export default function Inicio() {
       if (!res.ok) throw new Error("Error al buscar clientes");
       const data = await res.json();
       setResultados(data.clientes);
-      console.log("Resultados obtenidos:", data.clientes);
     } catch (error) {
       console.error(error);
     }
@@ -452,7 +448,6 @@ export default function Inicio() {
       }
 
       const data = await res.json();
-      console.log("Datos de citas del cliente:", data);
       setBuscarCitasCliente(data.citas);
       setNombreClienteSeleccionado(nombre);
       setLoading2(false);
@@ -494,7 +489,6 @@ export default function Inicio() {
                 type="date"
                 value={selectedDay}
                 onChange={(e) => setSelectedDay(e.target.value)}
-                //onChange={(e) => console.log("Selected day:", e.target.value)}
                 className="bg-transparent text-sm outline-none"
               />
             </div>
@@ -658,9 +652,7 @@ export default function Inicio() {
                       <li
                         key={cita.id}
                         className="p-4 text-white hover:bg-orange-500/70 hover:text-white cursor-pointer flex gap-2 items-center justify-between transition-all"
-                        onClick={() => setSelectedDay(cita.dia_original)}
-                        //onClick={() => console.log("Seleccionar cita con ID:", cita.dia_original)}
-                      >
+                        onClick={() => setSelectedDay(cita.dia_original)}>
                         <span className="font-bold text-lg">{cita.dia}</span>
                         <span className="rounded-full border border-white bg-green-700 px-2 py-1 text-xs font-bold text-center w-20 transition-all">
                           {cita.hora}
@@ -741,6 +733,7 @@ export default function Inicio() {
                       />
                       <select
                         value={it.idestado}
+                        disabled={it.idestado == "9" ? true : false}
                         className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2"
                         style={{
                           backgroundColor: it.color,
@@ -835,6 +828,9 @@ export default function Inicio() {
                                   setOpenCotizacion(true);
                                   setIdCotizacion(parseInt(it.idhoja));
                                   setModoCotizacion("editar");
+                                  setCotizacionBloqueada(
+                                    String(it.idestado) === "9",
+                                  );
                                 }}>
                                 Ver cotización
                               </span>
@@ -849,6 +845,7 @@ export default function Inicio() {
                                   setIdCotizacion(null);
                                   setModoCotizacion("nuevo");
                                   setIdCitaSeleccionada(it.idcita);
+                                  setCotizacionBloqueada(false);
                                 }}>
                                 Agregar cotización
                               </span>
@@ -1009,6 +1006,7 @@ export default function Inicio() {
             modo={modoCotizacion}
             idCita={Number(idCitaSeleccionada)}
             onSaved={cargarInicio}
+            bloqueada={cotizacionBloqueada}
           />
         )}
 

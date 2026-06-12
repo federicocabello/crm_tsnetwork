@@ -20,6 +20,7 @@ interface Props {
   modo?: "nuevo" | "editar";
   onSaved?: () => void;
   idCita?: number | null;
+  bloqueada?: boolean;
 }
 
 export default function Cotizador({
@@ -29,6 +30,7 @@ export default function Cotizador({
   modo = "nuevo",
   onSaved,
   idCita = null,
+  bloqueada = false,
 }: Props) {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -51,6 +53,8 @@ export default function Cotizador({
   };
 
   const handleChange = (id: number, price: number, cantidad: number) => {
+    if (bloqueada) return;
+
     let safeCantidad = Number.isNaN(cantidad) ? 0 : cantidad;
 
     if (cantidad < 0) {
@@ -71,6 +75,8 @@ export default function Cotizador({
   };
 
 async function sendCotizacion() {
+  if (bloqueada) return;
+
   if (modo === "nuevo") {
     // Caso 1: cotizador usado dentro de formulario, antes de crear cita
     if (!idCita) {
@@ -199,7 +205,9 @@ useEffect(() => {
           <div>
             <h1 className="text-xl font-bold text-white">Nueva cotización</h1>
             <p className="text-sm text-white/50">
-              Selecciona productos y cantidades para generar el presupuesto.
+              {bloqueada
+                ? "Esta cotizacion ya fue confirmada y no se puede modificar."
+                : "Selecciona productos y cantidades para generar el presupuesto."}
             </p>
           </div>
 
@@ -291,7 +299,13 @@ useEffect(() => {
                             className="w-24 rounded-xl border border-white/10 bg-white px-3 py-2 text-center text-sm font-bold text-black outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                             type="number"
                             min={0}
+                            disabled={bloqueada}
                             value={row?.cantidad ?? ""}
+                            title={
+                              bloqueada
+                                ? "No se puede modificar una instalacion confirmada"
+                                : undefined
+                            }
                             onChange={(e) =>
                               handleChange(
                                 item.id,
@@ -340,9 +354,14 @@ useEffect(() => {
 
               <button
                 onClick={sendCotizacion}
-                className="rounded-xl bg-orange-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-orange-600/20 transition hover:bg-orange-700"
+                disabled={bloqueada}
+                className={`rounded-xl px-6 py-3 text-sm font-black text-white shadow-lg transition ${
+                  bloqueada
+                    ? "cursor-not-allowed bg-zinc-700 text-white/45 shadow-none"
+                    : "bg-orange-600 shadow-orange-600/20 hover:bg-orange-700"
+                }`}
               >
-                Guardar cotización
+                {bloqueada ? "Cotizacion confirmada" : "Guardar cotización"}
               </button>
             </div>
           </div>

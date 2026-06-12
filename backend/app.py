@@ -704,6 +704,25 @@ def actualizar_cotizacion(id_hoja):
 
     try:
         cursor.execute(
+            """
+            SELECT citas.estado
+            FROM hojas
+            JOIN citas ON citas.id = hojas.cita
+            WHERE hojas.id = %s
+            """,
+            (id_hoja,)
+        )
+        hoja = cursor.fetchone()
+
+        if not hoja:
+            return jsonify({"error": "Cotizacion no encontrada"}), 404
+
+        if int(hoja["estado"]) == 9:
+            return jsonify({
+                "error": "No se puede modificar una cotizacion de una instalacion confirmada"
+            }), 409
+
+        cursor.execute(
             "DELETE FROM hojas_productos WHERE hoja = %s",
             (id_hoja,)
         )
@@ -748,7 +767,7 @@ def confirmar_instalacion(id_hoja):
     try:
         cursor.execute(
             """
-            SELECT id, tipo
+            SELECT id, tipo, cita
             FROM hojas
             WHERE id = %s
             FOR UPDATE
@@ -832,6 +851,15 @@ def confirmar_instalacion(id_hoja):
             WHERE id = %s
             """,
             (id_hoja,)
+        )
+
+        cursor.execute(
+            """
+            UPDATE citas
+            SET estado = 9
+            WHERE id = %s
+            """,
+            (hoja["cita"],)
         )
 
         mysql.connection.commit()
