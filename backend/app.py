@@ -1053,7 +1053,17 @@ def obtener_datos_cliente(id_cliente):
         users = cursor.fetchall()
         cursor.execute("SELECT id, estado FROM citas_estados ORDER BY estado;")
         estados = cursor.fetchall()
-        cursor.execute("SELECT SUM(p.total) - COALESCE(SUM(pc.monto), 0) AS deuda_total FROM pagos p LEFT JOIN pagos_cuotas pc ON pc.pago = p.id AND pc.pagado = 1 WHERE p.cliente = %s GROUP BY p.cliente;", (id_cliente,))
+        cursor.execute("""
+            SELECT COALESCE(SUM(p.total - COALESCE(cuotas_pagadas.total_pagado, 0)), 0) AS deuda_total
+            FROM pagos p
+            LEFT JOIN (
+                SELECT pago, SUM(monto) AS total_pagado
+                FROM pagos_cuotas
+                WHERE pagado = 1
+                GROUP BY pago
+            ) cuotas_pagadas ON cuotas_pagadas.pago = p.id
+            WHERE p.cliente = %s;
+        """, (id_cliente,))
         deuda_total = cursor.fetchone()
         deuda_total = float(deuda_total["deuda_total"]) if deuda_total else 0.0
         return jsonify({"cliente": cliente, "citas": citas, "users": users, "estados": estados, "deuda_total": deuda_total}), 200
@@ -1156,7 +1166,6 @@ def obtener_pagos_cliente(id_cita):
 @app.put("/api/plan-de-pagos/<int:id_pago>")
 def actualizar_plan_de_pagos(id_pago):
     data = request.get_json(silent=True) or {}
-    print(data)
     monto_total = data.get("montoTotal")
     cuotas      = data.get("cuotas", [])
 
@@ -1165,36 +1174,42 @@ def actualizar_plan_de_pagos(id_pago):
 
     cursor = mysql.connection.cursor()
     try:
-        # 1) Actualizar el total del plan padre
+        cursor.execute("SELECT id FROM pagos WHERE id = %s LIMIT 1", (id_pago,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Plan de pagos no encontrado"}), 404
+
+        # 1) Actualizar el total del plan padre.
         cursor.execute(
             "UPDATE pagos SET total = %s WHERE id = %s",
             (float(monto_total), id_pago)
         )
 
-        # 2) Actualizar cada cuota individualmente (por idcuota)
+        # 2) Reemplazar las cuotas: borrar todas y reescribir desde el payload.
+        cursor.execute("DELETE FROM pagos_cuotas WHERE pago = %s", (id_pago,))
+
         for cuota in cuotas:
-            idcuota     = cuota.get("idcuota")
             monto       = float(cuota.get("monto", 0))
             interes     = float(cuota.get("interes", 0))
             vencimiento = cuota.get("vencimiento")
             pagado      = int(bool(cuota.get("pagado", False)))
+            fechapago   = cuota.get("fechapago") if pagado else None
+            metodo      = int(cuota.get("idmetodo") or cuota.get("metodo") or 1)
 
-            if idcuota and idcuota > 0:
+            if pagado and not fechapago:
                 cursor.execute(
                     """
-                    UPDATE pagos_cuotas
-                    SET monto = %s, interes = %s, vencimiento = %s, pagado = %s
-                    WHERE id = %s AND pago = %s
+                    INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, fechapago, metodo)
+                    VALUES (%s, %s, %s, %s, %s, NOW(), %s)
                     """,
-                    (monto, interes, vencimiento, pagado, idcuota, id_pago)
+                    (id_pago, monto, interes, vencimiento, pagado, metodo)
                 )
             else:
                 cursor.execute(
                     """
-                    INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, metodo)
-                    VALUES (%s, %s, %s, %s, %s, 1)
+                    INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, fechapago, metodo)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (id_pago, monto, interes, vencimiento, pagado)
+                    (id_pago, monto, interes, vencimiento, pagado, fechapago, metodo)
                 )
 
         mysql.connection.commit()
