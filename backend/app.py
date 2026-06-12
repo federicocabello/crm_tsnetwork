@@ -1,10 +1,11 @@
-from flask import Flask, jsonify, json
+from flask import Flask, jsonify, send_from_directory
 from flask_mysqldb import MySQL
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager, get_jwt_identity, jwt_required
 import os, re
 from flask_cors import CORS
 from datetime import datetime
+from werkzeug.utils import secure_filename
 
 load_dotenv()
 
@@ -12,10 +13,13 @@ app = Flask(__name__)
 #CORS(app, resources={r"/api/*": {"origins": "http://localhost:5174"}}, supports_credentials=True)
 CORS(
     app,
-    resources={r"/api/*": {"origins": "http://localhost:5175"}},
+    resources={
+        r"/api/*": {"origins": "http://localhost:5174"},
+        r"/uploads/*": {"origins": "http://localhost:5174"}
+    },
     supports_credentials=True,
-    allow_headers=["Content-Type", "Authorization"],  # Aseguramos que Flask permita estos encabezados
-    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Permitimos todos los métodos
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 )
 
 app.config["MYSQL_HOST"] = os.getenv("DB_HOST")
@@ -34,7 +38,7 @@ from flask import jsonify, request
 from flask_jwt_extended import create_access_token
 
 @app.route("/api/me", methods=["GET", "OPTIONS"])
-@jwt_required()  # Verifica que el JWT sea válido
+@jwt_required()
 def me():
     if request.method == "OPTIONS":
         return '', 204  # Responde correctamente a la solicitud OPTIONS
@@ -134,24 +138,115 @@ def configuracion_nuevo_usuario():
 def configuracion_gestion_de_usuarios():
     acciones = ["user", "password", "fullname", "rol", "habilitado"]
     data = request.get_json(silent=True) or {}
+
+    accion = data.get("accion")
+    nuevo = data.get("nuevo")
+    ident = data.get("ident")
+
+    if acciones[accion] == "habilitado":
+        if nuevo == "true":
+            nuevo = 1
+        else:           
+            nuevo = 0
+
     cursor = mysql.connection.cursor()
-    cursor.execute(f"UPDATE auth SET {acciones[data.get('accion')]} = %s WHERE id = %s", (data.get("nuevo"), data.get("ident")))
+    cursor.execute(
+        f"UPDATE auth SET {acciones[accion]} = %s WHERE id = %s",
+        (nuevo, ident)
+    )
     mysql.connection.commit()
     cursor.close()
+
     return jsonify({"msg": "Usuario modificado con éxito."}), 201
+
+@app.get("/api/clientes/buscar")
+def buscar_clientes():
+    q = request.args.get("q", "").strip()
+
+    if not q:
+        return jsonify([]), 200
+
+    cursor = mysql.connection.cursor()
+    try:
+        like = f"%{q}%"
+        cursor.execute("""
+            SELECT clientes.id, clientes.nombre, citas.telefono, citas.domicilio
+            FROM clientes
+            JOIN citas ON citas.cliente = clientes.id
+            WHERE clientes.nombre LIKE %s
+               OR citas.telefono LIKE %s
+            ORDER BY clientes.nombre ASC
+            LIMIT 10
+        """, (like, like))
+        clientes = cursor.fetchall()
+        return jsonify(clientes), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
 
 @app.get("/api/inicio")
 def inicio():
     cursor = mysql.connection.cursor()
     cursor.execute("SELECT id, fullname FROM auth WHERE habilitado = 1 ORDER BY fullname;")
     usuarios = cursor.fetchall()
-    cursor.execute("SELECT citas.id AS idcita, clientes.id AS idcliente, clientes.nombre AS nombre, DATE_FORMAT(citas.dia, '%Y-%m-%d') AS dia, DATE_FORMAT(citas.hora, '%H:%i') AS hora, DATE_FORMAT(citas.hora, '%H:%i %p') AS hora_format, citas.notas AS notas, auth.id AS idagente, auth.fullname AS fullname, citas.tipo AS tipo, citas.estado AS idestado, citas_estados.estado AS estado, citas_estados.color AS color FROM citas JOIN clientes ON clientes.id=citas.cliente JOIN auth ON auth.id=citas.asignado JOIN citas_estados ON citas_estados.id=citas.estado;")
+    cursor.execute("""
+                   SELECT 
+                        citas.id AS idcita,
+                        clientes.id AS idcliente,
+                        clientes.nombre AS nombre,
+                        DATE_FORMAT(citas.dia, '%Y-%m-%d') AS dia,
+                        DATE_FORMAT(citas.hora, '%h:%i') AS hora,
+                        DATE_FORMAT(citas.hora, '%h:%i %p') AS hora_format,
+                        citas.notas AS notas,
+                        auth.id AS idagente,
+                        auth.fullname AS fullname,
+                        citas.tipo AS tipo,
+                        citas.estado AS idestado,
+                        citas_estados.estado AS estado,
+                        citas_estados.color AS color,
+                        citas.telefono AS telefono,
+                        citas.domicilio AS direccion,
+                        hojas.id AS idhoja,
+                        CASE 
+                            WHEN hojas.id IS NOT NULL THEN 1
+                            ELSE 0
+                        END AS tiene_hoja
+                    FROM citas
+                    JOIN clientes ON clientes.id = citas.cliente
+                    JOIN auth ON auth.id = citas.asignado
+                    JOIN citas_estados ON citas_estados.id = citas.estado
+                    LEFT JOIN hojas ON hojas.cita = citas.id;
+                   """)
     citas = cursor.fetchall()
     cursor.execute("SELECT * FROM citas_estados;")
     citas_estados = cursor.fetchall()
+    cursor.execute("SELECT dia FROM citas GROUP BY dia ORDER BY dia DESC;")
+    dias = cursor.fetchall()
     cursor.close()
     
-    return jsonify({"usuarios": usuarios, "citas": citas, "citas_estados": citas_estados}), 200
+    return jsonify({"usuarios": usuarios, "citas": citas, "citas_estados": citas_estados, "dias": dias}), 200
+
+@app.get("/api/citas_preguntas/<int:id_cita>")
+def obtener_preguntas_respuestas(id_cita):
+    cursor = mysql.connection.cursor()
+    
+    try:
+        cursor.execute("""
+            SELECT pregunta, respuesta
+            FROM citas_preguntas
+            WHERE cita = %s
+        """, (id_cita,))
+        
+        preguntas_respuestas = cursor.fetchall()
+        
+        return jsonify(preguntas_respuestas), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+    finally:
+        cursor.close()
 
 @app.post("/api/nuevo-registro/speech")
 def nuevo_registro_speech():
@@ -214,31 +309,204 @@ def sync_speech():
     finally:
         cur.close()
 
+UPLOAD_FOLDER = os.getenv("UPLOADS_DIR")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf", "docx", "xlsx", "txt"}
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+
+@app.route('/uploads/<path:filename>')
+def serve_file(filename):
+    return send_from_directory(UPLOADS_DIR, filename)
+
+@app.post("/api/citas/<int:id_cita>/archivos")
+def subir_archivos_cita(id_cita):
+    archivos = request.files.getlist("archivos")
+
+    if not archivos:
+        return jsonify({"error": "No se enviaron archivos"}), 400
+
+    carpeta = os.path.join(UPLOAD_FOLDER, f"cita_{id_cita}")
+    os.makedirs(carpeta, exist_ok=True)  # Creamos la carpeta si no existe
+
+    cursor = mysql.connection.cursor()
+
+    try:
+        for archivo in archivos:
+            nombre_original = archivo.filename
+            nombre_seguro = secure_filename(nombre_original)
+
+            # Generamos un nombre único para el archivo
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            nombre_final = f"{timestamp}_{nombre_seguro}"
+
+            # Ruta de almacenamiento en el backend
+            ruta_guardado = os.path.join(carpeta, nombre_final)
+            archivo.save(ruta_guardado)
+
+            # Ruta accesible desde la web
+            directorio = f"/uploads/cita_{id_cita}/{nombre_final}"
+
+            # Guardar el archivo en la base de datos
+            cursor.execute("""
+                INSERT INTO citas_archivos (cita, original, directorio)
+                VALUES (%s, %s, %s)
+            """, (id_cita, nombre_original, directorio))
+
+        mysql.connection.commit()
+
+        return jsonify({"msg": "Archivos subidos correctamente"}), 200
+
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+
+@app.get("/api/citas/<int:id_cita>/archivos")
+def obtener_archivos_cita(id_cita):
+    cursor = mysql.connection.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT id, original, directorio
+            FROM citas_archivos
+            WHERE cita = %s
+            ORDER BY id DESC
+        """, (id_cita,))
+
+        archivos = cursor.fetchall()
+
+        return jsonify(archivos), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+        
+@app.delete("/api/citas/archivos/<int:id_archivo>")
+def eliminar_archivo_cita(id_archivo):
+    cursor = mysql.connection.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT directorio
+            FROM citas_archivos
+            WHERE id = %s
+        """, (id_archivo,))
+
+        archivo = cursor.fetchone()
+
+        if not archivo:
+            return jsonify({"error": "Archivo no encontrado"}), 404
+
+        directorio = archivo["directorio"]
+
+        # Convertir la ruta relativa a la ruta absoluta
+        ruta_relativa = directorio.lstrip("/")
+        ruta_fisica = os.path.join(os.getcwd(), ruta_relativa)
+
+        # Eliminar archivo físicamente
+        if os.path.exists(ruta_fisica):
+            os.remove(ruta_fisica)
+
+        # Eliminar el registro de la base de datos
+        cursor.execute("""
+            DELETE FROM citas_archivos
+            WHERE id = %s
+        """, (id_archivo,))
+
+        mysql.connection.commit()
+
+        return jsonify({"msg": "Archivo eliminado correctamente"}), 200
+
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+        
 @app.post("/api/nuevo-registro/guardar")
 def nuevo_registro_guardar():
     data = request.get_json(silent=True) or {}
     datos = data.get("datos")
     telefono = re.sub(r'\D', '', datos["telefono"])
     current_user = data.get("user")["id"]
-    tipocita = data.get("tipocita")
-    
-    preguntas = data.get("preguntas")
     cursor = mysql.connection.cursor()
     
-    if tipocita == "camaras":
-        tipocitacamaras = data.get("tipocitacamaras")
-        if tipocitacamaras == "desdecero":
-            cursor.execute("INSERT INTO clientes (nombre, telefono, domicilio, email, fecha, agente) VALUES (%s, %s, %s, %s, now(), %s)", (datos["nombre"].strip().upper(), telefono, datos["direccion"].strip().upper(), datos["email"].strip().lower(), current_user))
-            id_cliente = cursor.lastrowid
-        cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas) VALUES (%s, %s, %s, %s, %s, 1, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipocita+tipocitacamaras, datos["asignado"], data.get("notas").strip()))
-        id_cita = cursor.lastrowid
-    for pregunta, respuesta in preguntas.items():
-        if pregunta == "presupuesto":
-            productos_insert = []
+    cursor.execute("INSERT INTO clientes (nombre, email, fecha, agente) VALUES (%s, %s, now(), %s)", (datos["nombre"].strip().upper(), datos["email"].strip().lower(), current_user))
+    id_cliente = cursor.lastrowid
+    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas, telefono, domicilio) VALUES (%s, %s, %s, %s, %s, 1, %s, %s, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, "camarasdesdecero", datos["asignado"], data.get("notas").strip(), telefono, datos["direccion"].strip().upper()))
+    id_cita = cursor.lastrowid
+    
+    preguntas = data.get("preguntas")
+    if preguntas:
+        for pregunta, respuesta in preguntas.items():
+            if respuesta not in [None, ""]:
+                cursor.execute("INSERT INTO citas_preguntas (cita, pregunta, respuesta) VALUES (%s, %s, %s)", (id_cita, pregunta, respuesta))
 
-            for producto, info in respuesta.items():
+    presupuesto = data.get("presupuesto")
+    if presupuesto:
+        cursor.execute("INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalación')", (id_cita,))
+        id_hoja = cursor.lastrowid
+        
+        productos_insert = []
+        for producto, info in presupuesto.items():
+            productos_insert.append((
+                id_hoja,
+                int(producto),
+                int(info["cantidad"]),
+                float(info["precioFinal"])
+            ))
+
+        cursor.executemany(
+            """
+            INSERT INTO hojas_productos (hoja, producto, cantidad, precio_final)
+            VALUES (%s, %s, %s, %s)
+            """,
+            productos_insert
+        )
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"status": "ok", "id_cita": id_cita}), 200
+
+@app.post("/api/nuevo-registro/camaras/tiene/nuevo")
+def nuevo_registro_camaras_tiene_nuevo():
+    data = request.get_json(silent=True) or {}
+    datos = data.get("datos")
+    telefono = re.sub(r'\D', '', datos["telefono"])
+    current_user = data.get("user")["id"]
+    
+    cursor = mysql.connection.cursor()
+    cursor.execute("INSERT INTO clientes (nombre, email, fecha, agente) VALUES (%s, %s, now(), %s)", (datos["nombre"].strip().upper(), datos["email"].strip().lower(), current_user))
+    id_cliente = cursor.lastrowid
+    
+    tipo = 'camaras-tiene-nuevo-'+data.get("opcionTipoInstalacion")
+    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas, telefono, domicilio) VALUES (%s, %s, %s, %s, %s, 1, %s, %s, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipo, datos["asignado"], data.get("notas").strip(), telefono, datos["direccion"].strip().upper()))
+    id_cita = cursor.lastrowid
+    
+    if tipo == "camaras-tiene-nuevo-instalacion":
+        preguntas = data.get("preguntas")
+        if preguntas:
+            for pregunta, respuesta in preguntas.items():
+                if respuesta not in [None, ""]:
+                    cursor.execute("INSERT INTO citas_preguntas (cita, pregunta, respuesta) VALUES (%s, %s, %s)", (id_cita, pregunta, respuesta))
+        
+        presupuesto = data.get("presupuesto")
+        if presupuesto:
+            cursor.execute("INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalación')", (id_cita,))
+            id_hoja = cursor.lastrowid
+            
+            productos_insert = []
+            for producto, info in presupuesto.items():
                 productos_insert.append((
-                    id_cita,
+                    id_hoja,
                     int(producto),
                     int(info["cantidad"]),
                     float(info["precioFinal"])
@@ -251,34 +519,72 @@ def nuevo_registro_guardar():
                 """,
                 productos_insert
             )
-    
-        cursor.execute(
-            """
-            INSERT INTO citas_preguntas (cita, pregunta, respuesta)
-            VALUES (%s, %s, %s)
-            """,
-            (id_cita, pregunta, str(respuesta))
-        )
+            
     mysql.connection.commit()
     cursor.close()
+
     return jsonify({"status": "ok"})
 
-@app.post("/api/nuevo-registro/camaras/tiene/nuevo")
-def nuevo_registro_camaras_tiene_nuevo():
+@app.get("/api/clientes/buscar-telefono")
+def buscar_telefono():
+    telefono = request.args.get("telefono")
+    if not telefono:
+        return jsonify({"error": "Número de teléfono no proporcionado"}), 400
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT clientes.id, clientes.nombre FROM clientes JOIN citas ON citas.cliente = clientes.id WHERE citas.telefono = %s", (telefono,))
+    cliente = cursor.fetchone()
+    
+    cursor.close()
+    
+    if cliente:
+        return jsonify({"existe": True, "cliente": cliente}), 200
+    else:
+        return jsonify({"existe": False}), 200
+
+@app.post("/api/nuevo-registro/camaras/tiene/existente")
+def nuevo_registro_camaras_tiene_existente():
     data = request.get_json(silent=True) or {}
     datos = data.get("datos")
-    telefono = re.sub(r'\D', '', datos["telefono"])
     current_user = data.get("user")["id"]
-    preguntas = data.get("preguntas")
+    
     cursor = mysql.connection.cursor()
-    cursor.execute("INSERT INTO clientes (nombre, telefono, domicilio, email, fecha, agente) VALUES (%s, %s, %s, %s, now(), %s)", (datos["nombre"].strip().upper(), telefono, datos["direccion"].strip().upper(), datos["email"].strip().lower(), current_user))
-    id_cliente = cursor.lastrowid
-    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas) VALUES (%s, %s, %s, %s, 'camaras-tiene-nuevo-'+%s, 1, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, data.get("opcionTipoInstalacion"), datos["asignado"], data.get("notas").strip()))
+    id_cliente = data.get("clienteSeleccionado")["id"]
+    
+    telefono = re.sub(r'\D', '', data.get("clienteSeleccionado")["telefono"])
+    
+    tipo = 'camaras-tiene-existente-'+data.get("opcionTipoInstalacion")
+    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas, telefono, domicilio) VALUES (%s, %s, %s, %s, %s, 1, %s, %s, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipo, datos["asignado"], data.get("notas").strip(), telefono, data.get("clienteSeleccionado")["domicilio"].strip().upper()))
     id_cita = cursor.lastrowid
-    for pregunta, respuesta in preguntas.items():
-        if isinstance(respuesta, bool):
-            if respuesta:
-                cursor.execute("INSERT INTO citas_preguntas (cita, pregunta, respuesta) VALUES (%s, %s, %s)", (id_cita, pregunta, respuesta))
+    
+    if tipo == "camaras-tiene-existente-instalacion":
+        preguntas = data.get("preguntas")
+        if preguntas:
+            for pregunta, respuesta in preguntas.items():
+                if respuesta not in [None, ""]:
+                    cursor.execute("INSERT INTO citas_preguntas (cita, pregunta, respuesta) VALUES (%s, %s, %s)", (id_cita, pregunta, respuesta))
+    
+        presupuesto = data.get("presupuesto")
+        if presupuesto:
+            cursor.execute("INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalación')", (id_cita,))
+            id_hoja = cursor.lastrowid
+            
+            productos_insert = []
+            for producto, info in presupuesto.items():
+                productos_insert.append((
+                    id_hoja,
+                    int(producto),
+                    int(info["cantidad"]),
+                    float(info["precioFinal"])
+                ))
+
+            cursor.executemany(
+                """
+                INSERT INTO hojas_productos (hoja, producto, cantidad, precio_final)
+                VALUES (%s, %s, %s, %s)
+                """,
+                productos_insert
+            )
     mysql.connection.commit()
     cursor.close()
 
@@ -387,6 +693,429 @@ def get_cotizacion(idCotizacion):
         "productos": productos,
         "total": float(total)
     }), 200
+    
+@app.put("/api/cotizaciones/<int:id_hoja>")
+def actualizar_cotizacion(id_hoja):
+    data = request.get_json(silent=True) or {}
+    productos = data.get("productos", {})
+
+    cursor = mysql.connection.cursor()
+
+    try:
+        cursor.execute(
+            "DELETE FROM hojas_productos WHERE hoja = %s",
+            (id_hoja,)
+        )
+
+        productos_insert = []
+
+        for producto, info in productos.items():
+            cantidad = int(info.get("cantidad", 0) or 0)
+
+            if cantidad <= 0:
+                continue
+
+            productos_insert.append((
+                id_hoja,
+                int(producto),
+                cantidad,
+                float(info.get("precioFinal", 0) or 0)
+            ))
+
+        if productos_insert:
+            cursor.executemany("""
+                INSERT INTO hojas_productos 
+                    (hoja, producto, cantidad, precio_final)
+                VALUES (%s, %s, %s, %s)
+            """, productos_insert)
+
+        mysql.connection.commit()
+
+        return jsonify({"msg": "Cotización actualizada correctamente"}), 200
+
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+
+@app.post("/api/agenda/editar-cita")
+def agenda_editar_cita():
+    data = request.get_json(silent=True) or {}
+    cursor = mysql.connection.cursor()
+    cursor.execute("UPDATE clientes SET nombre = %s WHERE id = %s", (data.get("nombre").strip().upper(), data.get("idcliente")))
+    cursor.execute("UPDATE citas SET dia = %s, hora = %s, notas = %s, telefono = %s, domicilio = %s WHERE id = %s", (data.get("dia"), data.get("hora"), data.get("notas").strip(), re.sub(r'\D', '', data.get("telefono")), data.get("direccion").strip().upper(), data.get("idcita")))
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify(), 200
+
+@app.post("/api/cotizacion/nueva")
+def crear_cotizacion():
+    data = request.get_json(silent=True) or {}
+
+    id_cita = data.get("cita")
+    productos = data.get("productos", {})
+
+    cursor = mysql.connection.cursor()
+
+    try:
+        # 🔹 crear hoja
+        cursor.execute(
+            "INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalacion')",
+            (id_cita,)
+        )
+        id_hoja = cursor.lastrowid
+
+        productos_insert = []
+
+        for producto, info in productos.items():
+            cantidad = int(info.get("cantidad", 0) or 0)
+
+            if cantidad <= 0:
+                continue
+
+            productos_insert.append((
+                id_hoja,
+                int(producto),
+                cantidad,
+                float(info.get("precioFinal", 0) or 0)
+            ))
+
+        if productos_insert:
+            cursor.executemany("""
+                INSERT INTO hojas_productos (hoja, producto, cantidad, precio_final)
+                VALUES (%s, %s, %s, %s)
+            """, productos_insert)
+
+        mysql.connection.commit()
+
+        return jsonify({"msg": "Cotización creada"}), 200
+
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+
+@app.get("/api/fetch-detalles/<int:idcita>")
+def fetch_detalles(idcita):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT tipo FROM citas WHERE id = %s", (idcita,))
+    tipo = cursor.fetchone()["tipo"]
+    if not tipo:
+        return jsonify({"error": "Cita no encontrada"}), 404
+    cursor.execute("SELECT pregunta, respuesta FROM citas_preguntas WHERE cita = %s", (idcita,))
+    detalles = cursor.fetchall()
+    cursor.close()
+    return jsonify({"tipo": tipo, "detalles": detalles}), 200
+
+@app.put("/api/actualizar-detalles/<int:idcita>")
+def actualizar_detalles(idcita):
+    data = request.get_json()
+    respuestas = data.get("respuestas", {})
+
+    if not respuestas:
+        return jsonify({"error": "No se enviaron respuestas"}), 400
+
+    cursor = mysql.connection.cursor()
+
+    try:
+        for pregunta, respuesta in respuestas.items():
+            cursor.execute("""
+                SELECT id 
+                FROM citas_preguntas 
+                WHERE cita = %s AND pregunta = %s
+            """, (idcita, pregunta))
+
+            existe = cursor.fetchone()
+
+            if existe:
+                cursor.execute("""
+                    UPDATE citas_preguntas
+                    SET respuesta = %s
+                    WHERE cita = %s AND pregunta = %s
+                """, (respuesta, idcita, pregunta))
+            else:
+                cursor.execute("""
+                    INSERT INTO citas_preguntas (cita, pregunta, respuesta)
+                    VALUES (%s, %s, %s)
+                """, (idcita, pregunta, respuesta))
+
+        mysql.connection.commit()
+
+        return jsonify({"msg": "Detalles actualizados correctamente"}), 200
+
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+
+@app.post("/api/editar_modelo_nvr")
+def editar_modelo_nvr():
+    data = request.get_json()
+
+    idcita = data.get("idcita")
+    nuevo_modelo = data.get("nuevoModelo", "").strip()
+
+    if not idcita:
+        return jsonify({"error": "Falta idcita"}), 400
+
+    cursor = mysql.connection.cursor()
+
+    try:
+        cursor.execute("""
+            SELECT id
+            FROM citas_preguntas
+            WHERE cita = %s AND pregunta = 'modelonvr'
+        """, (idcita,))
+
+        existe = cursor.fetchone()
+
+        if existe:
+            cursor.execute("""
+                UPDATE citas_preguntas
+                SET respuesta = %s
+                WHERE cita = %s AND pregunta = 'modelonvr'
+            """, (nuevo_modelo, idcita))
+        else:
+            cursor.execute("""
+                INSERT INTO citas_preguntas (cita, pregunta, respuesta)
+                VALUES (%s, 'modelonvr', %s)
+            """, (idcita, nuevo_modelo))
+
+        mysql.connection.commit()
+
+        return jsonify({
+            "msg": "Modelo de NVR actualizado correctamente",
+            "idcita": idcita,
+            "modelo": nuevo_modelo
+        }), 200
+
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+
+@app.get("/api/clientes/<int:id_cliente>")
+def obtener_datos_cliente(id_cliente):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT id AS idcliente, nombre, email FROM clientes WHERE id = %s",(id_cliente,))
+        cliente = cursor.fetchone()
+        if not cliente:
+            return jsonify({"error": "Cliente no encontrado"}), 404
+
+        cursor.execute("SELECT citas.id AS idcita, DATE_FORMAT(citas.dia, '%%e %%M %%Y') AS dia, DATE_FORMAT(citas.hora, '%%h:%%i %%p') AS hora, tipo, notas, telefono, domicilio, auth.fullname AS asignado, citas_estados.estado AS estado, citas_estados.color AS color, DATE_FORMAT(citas.dia, '%%Y-%%m-%%d') AS dia_format, DATE_FORMAT(citas.hora, '%%h:%%i %%p') AS hora_format, DATE_FORMAT(citas.hora, '%%H:%%i') AS hora_24, citas.estado AS idestado, citas.asignado AS idasignado FROM citas JOIN auth ON auth.id = citas.asignado JOIN citas_estados ON citas_estados.id = citas.estado WHERE citas.cliente = %s ORDER BY citas.dia DESC, hora DESC", (id_cliente,))
+        citas = cursor.fetchall()
+        cursor.execute("SELECT id, fullname FROM auth WHERE habilitado = 1 ORDER BY fullname;")
+        users = cursor.fetchall()
+        cursor.execute("SELECT id, estado FROM citas_estados ORDER BY estado;")
+        estados = cursor.fetchall()
+        cursor.execute("SELECT SUM(p.total) - COALESCE(SUM(pc.monto), 0) AS deuda_total FROM pagos p LEFT JOIN pagos_cuotas pc ON pc.pago = p.id AND pc.pagado = 1 WHERE p.cliente = %s GROUP BY p.cliente;", (id_cliente,))
+        deuda_total = cursor.fetchone()
+        deuda_total = float(deuda_total["deuda_total"]) if deuda_total else 0.0
+        return jsonify({"cliente": cliente, "citas": citas, "users": users, "estados": estados, "deuda_total": deuda_total}), 200
+    except Exception as e:
+        print("Error interno:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.put("/api/citas/actualizar/<int:id_cita>")
+def actualizar_cita(id_cita):
+    data = request.get_json(silent=True) or {}
+    telefono = re.sub(r'\D', '', data["telefono"])
+    cursor = mysql.connection.cursor()
+    cursor.execute("UPDATE citas SET dia = %s, hora = %s, notas = %s, telefono = %s, domicilio = %s, asignado = %s, estado = %s WHERE id = %s", (data.get("fecha"), data.get("horario"), data.get("notas").strip(), telefono, data.get("direccion").strip().upper(), data.get("asignado"), data.get("estado"), id_cita))
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"msg": "Cita actualizada correctamente"}), 200
+
+@app.get("/api/clientes/buscar/info")
+def busqueda_clientes():
+    q = request.args.get("q", "").strip()
+
+    if not q:
+        return jsonify({"clientes": []}), 200
+
+    cursor = mysql.connection.cursor()
+    try:
+        query = """
+            SELECT id, nombre, email
+            FROM clientes
+            WHERE nombre LIKE %s GROUP BY nombre
+        """
+        search_term = f"%{q}%"
+        cursor.execute(query, (search_term,))
+        clientes = cursor.fetchall()
+
+        return jsonify({"clientes": clientes}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.get("/api/clientes/buscar/citas/<int:id_cliente>")
+def buscar_citas_cliente(id_cliente):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT id, DATE_FORMAT(dia, '%%e %%M %%Y') AS dia, DATE_FORMAT(hora, '%%h:%%i %%p') AS hora, DATE_FORMAT(dia, '%%Y-%%m-%%d') AS dia_original FROM citas WHERE cliente = %s ORDER BY dia DESC, hora DESC", (id_cliente,))
+        citas = cursor.fetchall()
+        return jsonify({"citas": citas}), 200
+    except Exception as e:
+        print("Error interno:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.get("/api/clientes/pagos/<int:id_cita>")
+def obtener_pagos_cliente(id_cita):
+    cursor = mysql.connection.cursor()
+    try:
+        # Traer el plan de pagos (registro padre)
+        cursor.execute(
+            "SELECT id AS id_pago, total FROM pagos WHERE cita = %s LIMIT 1",
+            (id_cita,)
+        )
+        plan = cursor.fetchone()
+
+        if not plan:
+            return jsonify({"cuotas": [], "id_pago": None, "total": 0}), 200
+
+        id_pago = plan["id_pago"]
+        total   = float(plan["total"])
+
+        cursor.execute(
+            """
+            SELECT pagos_cuotas.id AS idcuota,
+                   pagos_cuotas.monto AS monto,
+                   pagos_cuotas.interes AS interes,
+                   pagos_cuotas.pagado AS pagado,
+                   pagos_cuotas.vencimiento AS vencimiento,
+                   pagos_cuotas.fechapago AS fechapago,
+                   pagos_cuotas.metodo AS idmetodo,
+                   pagos_metodos.metodo AS metodo
+            FROM pagos_cuotas
+            JOIN pagos_metodos ON pagos_metodos.id = pagos_cuotas.metodo
+            WHERE pagos_cuotas.pago = %s
+            ORDER BY pagos_cuotas.vencimiento ASC
+            """,
+            (id_pago,)
+        )
+        cuotas = cursor.fetchall()
+        return jsonify({"cuotas": cuotas, "id_pago": id_pago, "total": total}), 200
+    except Exception as e:
+        print("Error interno:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.put("/api/plan-de-pagos/<int:id_pago>")
+def actualizar_plan_de_pagos(id_pago):
+    data = request.get_json(silent=True) or {}
+    print(data)
+    monto_total = data.get("montoTotal")
+    cuotas      = data.get("cuotas", [])
+
+    if monto_total is None or not cuotas:
+        return jsonify({"error": "Faltan datos obligatorios"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        # 1) Actualizar el total del plan padre
+        cursor.execute(
+            "UPDATE pagos SET total = %s WHERE id = %s",
+            (float(monto_total), id_pago)
+        )
+
+        # 2) Actualizar cada cuota individualmente (por idcuota)
+        for cuota in cuotas:
+            idcuota     = cuota.get("idcuota")
+            monto       = float(cuota.get("monto", 0))
+            interes     = float(cuota.get("interes", 0))
+            vencimiento = cuota.get("vencimiento")
+            pagado      = int(bool(cuota.get("pagado", False)))
+
+            if idcuota and idcuota > 0:
+                cursor.execute(
+                    """
+                    UPDATE pagos_cuotas
+                    SET monto = %s, interes = %s, vencimiento = %s, pagado = %s
+                    WHERE id = %s AND pago = %s
+                    """,
+                    (monto, interes, vencimiento, pagado, idcuota, id_pago)
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, metodo)
+                    VALUES (%s, %s, %s, %s, %s, 1)
+                    """,
+                    (id_pago, monto, interes, vencimiento, pagado)
+                )
+
+        mysql.connection.commit()
+        return jsonify({"msg": "Plan de pagos actualizado correctamente"}), 200
+
+    except Exception as e:
+        mysql.connection.rollback()
+        print("Error al actualizar plan de pagos:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.post("/api/plan-de-pagos")
+def crear_plan_de_pagos():
+    data = request.get_json(silent=True) or {}
+    print(data)
+
+    id_cliente = data.get("idCliente")
+    id_cita    = data.get("idCita")
+    monto_total = data.get("montoTotal")
+    cuotas      = data.get("cuotas", [])
+
+    if not id_cliente or not id_cita or monto_total is None or not cuotas:
+        return jsonify({"error": "Faltan datos obligatorios"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        # 1) Crear el registro de pago padre
+        cursor.execute(
+            "INSERT INTO pagos (cliente, cita, total) VALUES (%s, %s, %s)",
+            (id_cliente, id_cita, float(monto_total))
+        )
+        id_pago = cursor.lastrowid
+
+        # 2) Insertar cada cuota con su propio monto e interés
+        for cuota in cuotas:
+            monto     = float(cuota.get("monto", 0))
+            interes   = float(cuota.get("interes", 0))
+            vencimiento = cuota.get("vencimiento")
+
+            cursor.execute(
+                """
+                INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, metodo)
+                VALUES (%s, %s, %s, %s, 0, 1)
+                """,
+                (id_pago, monto, interes, vencimiento)
+            )
+
+        mysql.connection.commit()
+        return jsonify({"msg": "Plan de pagos guardado correctamente", "id_pago": id_pago}), 201
+
+    except Exception as e:
+        mysql.connection.rollback()
+        print("Error al crear plan de pagos:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
 
 if __name__ == "__main__":
     app.run(debug=True)
