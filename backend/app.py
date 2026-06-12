@@ -14,8 +14,8 @@ app = Flask(__name__)
 CORS(
     app,
     resources={
-        r"/api/*": {"origins": "http://localhost:5174"},
-        r"/uploads/*": {"origins": "http://localhost:5174"}
+        r"/api/*": {"origins": "http://localhost:5175"},
+        r"/uploads/*": {"origins": "http://localhost:5175"}
     },
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],
@@ -208,6 +208,7 @@ def inicio():
                         citas.telefono AS telefono,
                         citas.domicilio AS direccion,
                         hojas.id AS idhoja,
+                        hojas.tipo AS tipo_hoja,
                         CASE 
                             WHEN hojas.id IS NOT NULL THEN 1
                             ELSE 0
@@ -703,6 +704,25 @@ def actualizar_cotizacion(id_hoja):
 
     try:
         cursor.execute(
+            """
+            SELECT citas.estado
+            FROM hojas
+            JOIN citas ON citas.id = hojas.cita
+            WHERE hojas.id = %s
+            """,
+            (id_hoja,)
+        )
+        hoja = cursor.fetchone()
+
+        if not hoja:
+            return jsonify({"error": "Cotizacion no encontrada"}), 404
+
+        if int(hoja["estado"]) == 9:
+            return jsonify({
+                "error": "No se puede modificar una cotizacion de una instalacion confirmada"
+            }), 409
+
+        cursor.execute(
             "DELETE FROM hojas_productos WHERE hoja = %s",
             (id_hoja,)
         )
@@ -732,6 +752,122 @@ def actualizar_cotizacion(id_hoja):
         mysql.connection.commit()
 
         return jsonify({"msg": "Cotización actualizada correctamente"}), 200
+
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+
+@app.post("/api/cotizaciones/<int:id_hoja>/confirmar-instalacion")
+def confirmar_instalacion(id_hoja):
+    cursor = mysql.connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            SELECT id, tipo, cita
+            FROM hojas
+            WHERE id = %s
+            FOR UPDATE
+            """,
+            (id_hoja,)
+        )
+        hoja = cursor.fetchone()
+
+        if not hoja:
+            mysql.connection.rollback()
+            return jsonify({"error": "Cotizacion no encontrada"}), 404
+
+        if hoja.get("tipo") == "instalacion_confirmada":
+            mysql.connection.rollback()
+            return jsonify({"error": "Esta instalacion ya fue confirmada"}), 409
+
+        cursor.execute(
+            """
+            SELECT
+                hp.producto,
+                hp.cantidad,
+                p.descrip,
+                p.stock
+            FROM hojas_productos hp
+            JOIN productos p ON p.id = hp.producto
+            WHERE hp.hoja = %s
+            FOR UPDATE
+            """,
+            (id_hoja,)
+        )
+        productos = cursor.fetchall()
+
+        if not productos:
+            mysql.connection.rollback()
+            return jsonify({"error": "La cotizacion no tiene productos"}), 400
+
+        sin_stock = [
+            {
+                "id": producto["producto"],
+                "descrip": producto["descrip"],
+                "stock": int(producto["stock"] or 0),
+                "cantidad": int(producto["cantidad"] or 0),
+            }
+            for producto in productos
+            if int(producto["stock"] or 0) < int(producto["cantidad"] or 0)
+        ]
+
+        if sin_stock:
+            mysql.connection.rollback()
+            return jsonify({
+                "error": "Stock insuficiente para confirmar la instalacion",
+                "productos": sin_stock,
+            }), 409
+
+        productos_actualizados = []
+        for producto in productos:
+            cantidad = int(producto["cantidad"] or 0)
+            producto_id = int(producto["producto"])
+
+            cursor.execute(
+                """
+                UPDATE productos
+                SET stock = stock - %s
+                WHERE id = %s
+                """,
+                (cantidad, producto_id)
+            )
+
+            productos_actualizados.append({
+                "id": producto_id,
+                "descrip": producto["descrip"],
+                "cantidad_descontada": cantidad,
+                "stock_anterior": int(producto["stock"] or 0),
+                "stock_actual": int(producto["stock"] or 0) - cantidad,
+            })
+
+        cursor.execute(
+            """
+            UPDATE hojas
+            SET tipo = 'instalacion_confirmada'
+            WHERE id = %s
+            """,
+            (id_hoja,)
+        )
+
+        cursor.execute(
+            """
+            UPDATE citas
+            SET estado = 9
+            WHERE id = %s
+            """,
+            (hoja["cita"],)
+        )
+
+        mysql.connection.commit()
+
+        return jsonify({
+            "msg": "Instalacion confirmada y stock actualizado",
+            "productos": productos_actualizados,
+        }), 200
 
     except Exception as e:
         mysql.connection.rollback()
