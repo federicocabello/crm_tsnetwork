@@ -645,6 +645,71 @@ def get_productos():
     cursor.close()
     return jsonify(productos), 201
 
+@app.put("/api/productos/<int:id_producto>")
+def actualizar_producto(id_producto):
+    data = request.get_json(silent=True) or {}
+    descrip = data.get("descrip")
+    precio = data.get("precio")
+    stock = data.get("stock")
+    
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            UPDATE productos 
+            SET descrip = %s, precio = %s, stock = %s 
+            WHERE id = %s
+            """,
+            (descrip, precio, stock, id_producto)
+        )
+        mysql.connection.commit()
+        return jsonify({"msg": "Producto actualizado correctamente"}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.post("/api/productos")
+def crear_producto():
+    data = request.get_json(silent=True) or {}
+    descrip = data.get("descrip")
+    precio = data.get("precio")
+    stock = data.get("stock")
+    
+    if not descrip or precio is None or stock is None:
+        return jsonify({"error": "Faltan datos"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO productos (descrip, precio, stock)
+            VALUES (%s, %s, %s)
+            """,
+            (descrip, precio, stock)
+        )
+        mysql.connection.commit()
+        return jsonify({"msg": "Producto creado correctamente"}), 201
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.delete("/api/productos/<int:id_producto>")
+def eliminar_producto(id_producto):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("DELETE FROM productos WHERE id = %s", (id_producto,))
+        mysql.connection.commit()
+        return jsonify({"msg": "Producto eliminado correctamente"}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
 @app.get("/api/cotizacion/<int:idCotizacion>")
 def get_cotizacion(idCotizacion):
     cursor = mysql.connection.cursor()

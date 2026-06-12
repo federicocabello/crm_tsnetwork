@@ -9,6 +9,7 @@ import Login from "./components/Login";
 import Inicio from "./pages/Inicio";
 import Configuracion from "./pages/Configuracion";
 import NuevoRegistro from "./pages/NuevoRegistro";
+import Inventario from "./pages/Inventario";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 import Layout from "./components/Layout";
@@ -50,6 +51,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <ProtectedRoute>
                 <Layout>
                   <NuevoRegistro />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/inventario"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Inventario />
                 </Layout>
               </ProtectedRoute>
             }
