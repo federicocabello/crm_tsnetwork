@@ -1333,5 +1333,112 @@ def crear_plan_de_pagos():
     finally:
         cursor.close()
 
+@app.get("/api/pagos/resumen")
+def get_pagos_resumen():
+    mes = request.args.get("mes") # Formato YYYY-MM
+    tipo_filtro = request.args.get("tipo", "fechapago") # 'fechapago' o 'vencimiento'
+    
+    if not mes:
+        mes = datetime.now().strftime("%Y-%m")
+        
+    cursor = mysql.connection.cursor()
+    try:
+        # Cuotas pagadas en el mes
+        query_pagadas = f"""
+            SELECT COUNT(*) as cantidad, SUM(monto + interes) as total
+            FROM pagos_cuotas
+            WHERE pagado = 1 AND DATE_FORMAT({tipo_filtro}, %s) = %s
+        """
+        cursor.execute(query_pagadas, ('%Y-%m', mes))
+        pagadas_mes = cursor.fetchone()
+
+        # Cuotas pendientes mes que viene
+        y, m = map(int, mes.split('-'))
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+        next_month = f"{y:04d}-{m:02d}"
+
+        cursor.execute("""
+            SELECT COUNT(*) as cantidad, SUM(monto + interes) as total
+            FROM pagos_cuotas
+            WHERE pagado = 0 AND DATE_FORMAT(vencimiento, %s) = %s
+        """, ('%Y-%m', next_month))
+        pendientes_mes_que_viene = cursor.fetchone()
+
+        # Deuda por cliente
+        cursor.execute("""
+            SELECT c.id, c.nombre, SUM(pc.monto + pc.interes) as deuda_total
+            FROM clientes c
+            JOIN pagos p ON p.cliente = c.id
+            JOIN pagos_cuotas pc ON pc.pago = p.id
+            WHERE pc.pagado = 0
+            GROUP BY c.id, c.nombre
+            HAVING deuda_total > 0
+            ORDER BY deuda_total DESC
+        """)
+        deuda_por_cliente = cursor.fetchall()
+
+        # Próximos vencimientos
+        cursor.execute("""
+            SELECT pc.id, c.id as cliente_id, c.nombre as cliente_nombre, 
+                   pc.monto, pc.interes,
+                   DATE_FORMAT(pc.vencimiento, %s) as vencimiento,
+                   p.total as pago_total,
+                   pm.metodo as metodo_nombre, pm.color as metodo_color
+            FROM pagos_cuotas pc
+            JOIN pagos p ON pc.pago = p.id
+            JOIN clientes c ON p.cliente = c.id
+            LEFT JOIN pagos_metodos pm ON pc.metodo = pm.id
+            WHERE pc.pagado = 0
+            ORDER BY pc.vencimiento ASC
+            LIMIT 50
+        """, ('%Y-%m-%d',))
+        proximos_vencimientos = cursor.fetchall()
+        
+        # Filtro de cuotas del mes actual (para mostrar en detalle si es necesario)
+        query_cuotas = f"""
+            SELECT pc.id, c.id as cliente_id, c.nombre as cliente_nombre, 
+                   pc.monto, pc.interes,
+                   DATE_FORMAT(pc.vencimiento, %s) as vencimiento,
+                   DATE_FORMAT(pc.fechapago, %s) as fechapago,
+                   pc.pagado,
+                   pm.metodo as metodo_nombre, pm.color as metodo_color
+            FROM pagos_cuotas pc
+            JOIN pagos p ON pc.pago = p.id
+            JOIN clientes c ON p.cliente = c.id
+            LEFT JOIN pagos_metodos pm ON pc.metodo = pm.id
+            WHERE DATE_FORMAT(pc.{tipo_filtro}, %s) = %s
+            ORDER BY pc.vencimiento ASC
+        """
+        cursor.execute(query_cuotas, ('%Y-%m-%d', '%Y-%m-%d', '%Y-%m', mes))
+        cuotas_del_mes = cursor.fetchall()
+
+        return jsonify({
+            "pagadas_mes": pagadas_mes,
+            "pendientes_mes_que_viene": pendientes_mes_que_viene,
+            "deuda_por_cliente": deuda_por_cliente,
+            "proximos_vencimientos": proximos_vencimientos,
+            "cuotas_del_mes": cuotas_del_mes
+        }), 200
+    except Exception as e:
+        print("Error en get_pagos_resumen:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.get("/api/pagos/metodos")
+def get_pagos_metodos():
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT id, metodo, color FROM pagos_metodos")
+        metodos = cursor.fetchall()
+        return jsonify(metodos), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
 if __name__ == "__main__":
     app.run(debug=True)

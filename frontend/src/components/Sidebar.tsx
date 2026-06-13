@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import type { Role } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
 import type { LucideIcon } from "lucide-react";
-import { Home, Settings, FileHeadphone, Package } from "lucide-react";
+import { Home, Settings, FileHeadphone, Package, CircleDollarSign } from "lucide-react";
 
 type NavItem = {
   label: string;
@@ -36,6 +36,12 @@ const NAV: NavItem[] = [
     path: "/inventario",
     icon: Package,
     roles: ["administrador", "superadmin"],
+  },
+  {
+    label: "Pagos",
+    path: "/pagos",
+    icon: CircleDollarSign,
+    roles: ["administrador", "superadmin", "moderador", "usuario"],
   },
   {
     label: "Configuración",
