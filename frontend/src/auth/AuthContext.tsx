@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { jwtDecode } from "jwt-decode";
 import type { AuthUser, LoginResponse } from "../types/auth";
 import { ApiError, api, clearToken, getToken, setToken } from "../lib/api";
 
@@ -10,6 +11,36 @@ type AuthState = {
 };
 
 const AuthContext = createContext<AuthState | null>(null);
+
+type TokenPayload = {
+  exp?: number;
+  user?: AuthUser;
+  sub?: string | AuthUser;
+};
+
+function getUserFromToken(token: string): AuthUser | null {
+  try {
+    const payload = jwtDecode<TokenPayload>(token);
+    const now = Math.floor(Date.now() / 1000);
+
+    if (payload.exp && payload.exp <= now) {
+      return null;
+    }
+
+    if (payload.user) {
+      return payload.user;
+    }
+
+    if (payload.sub && typeof payload.sub === "object") {
+      return payload.sub;
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Token invalido:", error);
+    return null;
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -25,6 +56,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Si hay token, validamos la sesión
+    const userFromToken = getUserFromToken(token);
+    if (!userFromToken) {
+      clearToken();
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setUser(userFromToken);
+
     api<{ user: AuthUser }>("/api/me")
       .then((d) => setUser(d.user))
       .catch((e) => {

@@ -19,6 +19,7 @@ import {
   FolderOpen,
   UserRoundSearch,
   CircleCheck,
+  X,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -31,6 +32,7 @@ import EditarDetalles from "../components/EditarDetalles";
 import Loading from "../components/Loading";
 import { useNavigate } from "react-router-dom";
 import ModalConfirm from "../components/ModalConfirm";
+import FormatearNumero from "../components/FormatearNumero";
 
 type AgendaItem = {
   idcita: string;
@@ -74,6 +76,18 @@ type BuscarCitas = {
   dia_original: string;
 };
 
+type CuotaAlerta = {
+  idcuota: number;
+  idpago: number;
+  idcliente: number;
+  cliente: string;
+  idcita: number | null;
+  monto: number;
+  interes: number;
+  vencimiento: string;
+  dias: number;
+};
+
 function pad2(n: number) {
   return String(n).padStart(2, "0");
 }
@@ -100,6 +114,15 @@ function formatHeader(dateKey: string) {
     year: "numeric",
     month: "long",
     day: "numeric",
+  });
+}
+
+function formatShortDate(dateKey: string) {
+  const d = fromDateKey(dateKey);
+  return d.toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
   });
 }
 
@@ -142,11 +165,26 @@ export default function Inicio() {
     citas: AgendaItem[];
     citas_estados: CitasEstados[];
     dias: string[];
+    cuotas_alertas: CuotaAlerta[];
   };
 
   const [loading, setLoading] = useState(true);
   const [loading2, setLoading2] = useState(false);
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
+  const [cuotasAlertas, setCuotasAlertas] = useState<CuotaAlerta[]>([]);
+
+  const cuotasVencidas = useMemo(
+    () => cuotasAlertas.filter((cuota) => Number(cuota.dias) < 0),
+    [cuotasAlertas],
+  );
+  const cuotasHoy = useMemo(
+    () => cuotasAlertas.filter((cuota) => Number(cuota.dias) === 0),
+    [cuotasAlertas],
+  );
+  const cuotasProximas = useMemo(
+    () => cuotasAlertas.filter((cuota) => Number(cuota.dias) > 0),
+    [cuotasAlertas],
+  );
 
   const cargarInicio = async () => {
     setLoading(true);
@@ -163,6 +201,7 @@ export default function Inicio() {
         setUsers(data.usuarios);
         setItems(citasConDetalles);
         setCitasEstados(data.citas_estados);
+        setCuotasAlertas(data.cuotas_alertas ?? []);
         setLoading(false);
       } else {
         console.error("Error al traer datos. Código:", res.status);
@@ -351,10 +390,10 @@ export default function Inicio() {
         prev.map((i) =>
           i.idcita === id
             ? {
-                ...i,
-                preguntas: data,
-                detalles: true,
-              }
+              ...i,
+              preguntas: data,
+              detalles: true,
+            }
             : i,
         ),
       );
@@ -527,21 +566,19 @@ export default function Inicio() {
             <div className="flex gap-3">
               <button
                 onClick={() => handleSelection("camaras")}
-                className={`boton flex gap-1 justify-center items-center ${
-                  selectedOption == "camaras"
+                className={`boton flex gap-1 justify-center items-center ${selectedOption == "camaras"
                     ? "bg-blue-500 text-white"
                     : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                }`}>
+                  }`}>
                 <Cctv className="w-4 h-4" />
                 Cámaras
               </button>
               <button
                 onClick={() => handleSelection("internet")}
-                className={`boton flex gap-1 justify-center items-center ${
-                  selectedOption == "internet"
+                className={`boton flex gap-1 justify-center items-center ${selectedOption == "internet"
                     ? "bg-green-500 text-white"
                     : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                }`}>
+                  }`}>
                 <Globe className="w-4 h-4" />
                 Internet
               </button>
@@ -618,9 +655,27 @@ export default function Inicio() {
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2 w-full cuadro shrink-0">
-          <div className="font-bold flex items-center gap-1">
-            <UserRoundSearch className="w-4 h-4" />
-            Buscar cliente
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-bold flex items-center gap-1">
+              <UserRoundSearch className="w-4 h-4" />
+              Buscar cliente
+            </div>
+            {(query || resultados.length > 0 || clienteSeleccionado) && (
+              <button
+                type="button"
+                title="Limpiar busqueda"
+                onClick={() => {
+                  setQuery("");
+                  setResultados([]);
+                  setClienteSeleccionado(null);
+                  setBuscarCitasCliente([]);
+                  setNombreClienteSeleccionado("");
+                }}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 p-0 text-white/60 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-200"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -640,11 +695,10 @@ export default function Inicio() {
                   <li
                     key={c.id}
                     //className="p-2 text-white hover:bg-orange-600 hover:text-white/90 cursor-pointer"
-                    className={`p-2 text-white cursor-pointer flex items-center gap-2 transition-all ${
-                      esSeleccionado
+                    className={`p-2 text-white cursor-pointer flex items-center gap-2 transition-all ${esSeleccionado
                         ? "bg-green-600 text-white font-bold"
                         : "hover:bg-orange-600 hover:text-white/90"
-                    }`}
+                      }`}
                     onClick={() => {
                       seleccionarCliente(c.id, c.nombre);
                     }}>
@@ -689,6 +743,84 @@ export default function Inicio() {
             )
           )}
         </div>
+
+        <div className="mt-3 w-full cuadro shrink-0">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="font-bold flex items-center gap-1">
+              <TriangleAlert className="w-4 h-4 text-orange-400" />
+              Cuotas por vencer
+            </div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-bold text-white/60">
+              {cuotasAlertas.length}
+            </span>
+          </div>
+
+          {cuotasAlertas.length === 0 ? (
+            <div className="rounded-lg border border-white/10 bg-zinc-950/30 p-3 text-xs text-white/50">
+              No hay cuotas vencidas ni próximas.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {[
+                {
+                  titulo: "Vencidas",
+                  items: cuotasVencidas,
+                  color: "border-red-500/25 bg-red-500/10 text-red-300",
+                  scroll: true,
+                },
+                {
+                  titulo: "Vencen hoy",
+                  items: cuotasHoy,
+                  color: "border-yellow-500/25 bg-yellow-500/10 text-yellow-200",
+                  scroll: false,
+                },
+                {
+                  titulo: "Por vencer",
+                  items: cuotasProximas,
+                  color: "border-cyan-500/25 bg-cyan-500/10 text-cyan-200",
+                  scroll: true,
+                },
+              ].map((grupo) => (
+                <div key={grupo.titulo}>
+                  <div className={`mb-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-bold ${grupo.color}`}>
+                    {grupo.titulo} · {grupo.items.length}
+                  </div>
+
+                  {grupo.items.length > 0 && (
+                    <div className={`${grupo.scroll ? "max-h-36 overflow-y-auto" : ""} rounded-lg border border-white/10`}>
+                      {grupo.items.map((cuota) => (
+                        <button
+                          key={cuota.idcuota}
+                          onClick={() => navigate(`/clientes/${cuota.idcliente}`)}
+                          className="w-full border-b border-white/5 bg-zinc-950/30 px-3 py-2 text-left text-xs transition hover:bg-white/5 last:border-b-0"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate font-bold text-white">
+                              {cuota.cliente}
+                            </span>
+                            <span className="shrink-0 font-bold text-orange-300">
+                              <FormatearNumero numero={Number(cuota.monto)} />
+                            </span>
+                          </div>
+                          <div className="mt-0.5 flex items-center justify-between gap-2 text-white/45">
+                            <span>{formatShortDate(cuota.vencimiento)}</span>
+                            <span>
+                              {Number(cuota.dias) < 0
+                                ? `${Math.abs(Number(cuota.dias))} días tarde`
+                                : Number(cuota.dias) === 0
+                                  ? "Hoy"
+                                  : `en ${cuota.dias} días`}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 cuadro flex flex-col w-full">
@@ -699,11 +831,10 @@ export default function Inicio() {
           <span className="flex items-center gap-3">
             <button
               onClick={() => handleSelectionEventos("my")}
-              className={`boton border border-white/10 ${
-                selectedOptionEventos == "my"
+              className={`boton border border-white/10 ${selectedOptionEventos == "my"
                   ? "bg-orange-600 hover:bg-white/20"
                   : "hover:bg-orange-600 bg-white/20"
-              }`}>
+                }`}>
               Mis eventos
             </button>
             {user?.rol == "moderador" ||
@@ -711,11 +842,10 @@ export default function Inicio() {
               (user?.rol == "superadmin" && (
                 <button
                   onClick={() => handleSelectionEventos("all")}
-                  className={`boton border border-white/10 ${
-                    selectedOptionEventos == "all"
+                  className={`boton border border-white/10 ${selectedOptionEventos == "all"
                       ? "bg-orange-600 hover:bg-white/20"
                       : "hover:bg-orange-600 bg-white/20"
-                  }`}>
+                    }`}>
                   Todos los eventos
                 </button>
               ))}
@@ -784,29 +914,29 @@ export default function Inicio() {
                       {(it.tipo == "camarasdesdecero" ||
                         it.tipo == "camaras-tiene-nuevo-instalacion" ||
                         it.tipo == "camaras-tiene-existente-instalacion") && (
-                        <div className="flex items-center gap-2">
-                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
-                            <Cctv className="h-4 w-4" />
-                            <span>INSTALACIÓN DE CÁMARAS</span>
-                          </div>
-                          {(it.tipo == "camaras-tiene-nuevo-instalacion" ||
-                            it.tipo ==
+                          <div className="flex items-center gap-2">
+                            <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
+                              <Cctv className="h-4 w-4" />
+                              <span>INSTALACIÓN DE CÁMARAS</span>
+                            </div>
+                            {(it.tipo == "camaras-tiene-nuevo-instalacion" ||
+                              it.tipo ==
                               "camaras-tiene-existente-instalacion") && (
-                            <span className="text-xs text-yellow-500 font-bold italic flex items-center gap-1">
-                              <TriangleAlert className="h-4 w-4" />
-                              Ya tiene cámaras instaladas
-                            </span>
-                          )}
-                        </div>
-                      )}
+                                <span className="text-xs text-yellow-500 font-bold italic flex items-center gap-1">
+                                  <TriangleAlert className="h-4 w-4" />
+                                  Ya tiene cámaras instaladas
+                                </span>
+                              )}
+                          </div>
+                        )}
 
                       {(it.tipo == "camaras-tiene-nuevo-soporte" ||
                         it.tipo == "camaras-tiene-existente-soporte") && (
-                        <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
-                          <Wrench className="h-4 w-4" />
-                          <span>SOPORTE</span>
-                        </div>
-                      )}
+                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
+                            <Wrench className="h-4 w-4" />
+                            <span>SOPORTE</span>
+                          </div>
+                        )}
                     </div>
 
                     <div>
@@ -879,12 +1009,12 @@ export default function Inicio() {
                         </button>
                       </div>
                       {it.tiene_hoja &&
-                      it.tipo_hoja !== "instalacion_confirmada" ? (
+                        it.tipo_hoja !== "instalacion_confirmada" ? (
                         <div>
                           <button
                             onClick={() => abrirConfirmarInstalacion(it.idhoja)}
-                            className="boton flex items-center justify-center border py-0.5! ml-1 hover:bg-green-300 hover:text-black italic">
-                            <Pencil className="h-3 w-3" />
+                            className="group flex items-center justify-center gap-1.5 rounded-full border border-green-400/30 bg-green-500/15 px-3 py-1 text-xs font-extrabold text-green-200 shadow-sm shadow-green-500/10 transition-all hover:border-green-300/70 hover:bg-green-500/25 hover:text-white hover:shadow-green-500/20">
+                            <CircleCheck className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
                             Confirmar Instalación
                           </button>
                         </div>
@@ -903,22 +1033,22 @@ export default function Inicio() {
                       {(it.tipo == "camarasdesdecero" ||
                         it.tipo == "camaras-tiene-nuevo-instalacion" ||
                         it.tipo == "camaras-tiene-existente-instalacion") && (
-                        <div
-                          className="text-xs hover:underline text-white/60 cursor-pointer flex items-center gap-1 mt-1"
-                          onClick={() => toggleDetalles(it.idcita)}>
-                          {it.detalles ? (
-                            <>
-                              <ListChevronsDownUp className="h-4 w-4" />
-                              Ocultar detalles
-                            </>
-                          ) : (
-                            <>
-                              <ListChevronsUpDown className="h-4 w-4" />
-                              Ver detalles
-                            </>
-                          )}
-                        </div>
-                      )}
+                          <div
+                            className="text-xs hover:underline text-white/60 cursor-pointer flex items-center gap-1 mt-1"
+                            onClick={() => toggleDetalles(it.idcita)}>
+                            {it.detalles ? (
+                              <>
+                                <ListChevronsDownUp className="h-4 w-4" />
+                                Ocultar detalles
+                              </>
+                            ) : (
+                              <>
+                                <ListChevronsUpDown className="h-4 w-4" />
+                                Ver detalles
+                              </>
+                            )}
+                          </div>
+                        )}
 
                       <div
                         className="text-xs hover:underline text-white/60 cursor-pointer transition-all flex items-center gap-1 mt-1"
@@ -970,28 +1100,28 @@ export default function Inicio() {
                       {it.preguntas?.some(
                         (p) => p.pregunta === "modelonvr",
                       ) && (
-                        <div
-                          className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition hover:scale-[1.03] cursor-pointer hover:bg-green-700! hover:border-green-900!"
-                          style={{
-                            backgroundColor: darkenColor(it.color, 0.8),
-                            borderColor: darkenColor(it.color, 0.2),
-                          }}
-                          onClick={editarNvr(
-                            it.preguntas!.find(
-                              (p) => p.pregunta === "modelonvr",
-                            )!.respuesta,
-                            it.idcita,
-                          )}>
-                          <span className="text-white/70">Modelo de NVR:</span>
-                          <span className="text-white font-bold uppercase">
-                            {
+                          <div
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition hover:scale-[1.03] cursor-pointer hover:bg-green-700! hover:border-green-900!"
+                            style={{
+                              backgroundColor: darkenColor(it.color, 0.8),
+                              borderColor: darkenColor(it.color, 0.2),
+                            }}
+                            onClick={editarNvr(
                               it.preguntas!.find(
                                 (p) => p.pregunta === "modelonvr",
-                              )!.respuesta
-                            }
-                          </span>
-                        </div>
-                      )}
+                              )!.respuesta,
+                              it.idcita,
+                            )}>
+                            <span className="text-white/70">Modelo de NVR:</span>
+                            <span className="text-white font-bold uppercase">
+                              {
+                                it.preguntas!.find(
+                                  (p) => p.pregunta === "modelonvr",
+                                )!.respuesta
+                              }
+                            </span>
+                          </div>
+                        )}
 
                       <div
                         onClick={() => handleSeleccionarCita(it.idcita)}
