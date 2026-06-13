@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, send_from_directory
 from flask_mysqldb import MySQL
 from dotenv import load_dotenv
-from flask_jwt_extended import JWTManager, get_jwt_identity, jwt_required
+from flask_jwt_extended import JWTManager, get_jwt, get_jwt_identity, jwt_required
 import os, re
 from flask_cors import CORS
 from datetime import datetime
@@ -30,6 +30,7 @@ app.config["MYSQL_PORT"] = int(os.getenv("DB_PORT", 3306))
 app.config["MYSQL_UNIX_SOCKET"] = None
 app.config["MYSQL_CURSORCLASS"] = "DictCursor"
 app.config["JWT_SECRET_KEY"] = "B!1w6NAt1T^%kvhUI*S^rC"
+app.config["JWT_VERIFY_SUB"] = False
 jwt = JWTManager(app)
 
 mysql = MySQL(app)
@@ -43,7 +44,9 @@ def me():
     if request.method == "OPTIONS":
         return '', 204  # Responde correctamente a la solicitud OPTIONS
 
-    user = get_jwt_identity()  # Obtiene la identidad del usuario del JWT
+    claims = get_jwt()
+    user = claims.get("user") or get_jwt_identity()
+
     if user:
         return jsonify({"user": user}), 200  # Devuelve los datos del usuario
     else:
@@ -93,7 +96,10 @@ def login():
         "habilitado": bool(row.get("habilitado")),
     }
 
-    token = create_access_token(identity=user_payload)
+    token = create_access_token(
+        identity=str(user_payload["id"]),
+        additional_claims={"user": user_payload},
+    )
     return jsonify({"access_token": token, "user": user_payload})
 
 @app.get("/api/configuracion")
@@ -224,9 +230,29 @@ def inicio():
     citas_estados = cursor.fetchall()
     cursor.execute("SELECT dia FROM citas GROUP BY dia ORDER BY dia DESC;")
     dias = cursor.fetchall()
+    cursor.execute("""
+        SELECT
+            pagos_cuotas.id AS idcuota,
+            pagos.id AS idpago,
+            clientes.id AS idcliente,
+            clientes.nombre AS cliente,
+            citas.id AS idcita,
+            pagos_cuotas.monto AS monto,
+            pagos_cuotas.interes AS interes,
+            DATE_FORMAT(pagos_cuotas.vencimiento, '%Y-%m-%d') AS vencimiento,
+            DATEDIFF(pagos_cuotas.vencimiento, CURDATE()) AS dias
+        FROM pagos_cuotas
+        JOIN pagos ON pagos.id = pagos_cuotas.pago
+        JOIN clientes ON clientes.id = pagos.cliente
+        LEFT JOIN citas ON citas.id = pagos.cita
+        WHERE pagos_cuotas.pagado = 0
+          AND pagos_cuotas.vencimiento <= DATE_ADD(CURDATE(), INTERVAL 5 DAY)
+        ORDER BY pagos_cuotas.vencimiento ASC, clientes.nombre ASC;
+    """)
+    cuotas_alertas = cursor.fetchall()
     cursor.close()
     
-    return jsonify({"usuarios": usuarios, "citas": citas, "citas_estados": citas_estados, "dias": dias}), 200
+    return jsonify({"usuarios": usuarios, "citas": citas, "citas_estados": citas_estados, "dias": dias, "cuotas_alertas": cuotas_alertas}), 200
 
 @app.get("/api/citas_preguntas/<int:id_cita>")
 def obtener_preguntas_respuestas(id_cita):
