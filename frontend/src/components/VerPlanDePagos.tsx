@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Loading from "../components/Loading";
 import FormatearNumero from "../components/FormatearNumero";
 
@@ -13,6 +13,8 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
+  Upload,
+  Download,
 } from "lucide-react";
 
 type Cuota = {
@@ -24,10 +26,19 @@ type Cuota = {
   fechapago: string | null;
   idmetodo: number;
   metodo: string;
+  nota?: string;
+  comprobante?: string;
+};
+
+type MetodoPago = {
+  id: number;
+  metodo: string;
+  color?: string;
 };
 
 type Props = {
   idPago: number;
+  idCita: number;
   total: number;
   cuotas: Cuota[];
   onActualizado?: () => void;   // callback para refrescar Cliente.tsx
@@ -53,20 +64,46 @@ function formatFechaPago(raw: string | null): string {
   return `${month}/${day}/${year}`;
 }
 
-export default function VerPlanDePagos({ idPago, cuotas: cuotasIniciales, onActualizado }: Props) {
-  const [cuotas, setCuotas] = useState<Cuota[]>(
-    cuotasIniciales.map((c) => ({
-      ...c,
-      vencimiento: formatVencimiento(c.vencimiento),
-      monto: Number(c.monto),
-      interes: Number(c.interes),
-      pagado: Boolean(c.pagado),
-    }))
-  );
+function normalizarCuotas(cuotas: Cuota[]): Cuota[] {
+  return cuotas.map((c) => ({
+    ...c,
+    vencimiento: formatVencimiento(c.vencimiento),
+    monto: Number(c.monto),
+    interes: Number(c.interes),
+    pagado: Boolean(c.pagado),
+    idmetodo: Number(c.idmetodo || 1),
+    nota: c.nota || "",
+    comprobante: c.comprobante || "",
+  }));
+}
+
+export default function VerPlanDePagos({ idPago, idCita, cuotas: cuotasIniciales, onActualizado }: Props) {
+  const [cuotas, setCuotas] = useState<Cuota[]>(normalizarCuotas(cuotasIniciales));
+  const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([]);
   const [error, setError] = useState("");
   const [expandido, setExpandido] = useState(true);
+  const [confirmacionVisible, setConfirmacionVisible] = useState(false);
 
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setCuotas(normalizarCuotas(cuotasIniciales));
+  }, [cuotasIniciales]);
+
+  useEffect(() => {
+    const cargarMetodos = async () => {
+      try {
+        const res = await fetch("/api/pagos/metodos");
+        if (!res.ok) return;
+        const data = await res.json();
+        setMetodosPago(data ?? []);
+      } catch (err) {
+        console.error("Error al traer metodos de pago:", err);
+      }
+    };
+
+    cargarMetodos();
+  }, []);
 
   const cuotasPagadas = cuotas.filter((c) => c.pagado).length;
   const totalReal = cuotas.reduce(
@@ -102,8 +139,44 @@ export default function VerPlanDePagos({ idPago, cuotas: cuotasIniciales, onActu
         fechapago: null,
         idmetodo: 1,
         metodo: "Efectivo",
+        nota: "",
+        comprobante: "",
       },
     ]);
+  };
+
+  const handleSubirComprobante = async (index: number, archivo: File | null) => {
+    if (!archivo) return;
+
+    setLoading(true);
+    setError("");
+
+    const formData = new FormData();
+    formData.append("comprobante", archivo);
+    if (cuotas[index]?.comprobante) {
+      formData.append("comprobanteAnterior", cuotas[index].comprobante || "");
+    }
+
+    try {
+      const res = await fetch(`/api/comprobantes/${idCita}`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || `Error al subir comprobante (${res.status})`);
+        return;
+      }
+
+      handleCuotaChange(index, "comprobante", data.comprobante || "");
+    } catch (err) {
+      setError("Error de conexion al subir comprobante.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGuardar = async () => {
@@ -123,12 +196,15 @@ export default function VerPlanDePagos({ idPago, cuotas: cuotasIniciales, onActu
             pagado: c.pagado,
             fechapago: c.fechapago,
             idmetodo: c.idmetodo,
+            nota: c.nota || "",
+            comprobante: c.comprobante || "",
           })),
         }),
       });
 
       if (res.ok) {
         onActualizado?.();
+        setConfirmacionVisible(true);
       } else {
         const data = await res.json().catch(() => ({}));
         setError(data?.error || `Error ${res.status}`);
@@ -222,6 +298,7 @@ export default function VerPlanDePagos({ idPago, cuotas: cuotasIniciales, onActu
               {cuotas.map((cuota, index) => {
                 const montoConInteres = cuota.monto;
                 const fechaPago = formatFechaPago(cuota.fechapago);
+                const tieneMetodo = Boolean(cuota.idmetodo);
                 return (
                   <div
                     key={cuota.idcuota}
@@ -313,12 +390,76 @@ export default function VerPlanDePagos({ idPago, cuotas: cuotasIniciales, onActu
                     </div>
 
                     {cuota.pagado && fechaPago && (
-                      <div className="pl-16 -mt-1">
+                      <div className="col-span-12 pl-16 -mt-1">
                         <div className="inline-flex items-center rounded-lg border border-green-500/20 bg-green-500/10 px-2 py-1 text-xs font-semibold text-green-300">
                           Pagado el {fechaPago}
                         </div>
                       </div>
                     )}
+
+                    <div className="col-span-12 grid grid-cols-1 gap-2 pl-0 sm:grid-cols-12 sm:pl-16">
+                      <div className="sm:col-span-4">
+                        <label className="mb-1 block text-xs font-semibold text-white/40">Método</label>
+                        <select
+                          value={cuota.idmetodo || ""}
+                          onChange={(e) => {
+                            const idmetodo = Number(e.target.value);
+                            const metodo = metodosPago.find((item) => item.id === idmetodo)?.metodo || "";
+                            handleCuotaChange(index, "idmetodo", idmetodo);
+                            handleCuotaChange(index, "metodo", metodo);
+                          }}
+                          className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-2 py-1.5 text-xs text-white outline-none focus:border-orange-500/50"
+                        >
+                          <option value="">Seleccionar método</option>
+                          {metodosPago.map((metodo) => (
+                            <option key={metodo.id} value={metodo.id}>
+                              {metodo.metodo}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {tieneMetodo && (
+                        <>
+                          <div className="sm:col-span-4">
+                            <label className="mb-1 block text-xs font-semibold text-white/40">Tipo/Nota</label>
+                            <input
+                              value={cuota.nota || ""}
+                              onChange={(e) => handleCuotaChange(index, "nota", e.target.value)}
+                              placeholder="ZELLE, CASHAPP, NOTA, ETC."
+                              className="w-full uppercase rounded-xl border border-white/10 bg-zinc-950/40 px-2 py-1.5 text-xs text-white outline-none focus:border-orange-500/50"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-4">
+                            <label className="mb-1 block text-xs font-semibold text-white/40">Comprobante</label>
+                            <div className="flex items-center gap-2">
+                              <label className="flex h-8 cursor-pointer items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-3 text-xs font-bold text-orange-200 transition hover:bg-orange-500/20">
+                                <Upload className="h-3.5 w-3.5" />
+                                Cargar
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  onChange={(e) => handleSubirComprobante(index, e.target.files?.[0] || null)}
+                                />
+                              </label>
+                              {cuota.comprobante && (
+                                <a
+                                  href={cuota.comprobante}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  download
+                                  className="flex h-8 items-center gap-1 rounded-xl border border-green-500/20 bg-green-500/10 px-3 text-xs font-bold text-green-300 transition hover:bg-green-500/20"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                  Descargar
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -349,6 +490,22 @@ export default function VerPlanDePagos({ idPago, cuotas: cuotasIniciales, onActu
               </button>
             </div>
           </>
+        )}
+        {confirmacionVisible && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+            <div className="w-full max-w-sm rounded-2xl border border-green-500/30 bg-zinc-950 p-6 text-center shadow-2xl shadow-black/50">
+              <CheckCircle className="mx-auto mb-3 h-10 w-10 text-green-400" />
+              <h3 className="text-lg font-bold text-white">Plan actualizado con exito</h3>
+              <p className="mt-1 text-sm text-white/50">Los datos del plan de pagos se guardaron correctamente.</p>
+              <button
+                type="button"
+                onClick={() => setConfirmacionVisible(false)}
+                className="mt-5 w-full rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-600"
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
         )}
       </div>
   );
