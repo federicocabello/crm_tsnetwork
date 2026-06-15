@@ -344,10 +344,46 @@ def allowed_file(filename):
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+FRONTEND_UPLOADS_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend", "uploads"))
+COMPROBANTES_UPLOADS_DIR = os.path.join(FRONTEND_UPLOADS_DIR, "comprobantes")
 
 @app.route('/uploads/<path:filename>')
 def serve_file(filename):
+    if filename.startswith("comprobantes/"):
+        return send_from_directory(FRONTEND_UPLOADS_DIR, filename)
     return send_from_directory(UPLOADS_DIR, filename)
+
+@app.post("/api/comprobantes/<int:id_cita>")
+def subir_comprobante_pago(id_cita):
+    archivo = request.files.get("comprobante")
+    comprobante_anterior = (request.form.get("comprobanteAnterior") or "").strip()
+
+    if not archivo:
+        return jsonify({"error": "No se envio ningun comprobante"}), 400
+
+    nombre_original = archivo.filename or ""
+    if not allowed_file(nombre_original):
+        return jsonify({"error": "Tipo de archivo no permitido"}), 400
+
+    nombre_seguro = secure_filename(nombre_original)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    nombre_final = f"{timestamp}_{nombre_seguro}"
+    carpeta = os.path.join(COMPROBANTES_UPLOADS_DIR, f"cita_{id_cita}")
+    os.makedirs(carpeta, exist_ok=True)
+
+    ruta_guardado = os.path.join(carpeta, nombre_final)
+    archivo.save(ruta_guardado)
+
+    prefijo_permitido = f"/uploads/comprobantes/cita_{id_cita}/"
+    if comprobante_anterior.startswith(prefijo_permitido):
+        ruta_relativa = comprobante_anterior.replace("/uploads/", "", 1)
+        ruta_anterior = os.path.abspath(os.path.join(FRONTEND_UPLOADS_DIR, ruta_relativa))
+        carpeta_comprobantes = os.path.abspath(COMPROBANTES_UPLOADS_DIR)
+        if ruta_anterior.startswith(carpeta_comprobantes) and os.path.isfile(ruta_anterior):
+            os.remove(ruta_anterior)
+
+    directorio = f"/uploads/comprobantes/cita_{id_cita}/{nombre_final}"
+    return jsonify({"comprobante": directorio, "original": nombre_original}), 200
 
 @app.post("/api/citas/<int:id_cita>/archivos")
 def subir_archivos_cita(id_cita):
@@ -634,6 +670,21 @@ def configuracion_nuevo_color_estado():
     mysql.connection.commit()
     cursor.close()
     return jsonify({"msg": "Color actualizado con éxito."}), 201
+
+@app.post("/api/configuracion/nuevo-nombre-estado")
+def configuracion_nuevo_nombre_estado():
+    data = request.get_json(silent=True) or {}
+    estado = (data.get("estado") or "").strip().upper()
+    idestado = data.get("idestado")
+
+    if not estado or not idestado:
+        return jsonify({"error": "Faltan datos"}), 400
+
+    cursor = mysql.connection.cursor()
+    cursor.execute("UPDATE citas_estados SET estado = %s WHERE id = %s", (estado, idestado))
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"msg": "Estado actualizado correctamente."}), 200
 
 @app.post("/api/agenda/cambiar-hora")
 def agenda_cambiar_hora():
@@ -1164,6 +1215,33 @@ def obtener_datos_cliente(id_cliente):
     finally:
         cursor.close()
 
+@app.put("/api/clientes/<int:id_cliente>/email")
+def actualizar_email_cliente(id_cliente):
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+
+    if not email:
+        return jsonify({"error": "Email requerido"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            "UPDATE clientes SET email = %s WHERE id = %s",
+            (email, id_cliente),
+        )
+        actualizado = cursor.rowcount
+        mysql.connection.commit()
+
+        if actualizado == 0:
+            return jsonify({"error": "Cliente no encontrado"}), 404
+
+        return jsonify({"email": email}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
 @app.put("/api/citas/actualizar/<int:id_cita>")
 def actualizar_cita(id_cita):
     data = request.get_json(silent=True) or {}
@@ -1238,9 +1316,11 @@ def obtener_pagos_cliente(id_cita):
                    pagos_cuotas.vencimiento AS vencimiento,
                    pagos_cuotas.fechapago AS fechapago,
                    pagos_cuotas.metodo AS idmetodo,
-                   pagos_metodos.metodo AS metodo
+                   pagos_metodos.metodo AS metodo,
+                   pagos_cuotas.nota AS nota,
+                   pagos_cuotas.comprobante AS comprobante
             FROM pagos_cuotas
-            JOIN pagos_metodos ON pagos_metodos.id = pagos_cuotas.metodo
+            LEFT JOIN pagos_metodos ON pagos_metodos.id = pagos_cuotas.metodo
             WHERE pagos_cuotas.pago = %s
             ORDER BY pagos_cuotas.vencimiento ASC
             """,
@@ -1285,22 +1365,24 @@ def actualizar_plan_de_pagos(id_pago):
             pagado      = int(bool(cuota.get("pagado", False)))
             fechapago   = cuota.get("fechapago") if pagado else None
             metodo      = int(cuota.get("idmetodo") or cuota.get("metodo") or 1)
+            nota        = (cuota.get("nota") or "").strip()
+            comprobante = (cuota.get("comprobante") or "").strip()
 
             if pagado and not fechapago:
                 cursor.execute(
                     """
-                    INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, fechapago, metodo)
-                    VALUES (%s, %s, %s, %s, %s, NOW(), %s)
+                    INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, fechapago, metodo, nota, comprobante)
+                    VALUES (%s, %s, %s, %s, %s, NOW(), %s, %s, %s)
                     """,
-                    (id_pago, monto, interes, vencimiento, pagado, metodo)
+                    (id_pago, monto, interes, vencimiento, pagado, metodo, nota, comprobante)
                 )
             else:
                 cursor.execute(
                     """
-                    INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, fechapago, metodo)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, fechapago, metodo, nota, comprobante)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (id_pago, monto, interes, vencimiento, pagado, fechapago, metodo)
+                    (id_pago, monto, interes, vencimiento, pagado, fechapago, metodo, nota, comprobante)
                 )
 
         mysql.connection.commit()
@@ -1340,13 +1422,16 @@ def crear_plan_de_pagos():
             monto     = float(cuota.get("monto", 0))
             interes   = float(cuota.get("interes", 0))
             vencimiento = cuota.get("vencimiento")
+            metodo    = int(cuota.get("idmetodo") or cuota.get("metodo") or 1)
+            nota      = (cuota.get("nota") or "").strip()
+            comprobante = (cuota.get("comprobante") or "").strip()
 
             cursor.execute(
                 """
-                INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, metodo)
-                VALUES (%s, %s, %s, %s, 0, 1)
+                INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, metodo, nota, comprobante)
+                VALUES (%s, %s, %s, %s, 0, %s, %s, %s)
                 """,
-                (id_pago, monto, interes, vencimiento)
+                (id_pago, monto, interes, vencimiento, metodo, nota, comprobante)
             )
 
         mysql.connection.commit()
@@ -1458,10 +1543,61 @@ def get_pagos_resumen():
 def get_pagos_metodos():
     cursor = mysql.connection.cursor()
     try:
-        cursor.execute("SELECT id, metodo, color FROM pagos_metodos")
+        cursor.execute("SELECT id, metodo, color FROM pagos_metodos ORDER BY metodo")
         metodos = cursor.fetchall()
         return jsonify(metodos), 200
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.post("/api/pagos/metodos")
+def crear_pago_metodo():
+    data = request.get_json(silent=True) or {}
+    metodo = (data.get("metodo") or "").strip().upper()
+    color = (data.get("color") or "#f97316").strip()
+
+    if not metodo:
+        return jsonify({"error": "Metodo requerido"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO pagos_metodos (metodo, color) VALUES (%s, %s)",
+            (metodo, color),
+        )
+        mysql.connection.commit()
+        return jsonify({"msg": "Metodo de pago creado correctamente"}), 201
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.put("/api/pagos/metodos/<int:id_metodo>")
+def actualizar_pago_metodo(id_metodo):
+    data = request.get_json(silent=True) or {}
+    metodo = (data.get("metodo") or "").strip().upper()
+    color = (data.get("color") or "#f97316").strip()
+
+    if not metodo:
+        return jsonify({"error": "Metodo requerido"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            "UPDATE pagos_metodos SET metodo = %s, color = %s WHERE id = %s",
+            (metodo, color, id_metodo),
+        )
+        actualizado = cursor.rowcount
+        mysql.connection.commit()
+
+        if actualizado == 0:
+            return jsonify({"error": "Metodo no encontrado"}), 404
+
+        return jsonify({"msg": "Metodo de pago actualizado correctamente"}), 200
+    except Exception as e:
+        mysql.connection.rollback()
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()

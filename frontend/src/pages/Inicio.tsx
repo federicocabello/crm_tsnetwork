@@ -107,6 +107,28 @@ function addDays(dateKey: string, delta: number) {
   return toDateKey(d);
 }
 
+function isSundayDate(date: Date) {
+  return date.getDay() === 0;
+}
+
+function isSundayKey(dateKey: string) {
+  return isSundayDate(fromDateKey(dateKey));
+}
+
+function getSelectableDateKey(dateKey: string) {
+  return isSundayKey(dateKey) ? addDays(dateKey, 1) : dateKey;
+}
+
+function addDaysSkippingSunday(dateKey: string, delta: number) {
+  let nextKey = addDays(dateKey, delta);
+
+  while (isSundayKey(nextKey)) {
+    nextKey = addDays(nextKey, delta > 0 ? 1 : -1);
+  }
+
+  return nextKey;
+}
+
 function formatHeader(dateKey: string) {
   const d = fromDateKey(dateKey);
   return d.toLocaleDateString("es-AR", {
@@ -131,7 +153,7 @@ export default function Inicio() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const navigate = useNavigate();
 
-  const todayKey = useMemo(() => toDateKey(new Date()), []);
+  const todayKey = useMemo(() => getSelectableDateKey(toDateKey(new Date())), []);
 
   const [selectedDay, setSelectedDay] = useState<string>(todayKey);
   const [selectedDayNuevaCita, setSelectedDayNuevaCita] =
@@ -212,11 +234,11 @@ export default function Inicio() {
   };
 
   function goPrev() {
-    setSelectedDay((d) => addDays(d, -1));
+    setSelectedDay((d) => addDaysSkippingSunday(d, -1));
   }
 
   function goNext() {
-    setSelectedDay((d) => addDays(d, 1));
+    setSelectedDay((d) => addDaysSkippingSunday(d, 1));
   }
 
   function goToday() {
@@ -516,8 +538,8 @@ export default function Inicio() {
   };
 
   return (
-    <div className="w-full h-full min-h-0 flex gap-3">
-      <div className="w-1/4 h-full shrink-0">
+    <div className="flex h-full min-h-0 w-full flex-col gap-3 xl:flex-row">
+      <div className="w-full shrink-0 xl:h-full xl:w-1/4 xl:overflow-y-auto xl:pr-1">
         <div className="w-full cuadro">
           <div className="flex flex-col gap-3 text-center mb-3">
             <div className="text-lg sm:text-xl font-extrabold tracking-tight capitalize">
@@ -525,30 +547,37 @@ export default function Inicio() {
             </div>
           </div>
 
-          <div className="flex justify-center items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
             <button
               onClick={goPrev}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold hover:bg-white/10 cursor-pointer">
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold hover:bg-white/10 cursor-pointer sm:text-sm">
               ← Anterior
             </button>
             <button
               onClick={goToday}
-              className="rounded-xl border border-orange-500/30 bg-orange-500/15 px-3 py-2 text-sm font-bold text-orange-100 hover:bg-orange-500/20 cursor-pointer">
+              className="rounded-xl border border-orange-500/30 bg-orange-500/15 px-3 py-2 text-xs font-bold text-orange-100 hover:bg-orange-500/20 cursor-pointer sm:text-sm">
               Hoy
             </button>
             <button
               onClick={goNext}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold hover:bg-white/10 cursor-pointer">
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold hover:bg-white/10 cursor-pointer sm:text-sm">
               Siguiente →
             </button>
 
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
               <span className="text-xs text-white/60">Ir a</span>
-              <input
-                type="date"
-                value={selectedDay}
-                onChange={(e) => setSelectedDay(e.target.value)}
-                className="bg-transparent text-sm outline-none"
+              <DatePicker
+                selected={fromDateKey(selectedDay)}
+                onChange={(date: Date | null) => {
+                  if (!date || isSundayDate(date)) return;
+                  setSelectedDay(toDateKey(date));
+                }}
+                filterDate={(date: Date) => !isSundayDate(date)}
+                dayClassName={(date: Date) =>
+                  isSundayDate(date) ? "datepicker-sunday-blocked" : ""
+                }
+                dateFormat="MM/dd/yyyy"
+                className="w-24 bg-transparent text-sm outline-none sm:w-28"
               />
             </div>
           </div>
@@ -567,8 +596,8 @@ export default function Inicio() {
               <button
                 onClick={() => handleSelection("camaras")}
                 className={`boton flex gap-1 justify-center items-center ${selectedOption == "camaras"
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-300 text-gray-800 hover:bg-gray-400"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
                   }`}>
                 <Cctv className="w-4 h-4" />
                 Cámaras
@@ -576,8 +605,8 @@ export default function Inicio() {
               <button
                 onClick={() => handleSelection("internet")}
                 className={`boton flex gap-1 justify-center items-center ${selectedOption == "internet"
-                    ? "bg-green-500 text-white"
-                    : "bg-gray-300 text-gray-800 hover:bg-gray-400"
+                  ? "bg-green-500 text-white"
+                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
                   }`}>
                 <Globe className="w-4 h-4" />
                 Internet
@@ -591,10 +620,19 @@ export default function Inicio() {
                   <label className="block text-xs text-white/60 mb-1">
                     Fecha
                   </label>
-                  <input
-                    type="date"
-                    value={selectedDayNuevaCita}
-                    onChange={(e) => setSelectedDayNuevaCita(e.target.value)}
+                  <DatePicker
+                    selected={fromDateKey(selectedDayNuevaCita)}
+                    onChange={(date: Date | null) => {
+                      if (!date || isSundayDate(date)) return;
+                      setSelectedDayNuevaCita(toDateKey(date));
+                    }}
+                    filterDate={(date: Date) => !isSundayDate(date)}
+                    dayClassName={(date: Date) =>
+                      isSundayDate(date)
+                        ? "datepicker-sunday-blocked"
+                        : ""
+                    }
+                    dateFormat="MM/dd/yyyy"
                     className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer"
                   />
                 </div>
@@ -677,10 +715,10 @@ export default function Inicio() {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <input
               type="text"
-              className="bg-zinc-900 text-white placeholder:text-white/60 border border-white/10 focus:border-orange-500/40 text-sm p-2 rounded-lg w-full uppercase"
+              className="min-w-0 bg-zinc-900 text-white placeholder:text-white/60 border border-white/10 focus:border-orange-500/40 text-sm p-2 rounded-lg w-full uppercase"
               placeholder="Nombre, teléfono o domicilio"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -696,8 +734,8 @@ export default function Inicio() {
                     key={c.id}
                     //className="p-2 text-white hover:bg-orange-600 hover:text-white/90 cursor-pointer"
                     className={`p-2 text-white cursor-pointer flex items-center gap-2 transition-all ${esSeleccionado
-                        ? "bg-green-600 text-white font-bold"
-                        : "hover:bg-orange-600 hover:text-white/90"
+                      ? "bg-green-600 text-white font-bold"
+                      : "hover:bg-orange-600 hover:text-white/90"
                       }`}
                     onClick={() => {
                       seleccionarCliente(c.id, c.nombre);
@@ -721,18 +759,32 @@ export default function Inicio() {
                   Citas de <strong>{nombreClienteSeleccionado}</strong>
                 </div>
                 {buscarCitasCliente.length > 0 ? (
-                  <ul className="overflow-auto border border-white/10">
-                    {buscarCitasCliente.map((cita) => (
-                      <li
-                        key={cita.id}
-                        className="p-4 text-white hover:bg-orange-500/70 hover:text-white cursor-pointer flex gap-2 items-center justify-between transition-all"
-                        onClick={() => setSelectedDay(cita.dia_original)}>
-                        <span className="font-bold text-lg">{cita.dia}</span>
-                        <span className="rounded-full border border-white bg-green-700 px-2 py-1 text-xs font-bold text-center w-20 transition-all">
-                          {cita.hora}
-                        </span>
-                      </li>
-                    ))}
+                  <ul className="max-h-64 overflow-auto rounded-b-lg border border-white/10 xl:max-h-56">
+                    {buscarCitasCliente.map((cita) => {
+                      const esDomingo = isSundayKey(cita.dia_original);
+
+                      return (
+                        <li
+                          key={cita.id}
+                          className={`p-3 text-white flex flex-wrap gap-2 items-center justify-between transition-all sm:p-4 ${esDomingo
+                            ? "cursor-not-allowed border-l-4 border-red-500 bg-red-500/10 text-red-200"
+                            : "cursor-pointer hover:bg-orange-500/70 hover:text-white"
+                            }`}
+                          onClick={() => {
+                            if (esDomingo) return;
+                            setSelectedDay(cita.dia_original);
+                          }}>
+                          <span className="min-w-0 break-words text-base font-bold sm:text-lg">{cita.dia}</span>
+                          <span
+                            className={`shrink-0 rounded-full border px-2 py-1 text-xs font-bold text-center w-20 transition-all ${esDomingo
+                              ? "border-red-300/50 bg-red-700/70 text-red-50"
+                              : "border-white bg-green-700"
+                              }`}>
+                            {esDomingo ? "Domingo" : cita.hora}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <div className="text-white/60">
@@ -744,9 +796,10 @@ export default function Inicio() {
           )}
         </div>
 
+        {cuotasAlertas.length > 0 && (
         <div className="mt-3 w-full cuadro shrink-0">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div className="font-bold flex items-center gap-1">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="font-bold flex min-w-0 items-center gap-1">
               <TriangleAlert className="w-4 h-4 text-orange-400" />
               Cuotas por vencer
             </div>
@@ -794,7 +847,7 @@ export default function Inicio() {
                           onClick={() => navigate(`/clientes/${cuota.idcliente}`)}
                           className="w-full border-b border-white/5 bg-zinc-950/30 px-3 py-2 text-left text-xs transition hover:bg-white/5 last:border-b-0"
                         >
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center justify-between gap-2">
                             <span className="truncate font-bold text-white">
                               {cuota.cliente}
                             </span>
@@ -802,7 +855,7 @@ export default function Inicio() {
                               <FormatearNumero numero={Number(cuota.monto)} />
                             </span>
                           </div>
-                          <div className="mt-0.5 flex items-center justify-between gap-2 text-white/45">
+                          <div className="mt-0.5 flex flex-wrap items-center justify-between gap-2 text-white/45">
                             <span>{formatShortDate(cuota.vencimiento)}</span>
                             <span>
                               {Number(cuota.dias) < 0
@@ -821,19 +874,20 @@ export default function Inicio() {
             </div>
           )}
         </div>
+        )}
       </div>
 
-      <div className="flex-1 min-h-0 cuadro flex flex-col w-full">
-        <div className="flex items-center justify-between">
+      <div className="flex min-h-[28rem] w-full min-w-0 flex-col cuadro xl:min-h-0 xl:w-3/4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-extrabold tracking-tight">
             Eventos del día
           </h2>
-          <span className="flex items-center gap-3">
+          <span className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={() => handleSelectionEventos("my")}
               className={`boton border border-white/10 ${selectedOptionEventos == "my"
-                  ? "bg-orange-600 hover:bg-white/20"
-                  : "hover:bg-orange-600 bg-white/20"
+                ? "bg-orange-600 hover:bg-white/20"
+                : "hover:bg-orange-600 bg-white/20"
                 }`}>
               Mis eventos
             </button>
@@ -843,8 +897,8 @@ export default function Inicio() {
                 <button
                   onClick={() => handleSelectionEventos("all")}
                   className={`boton border border-white/10 ${selectedOptionEventos == "all"
-                      ? "bg-orange-600 hover:bg-white/20"
-                      : "hover:bg-orange-600 bg-white/20"
+                    ? "bg-orange-600 hover:bg-white/20"
+                    : "hover:bg-orange-600 bg-white/20"
                     }`}>
                   Todos los eventos
                 </button>
@@ -852,7 +906,7 @@ export default function Inicio() {
           </span>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-2 mt-3 pr-2 items-start">
+        <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-0 xl:min-h-0 xl:pr-2">
           {dayItems.length === 0 ? (
             loading ? (
               <Loading />
@@ -867,8 +921,8 @@ export default function Inicio() {
                 key={it.idcita}
                 className="rounded-2xl border border-white/10 bg-zinc-950/30 p-3 transition">
                 <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
+                  <div className="mb-2 flex flex-col justify-between gap-2 lg:flex-row lg:items-start">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <DatePicker
                         value={it.hora_format}
                         showTimeSelect
@@ -914,7 +968,7 @@ export default function Inicio() {
                       {(it.tipo == "camarasdesdecero" ||
                         it.tipo == "camaras-tiene-nuevo-instalacion" ||
                         it.tipo == "camaras-tiene-existente-instalacion") && (
-                          <div className="flex items-center gap-2">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
                             <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
                               <Cctv className="h-4 w-4" />
                               <span>INSTALACIÓN DE CÁMARAS</span>
@@ -939,7 +993,7 @@ export default function Inicio() {
                         )}
                     </div>
 
-                    <div>
+                    <div className="shrink-0 lg:text-right">
                       <span className="text-xs italic text-white/60">
                         Asignado a <strong>{it.fullname}</strong>
                       </span>
@@ -947,21 +1001,21 @@ export default function Inicio() {
                   </div>
 
                   <div>
-                    <div className="flex justify-between items-center">
-                      <div className="flex gap-1 items-center">
+                    <div className="flex flex-col justify-between gap-2 xl:flex-row xl:items-center">
+                      <div className="flex min-w-0 flex-wrap gap-1.5 items-center">
                         <div
-                          className="text-sm font-extrabold flex items-center gap-1 cursor-pointer hover:scale-103 transition-all hover:underline hover:text-orange-500"
+                          className="min-w-0 text-sm font-extrabold flex items-center gap-1 cursor-pointer hover:scale-103 transition-all hover:underline hover:text-orange-500"
                           onClick={() => navigate(`/clientes/${it.idcliente}`)}>
-                          <User className="h-4 w-4" />
+                          <User className="h-4 w-4 shrink-0" />
                           {it.nombre}
                         </div>
                         {it.telefono && (
-                          <div className="text-sm flex items-center gap-1">
+                          <div className="min-w-0 text-sm flex items-center gap-1 break-words">
                             • <Phone className="h-4 w-4" /> {it.telefono}
                           </div>
                         )}
                         {it.direccion && (
-                          <div className="text-sm flex items-center gap-1">
+                          <div className="min-w-0 text-sm flex items-center gap-1 break-words">
                             • <Home className="h-4 w-4" /> {it.direccion}
                           </div>
                         )}
@@ -1003,17 +1057,17 @@ export default function Inicio() {
                           ))}
                         <button
                           onClick={() => abrirEditar(it)}
-                          className="boton flex items-center justify-center border py-0.5! ml-1 hover:bg-white hover:text-black italic">
+                          className="boton flex shrink-0 items-center justify-center border py-0.5! ml-0 hover:bg-white hover:text-black italic sm:ml-1">
                           <Pencil className="h-3 w-3" />
                           Editar registro
                         </button>
                       </div>
                       {it.tiene_hoja &&
                         it.tipo_hoja !== "instalacion_confirmada" ? (
-                        <div>
+                        <div className="shrink-0">
                           <button
                             onClick={() => abrirConfirmarInstalacion(it.idhoja)}
-                            className="group flex items-center justify-center gap-1.5 rounded-full border border-green-400/30 bg-green-500/15 px-3 py-1 text-xs font-extrabold text-green-200 shadow-sm shadow-green-500/10 transition-all hover:border-green-300/70 hover:bg-green-500/25 hover:text-white hover:shadow-green-500/20">
+                            className="group flex w-full items-center justify-center gap-1.5 rounded-full border border-green-400/30 bg-green-500/15 px-3 py-1 text-xs font-extrabold text-green-200 shadow-sm shadow-green-500/10 transition-all hover:border-green-300/70 hover:bg-green-500/25 hover:text-white hover:shadow-green-500/20 sm:w-auto">
                             <CircleCheck className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
                             Confirmar Instalación
                           </button>
@@ -1029,7 +1083,7 @@ export default function Inicio() {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {(it.tipo == "camarasdesdecero" ||
                         it.tipo == "camaras-tiene-nuevo-instalacion" ||
                         it.tipo == "camaras-tiene-existente-instalacion") && (
@@ -1215,6 +1269,51 @@ export default function Inicio() {
             </div>
           </div>
         )}
+        <style>{`
+          .react-datepicker {
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgb(24, 24, 27);
+            color: white;
+            font-family: inherit;
+          }
+
+          .react-datepicker__header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgb(39, 39, 42);
+          }
+
+          .react-datepicker__current-month,
+          .react-datepicker-time__header,
+          .react-datepicker-year-header,
+          .react-datepicker__day-name,
+          .react-datepicker__day {
+            color: rgba(255, 255, 255, 0.86);
+          }
+
+          .react-datepicker__day:hover {
+            background: rgba(249, 115, 22, 0.22);
+          }
+
+          .react-datepicker__day--selected,
+          .react-datepicker__day--keyboard-selected {
+            background: rgb(249, 115, 22);
+            color: white;
+          }
+
+          .react-datepicker__day--disabled,
+          .datepicker-sunday-blocked {
+            border-radius: 9999px;
+            background: rgba(239, 68, 68, 0.12);
+            color: rgba(248, 113, 113, 0.72);
+            cursor: not-allowed;
+            text-decoration: line-through;
+          }
+
+          .react-datepicker__day--disabled:hover,
+          .datepicker-sunday-blocked:hover {
+            background: rgba(239, 68, 68, 0.12);
+          }
+        `}</style>
       </div>
     </div>
   );

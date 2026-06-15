@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../auth/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import Loading from "../components/Loading";
 import {
@@ -47,7 +46,6 @@ type ClienteResultado = {
 };
 
 export default function Pagos() {
-  const { user } = useAuth();
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const navigate = useNavigate();
 
