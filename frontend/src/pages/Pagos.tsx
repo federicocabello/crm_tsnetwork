@@ -280,7 +280,7 @@ export default function Pagos() {
           <h2 className="text-white/60 text-sm font-bold uppercase tracking-wider">
             Pendientes mes seleccionado
           </h2>
-          <div className="text-3xl font-extrabold text-red-400">
+          <div className="text-3xl font-extrabold text-orange-400">
             {formatCurrency(pendientesMesSeleccionado?.total)}
           </div>
           <div className="text-xs text-white/40">
