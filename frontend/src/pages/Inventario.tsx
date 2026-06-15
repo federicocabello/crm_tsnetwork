@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Package, Pencil, Save, X, Plus, Trash2, Search } from "lucide-react";
 import Loading from "../components/Loading";
 
@@ -16,6 +16,21 @@ export default function Inventario() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Sorting state
+  const [sortField, setSortField] = useState<"descrip" | "stock" | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Function to toggle sorting
+  const toggleSort = (field: "descrip" | "stock") => {
+    if (sortField === field) {
+      // toggle order
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
 
   // Edit state
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -128,6 +143,21 @@ export default function Inventario() {
       p.id.toString().includes(searchQuery),
   );
 
+  // Apply sorting
+  const sortedProductos = useMemo(() => {
+    if (!sortField) return filteredProductos;
+    const sorted = [...filteredProductos].sort((a, b) => {
+      if (sortField === 'descrip') {
+        const comp = a.descrip.localeCompare(b.descrip);
+        return sortOrder === 'asc' ? comp : -comp;
+      } else {
+        const comp = a.stock - b.stock;
+        return sortOrder === 'asc' ? comp : -comp;
+      }
+    });
+    return sorted;
+  }, [filteredProductos, sortField, sortOrder]);
+
   if (loading) return <Loading />;
 
   return (
@@ -164,9 +194,15 @@ export default function Inventario() {
           <table className="w-full text-left text-sm text-white/80">
             <thead className="bg-zinc-900/50 text-xs uppercase text-white/60 sticky top-0 backdrop-blur-md z-10">
               <tr>
-                <th className="px-4 py-3 w-1/2">Descripción</th>
-                <th className="px-4 py-3 text-right">Precio</th>
-                <th className="px-4 py-3 text-right">Stock</th>
+                <th className="px-4 py-3 w-1/2" onClick={() => toggleSort('descrip')} style={{ cursor: 'pointer' }}>
+                  Descripción {sortField === 'descrip' && (sortOrder === 'asc' ? '▲' : '▼')}
+                </th>
+                <th className="px-4 py-3 text-right">
+                  Precio
+                </th>
+                <th className="px-4 py-3 text-right" onClick={() => toggleSort('stock')} style={{ cursor: 'pointer' }}>
+                  Stock {sortField === 'stock' && (sortOrder === 'asc' ? '▲' : '▼')}
+                </th>
                 <th className="px-4 py-3 text-center">Acciones</th>
               </tr>
             </thead>
@@ -238,11 +274,11 @@ export default function Inventario() {
                 </tr>
               )}
 
-              {filteredProductos.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                  {/* <td className="px-4 py-3">{p.id}</td> */}
+                {sortedProductos.map((p) => (
+                  <tr
+                    key={p.id}
+                    className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                  >{/* <td className="px-4 py-3">{p.id}</td> */}
                   <td className="px-4 py-3">
                     {editingId === p.id ? (
                       <input
