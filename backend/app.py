@@ -1378,20 +1378,23 @@ def get_pagos_resumen():
         cursor.execute(query_pagadas, ('%Y-%m', mes))
         pagadas_mes = cursor.fetchone()
 
-        # Cuotas pendientes mes que viene
-        y, m = map(int, mes.split('-'))
-        m += 1
-        if m > 12:
-            m = 1
-            y += 1
-        next_month = f"{y:04d}-{m:02d}"
+        # Cuotas pendientes del mes calendario actual
+        mes_actual = datetime.now().strftime("%Y-%m")
 
         cursor.execute("""
             SELECT COUNT(*) as cantidad, SUM(monto + interes) as total
             FROM pagos_cuotas
             WHERE pagado = 0 AND DATE_FORMAT(vencimiento, %s) = %s
-        """, ('%Y-%m', next_month))
-        pendientes_mes_que_viene = cursor.fetchone()
+        """, ('%Y-%m', mes_actual))
+        pendientes_mes_actual = cursor.fetchone()
+
+        # Cuotas pendientes del mes seleccionado en el filtro
+        cursor.execute("""
+            SELECT COUNT(*) as cantidad, SUM(monto + interes) as total
+            FROM pagos_cuotas
+            WHERE pagado = 0 AND DATE_FORMAT(vencimiento, %s) = %s
+        """, ('%Y-%m', mes))
+        pendientes_mes_seleccionado = cursor.fetchone()
 
         # Deuda por cliente
         cursor.execute("""
@@ -1443,7 +1446,9 @@ def get_pagos_resumen():
 
         return jsonify({
             "pagadas_mes": pagadas_mes,
-            "pendientes_mes_que_viene": pendientes_mes_que_viene,
+            "pendientes_mes_actual": pendientes_mes_actual,
+            "pendientes_mes_seleccionado": pendientes_mes_seleccionado,
+            "pendientes_mes_que_viene": pendientes_mes_seleccionado,
             "deuda_por_cliente": deuda_por_cliente,
             "proximos_vencimientos": proximos_vencimientos,
             "cuotas_del_mes": cuotas_del_mes
