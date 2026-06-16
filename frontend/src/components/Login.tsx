@@ -46,7 +46,7 @@ export default function Login() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-zinc-950">
+    <div className="relative min-h-[100svh] overflow-hidden bg-zinc-950 sm:min-h-screen">
       {/* Fondo tecnológico: red de internet */}
       <div className="absolute inset-0 bg-zinc-950">
         {/* Gradientes base */}
@@ -100,10 +100,10 @@ export default function Login() {
       </div>
 
       {/* Contenido */}
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-5 py-10">
+      <div className="relative z-10 flex min-h-[100svh] items-center justify-center px-4 py-6 sm:min-h-screen sm:px-5 sm:py-10">
         <div className="w-full max-w-md">
           {/* Card */}
-          <div className="relative rounded-3xl border border-white/10 bg-white/5 p-7 shadow-2xl backdrop-blur-xl">
+          <div className="relative rounded-2xl border border-white/10 bg-white/5 p-5 shadow-2xl backdrop-blur-xl sm:rounded-3xl sm:p-7">
             <img
               src="/logo_tsnetwork.png"
               alt="TS Network"
@@ -112,16 +112,16 @@ export default function Login() {
 
             {/* Header */}
             <div className="mb-6">
-              <div className="gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-white/80 w-32 text-center">
+              <div className="w-fit max-w-full gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-white/80 text-center">
                 <span className="rounded-full bg-brand-500" />
                 CRM TS NETWORK
               </div>
 
-              <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-orange-400 opacity-85">
+              <h1 className="mt-4 text-2xl font-extrabold tracking-tight text-orange-400 opacity-85 sm:text-2xl">
                 Iniciar sesión
               </h1>
 
-              <p className="mt-1 text-sm text-white/65">
+              <p className="mt-1 text-sm text-white/65 break-words">
                 Acceso interno · Agentes y técnicos
               </p>
             </div>
@@ -179,7 +179,7 @@ export default function Login() {
             </form>
 
             {/* Footer */}
-            <div className="mt-6 text-center text-xs text-white/45">
+            <div className="mt-6 text-center text-xs text-white/45 break-words">
               © {new Date().getFullYear()} TS NETWORK · Solo personal autorizado
             </div>
           </div>
@@ -555,6 +555,98 @@ export default function Login() {
           height: 37px;
           bottom: 21px;
           animation-delay: .7s;
+        }
+
+        @media (max-width: 640px) {
+          .data-streams {
+            opacity: 0.48;
+          }
+
+          .stream {
+            width: 110px;
+            height: 1px;
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.28);
+            animation-duration: 11s;
+          }
+
+          .stream-c,
+          .stream-d,
+          .link-d,
+          .link-e,
+          .node-d,
+          .node-e,
+          .signal-b {
+            display: none;
+          }
+
+          .net-link {
+            width: 54vw;
+            opacity: 0.7;
+          }
+
+          .link-a {
+            top: 16%;
+            left: -10%;
+          }
+
+          .link-b {
+            top: 70%;
+            right: -14%;
+            width: 60vw;
+          }
+
+          .link-c {
+            bottom: 12%;
+            left: -12%;
+            width: 58vw;
+          }
+
+          .net-node {
+            width: 9px;
+            height: 9px;
+            opacity: 0.65;
+          }
+
+          .node-a {
+            top: 14%;
+            left: 12%;
+          }
+
+          .node-b {
+            top: 74%;
+            left: 78%;
+          }
+
+          .node-c {
+            top: 84%;
+            right: 48%;
+          }
+
+          .signal-ring {
+            width: 150px;
+            height: 150px;
+            opacity: 0.55;
+          }
+
+          .signal-a {
+            top: 22%;
+            left: 74%;
+          }
+
+          .device {
+            opacity: 0.34;
+            transform: scale(0.82);
+          }
+
+          .camera-device {
+            top: 8%;
+            right: 4%;
+          }
+
+          .router-device {
+            bottom: 6%;
+            left: 4%;
+          }
         }
 
       `}</style>

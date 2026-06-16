@@ -14,6 +14,7 @@ import Inventario from "./pages/Inventario";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import Layout from "./components/Layout";
 import Cliente from "./pages/Cliente";
+import Pagos from "./pages/Pagos";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -73,6 +74,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <ProtectedRoute>
                 <Layout>
                   <Cliente />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/pagos"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Pagos />
                 </Layout>
               </ProtectedRoute>
             }

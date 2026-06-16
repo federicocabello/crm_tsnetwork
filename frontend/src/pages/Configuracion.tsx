@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import type { Usuarios } from "../types/auth";
-import { PencilIcon, PlusCircleIcon, ArrowRightLeftIcon, ContactRoundIcon } from "lucide-react";
+import { PencilIcon, PlusCircleIcon, ArrowRightLeftIcon, ContactRoundIcon, CalendarDays, CreditCard, UsersRound } from "lucide-react";
 import { ROLES } from "../types/auth";
 import Loading from "../components/Loading";
 import ConfiguracionCitas from "./ConfiguracionCitas";
+import ConfiguracionPagos from "./ConfiguracionPagos";
 import type { EstadoCita } from "../types/configuracion";
 
 export default function Users() {
@@ -118,12 +119,34 @@ export default function Users() {
   };
 
   const [ventanaActiva, setVentanaActiva] = useState("usuarios");
+  const tabs = [
+    { id: "usuarios", label: "Usuarios", icon: UsersRound },
+    { id: "citas", label: "Citas", icon: CalendarDays },
+    { id: "pagos", label: "Pagos", icon: CreditCard },
+  ];
 
   return (
     <div>
-      <div className="mb-3 flex gap-4">
-        <button className={`boton hover:bg-orange-600 ${ventanaActiva == "usuarios" ? "bg-orange-600" : "bg-gray-500"}`} onClick={() => setVentanaActiva("usuarios")}>Usuarios</button>
-        <button className={`boton hover:bg-orange-600 ${ventanaActiva == "citas" ? "bg-orange-600" : "bg-gray-500"}`} onClick={() => setVentanaActiva("citas")}>Citas</button>
+      <div className="mb-4 flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-zinc-950/30 p-1.5">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const activo = ventanaActiva === tab.id;
+
+          return (
+            <button
+              key={tab.id}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition ${
+                activo
+                  ? "bg-orange-600 text-white shadow-lg shadow-orange-600/20"
+                  : "text-white/60 hover:bg-white/10 hover:text-white"
+              }`}
+              onClick={() => setVentanaActiva(tab.id)}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {ventanaActiva == "usuarios" && (
@@ -218,6 +241,10 @@ export default function Users() {
         ) : (
           <ConfiguracionCitas citasEstados={citasEstados} refreshData={fetchUsers} />
         )
+      )}
+
+      {ventanaActiva == "pagos" && (
+        <ConfiguracionPagos />
       )}
     </div>
   );

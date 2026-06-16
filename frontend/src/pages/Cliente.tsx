@@ -60,7 +60,7 @@ export default function Cliente() {
 
   const [deudaTotal, setDeudaTotal] = useState<number>(0);
 
-  const [cuotas, setCuotas] = useState<{ idcuota: number, monto: number, interes: number, pagado: boolean, vencimiento: string, fechapago: string | null, idmetodo: number, metodo: string }[]>([]);
+  const [cuotas, setCuotas] = useState<{ idcuota: number, monto: number, interes: number, pagado: boolean, vencimiento: string, fechapago: string | null, idmetodo: number, metodo: string, nota?: string, comprobante?: string }[]>([]);
   const [idPago, setIdPago] = useState<number | null>(null);
   const [totalPlan, setTotalPlan] = useState<number>(0);
 
@@ -166,6 +166,36 @@ export default function Cliente() {
     }
   };
 
+  const agregarEmailCliente = async () => {
+    if (!cliente) return;
+
+    const emailIngresado = window.prompt("Ingresá el email del cliente");
+    const email = (emailIngresado || "").trim().toLowerCase();
+
+    if (!email) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/clientes/${cliente.idcliente}/email`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!res.ok) {
+        console.error("Error al actualizar el email. CÃ³digo:", res.status);
+        alert("No se pudo actualizar el email.");
+        return;
+      }
+
+      setCliente({ ...cliente, email });
+    } catch (error) {
+      console.error("Error al actualizar el email:", error);
+      alert("Error de conexiÃ³n con el backend.");
+    }
+  };
+
   const [mostrarPlanPagos, setMostrarPlanPagos] = useState(false);
 
   return (
@@ -175,10 +205,19 @@ export default function Cliente() {
         <div className="bg-zinc-900 p-4 rounded-xl border border-white/10 shadow-md mb-4 flex justify-between items-center">
           <div>
             <div className="text-2xl font-bold text-orange-500 flex items-center gap-1"><User className="h-6 w-6" />{cliente?.nombre}</div>
-            {cliente?.email && (
+            {cliente?.email ? (
               <div className="text-white/60 flex gap-1 text-sm items-center">
                 <Mail className="h-4 w-4" />{cliente.email}
               </div>
+            ) : (
+              <button
+                type="button"
+                onClick={agregarEmailCliente}
+                className="mt-1 inline-flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-200 transition hover:bg-orange-500/20"
+              >
+                <Mail className="h-4 w-4" />
+                Agregar email
+              </button>
             )}
           </div>
 
@@ -289,6 +328,7 @@ export default function Cliente() {
             idPago !== null && (
               <VerPlanDePagos
                 idPago={idPago}
+                idCita={citaSeleccionada}
                 total={totalPlan}
                 cuotas={cuotas}
                 onActualizado={() => {
