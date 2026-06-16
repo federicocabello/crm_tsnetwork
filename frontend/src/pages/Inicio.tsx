@@ -390,10 +390,10 @@ export default function Inicio() {
         prev.map((i) =>
           i.idcita === id
             ? {
-              ...i,
-              preguntas: data,
-              detalles: true,
-            }
+                ...i,
+                preguntas: data,
+                detalles: true,
+              }
             : i,
         ),
       );
@@ -525,7 +525,7 @@ export default function Inicio() {
             </div>
           </div>
 
-          <div className="flex justify-center items-center gap-2">
+          <div className="flex justify-center items-center gap-2 flex-wrap">
             <button
               onClick={goPrev}
               className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold hover:bg-white/10 cursor-pointer">
@@ -566,19 +566,21 @@ export default function Inicio() {
             <div className="flex gap-3">
               <button
                 onClick={() => handleSelection("camaras")}
-                className={`boton flex gap-1 justify-center items-center ${selectedOption == "camaras"
+                className={`boton flex gap-1 justify-center items-center ${
+                  selectedOption == "camaras"
                     ? "bg-blue-500 text-white"
                     : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                  }`}>
+                }`}>
                 <Cctv className="w-4 h-4" />
                 Cámaras
               </button>
               <button
                 onClick={() => handleSelection("internet")}
-                className={`boton flex gap-1 justify-center items-center ${selectedOption == "internet"
+                className={`boton flex gap-1 justify-center items-center ${
+                  selectedOption == "internet"
                     ? "bg-green-500 text-white"
                     : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                  }`}>
+                }`}>
                 <Globe className="w-4 h-4" />
                 Internet
               </button>
@@ -671,8 +673,7 @@ export default function Inicio() {
                   setBuscarCitasCliente([]);
                   setNombreClienteSeleccionado("");
                 }}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 p-0 text-white/60 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-200"
-              >
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 p-0 text-white/60 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-200">
                 <X className="h-4 w-4" />
               </button>
             )}
@@ -695,10 +696,11 @@ export default function Inicio() {
                   <li
                     key={c.id}
                     //className="p-2 text-white hover:bg-orange-600 hover:text-white/90 cursor-pointer"
-                    className={`p-2 text-white cursor-pointer flex items-center gap-2 transition-all ${esSeleccionado
+                    className={`p-2 text-white cursor-pointer flex items-center gap-2 transition-all ${
+                      esSeleccionado
                         ? "bg-green-600 text-white font-bold"
                         : "hover:bg-orange-600 hover:text-white/90"
-                      }`}
+                    }`}
                     onClick={() => {
                       seleccionarCliente(c.id, c.nombre);
                     }}>
@@ -771,7 +773,8 @@ export default function Inicio() {
                 {
                   titulo: "Vencen hoy",
                   items: cuotasHoy,
-                  color: "border-yellow-500/25 bg-yellow-500/10 text-yellow-200",
+                  color:
+                    "border-yellow-500/25 bg-yellow-500/10 text-yellow-200",
                   scroll: false,
                 },
                 {
@@ -782,18 +785,21 @@ export default function Inicio() {
                 },
               ].map((grupo) => (
                 <div key={grupo.titulo}>
-                  <div className={`mb-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-bold ${grupo.color}`}>
+                  <div
+                    className={`mb-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-bold ${grupo.color}`}>
                     {grupo.titulo} · {grupo.items.length}
                   </div>
 
                   {grupo.items.length > 0 && (
-                    <div className={`${grupo.scroll ? "max-h-36 overflow-y-auto" : ""} rounded-lg border border-white/10`}>
+                    <div
+                      className={`${grupo.scroll ? "max-h-36 overflow-y-auto" : ""} rounded-lg border border-white/10`}>
                       {grupo.items.map((cuota) => (
                         <button
                           key={cuota.idcuota}
-                          onClick={() => navigate(`/clientes/${cuota.idcliente}`)}
-                          className="w-full border-b border-white/5 bg-zinc-950/30 px-3 py-2 text-left text-xs transition hover:bg-white/5 last:border-b-0"
-                        >
+                          onClick={() =>
+                            navigate(`/clientes/${cuota.idcliente}`)
+                          }
+                          className="w-full border-b border-white/5 bg-zinc-950/30 px-3 py-2 text-left text-xs transition hover:bg-white/5 last:border-b-0">
                           <div className="flex items-center justify-between gap-2">
                             <span className="truncate font-bold text-white">
                               {cuota.cliente}
@@ -831,10 +837,11 @@ export default function Inicio() {
           <span className="flex items-center gap-3">
             <button
               onClick={() => handleSelectionEventos("my")}
-              className={`boton border border-white/10 ${selectedOptionEventos == "my"
+              className={`boton border border-white/10 ${
+                selectedOptionEventos == "my"
                   ? "bg-orange-600 hover:bg-white/20"
                   : "hover:bg-orange-600 bg-white/20"
-                }`}>
+              }`}>
               Mis eventos
             </button>
             {user?.rol == "moderador" ||
@@ -842,10 +849,11 @@ export default function Inicio() {
               (user?.rol == "superadmin" && (
                 <button
                   onClick={() => handleSelectionEventos("all")}
-                  className={`boton border border-white/10 ${selectedOptionEventos == "all"
+                  className={`boton border border-white/10 ${
+                    selectedOptionEventos == "all"
                       ? "bg-orange-600 hover:bg-white/20"
                       : "hover:bg-orange-600 bg-white/20"
-                    }`}>
+                  }`}>
                   Todos los eventos
                 </button>
               ))}
@@ -914,29 +922,29 @@ export default function Inicio() {
                       {(it.tipo == "camarasdesdecero" ||
                         it.tipo == "camaras-tiene-nuevo-instalacion" ||
                         it.tipo == "camaras-tiene-existente-instalacion") && (
-                          <div className="flex items-center gap-2">
-                            <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
-                              <Cctv className="h-4 w-4" />
-                              <span>INSTALACIÓN DE CÁMARAS</span>
-                            </div>
-                            {(it.tipo == "camaras-tiene-nuevo-instalacion" ||
-                              it.tipo ==
-                              "camaras-tiene-existente-instalacion") && (
-                                <span className="text-xs text-yellow-500 font-bold italic flex items-center gap-1">
-                                  <TriangleAlert className="h-4 w-4" />
-                                  Ya tiene cámaras instaladas
-                                </span>
-                              )}
+                        <div className="flex items-center gap-2">
+                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
+                            <Cctv className="h-4 w-4" />
+                            <span>INSTALACIÓN DE CÁMARAS</span>
                           </div>
-                        )}
+                          {(it.tipo == "camaras-tiene-nuevo-instalacion" ||
+                            it.tipo ==
+                              "camaras-tiene-existente-instalacion") && (
+                            <span className="text-xs text-yellow-500 font-bold italic flex items-center gap-1">
+                              <TriangleAlert className="h-4 w-4" />
+                              Ya tiene cámaras instaladas
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {(it.tipo == "camaras-tiene-nuevo-soporte" ||
                         it.tipo == "camaras-tiene-existente-soporte") && (
-                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
-                            <Wrench className="h-4 w-4" />
-                            <span>SOPORTE</span>
-                          </div>
-                        )}
+                        <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
+                          <Wrench className="h-4 w-4" />
+                          <span>SOPORTE</span>
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -1009,7 +1017,7 @@ export default function Inicio() {
                         </button>
                       </div>
                       {it.tiene_hoja &&
-                        it.tipo_hoja !== "instalacion_confirmada" ? (
+                      it.tipo_hoja !== "instalacion_confirmada" ? (
                         <div>
                           <button
                             onClick={() => abrirConfirmarInstalacion(it.idhoja)}
@@ -1033,22 +1041,22 @@ export default function Inicio() {
                       {(it.tipo == "camarasdesdecero" ||
                         it.tipo == "camaras-tiene-nuevo-instalacion" ||
                         it.tipo == "camaras-tiene-existente-instalacion") && (
-                          <div
-                            className="text-xs hover:underline text-white/60 cursor-pointer flex items-center gap-1 mt-1"
-                            onClick={() => toggleDetalles(it.idcita)}>
-                            {it.detalles ? (
-                              <>
-                                <ListChevronsDownUp className="h-4 w-4" />
-                                Ocultar detalles
-                              </>
-                            ) : (
-                              <>
-                                <ListChevronsUpDown className="h-4 w-4" />
-                                Ver detalles
-                              </>
-                            )}
-                          </div>
-                        )}
+                        <div
+                          className="text-xs hover:underline text-white/60 cursor-pointer flex items-center gap-1 mt-1"
+                          onClick={() => toggleDetalles(it.idcita)}>
+                          {it.detalles ? (
+                            <>
+                              <ListChevronsDownUp className="h-4 w-4" />
+                              Ocultar detalles
+                            </>
+                          ) : (
+                            <>
+                              <ListChevronsUpDown className="h-4 w-4" />
+                              Ver detalles
+                            </>
+                          )}
+                        </div>
+                      )}
 
                       <div
                         className="text-xs hover:underline text-white/60 cursor-pointer transition-all flex items-center gap-1 mt-1"
@@ -1100,28 +1108,28 @@ export default function Inicio() {
                       {it.preguntas?.some(
                         (p) => p.pregunta === "modelonvr",
                       ) && (
-                          <div
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition hover:scale-[1.03] cursor-pointer hover:bg-green-700! hover:border-green-900!"
-                            style={{
-                              backgroundColor: darkenColor(it.color, 0.8),
-                              borderColor: darkenColor(it.color, 0.2),
-                            }}
-                            onClick={editarNvr(
+                        <div
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-full border text-xs font-semibold shadow-sm transition hover:scale-[1.03] cursor-pointer hover:bg-green-700! hover:border-green-900!"
+                          style={{
+                            backgroundColor: darkenColor(it.color, 0.8),
+                            borderColor: darkenColor(it.color, 0.2),
+                          }}
+                          onClick={editarNvr(
+                            it.preguntas!.find(
+                              (p) => p.pregunta === "modelonvr",
+                            )!.respuesta,
+                            it.idcita,
+                          )}>
+                          <span className="text-white/70">Modelo de NVR:</span>
+                          <span className="text-white font-bold uppercase">
+                            {
                               it.preguntas!.find(
                                 (p) => p.pregunta === "modelonvr",
-                              )!.respuesta,
-                              it.idcita,
-                            )}>
-                            <span className="text-white/70">Modelo de NVR:</span>
-                            <span className="text-white font-bold uppercase">
-                              {
-                                it.preguntas!.find(
-                                  (p) => p.pregunta === "modelonvr",
-                                )!.respuesta
-                              }
-                            </span>
-                          </div>
-                        )}
+                              )!.respuesta
+                            }
+                          </span>
+                        </div>
+                      )}
 
                       <div
                         onClick={() => handleSeleccionarCita(it.idcita)}

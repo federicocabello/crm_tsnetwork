@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../auth/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import Loading from "../components/Loading";
 import {
@@ -13,6 +12,8 @@ import {
 
 type PagoResumen = {
   pagadas_mes: { cantidad: number; total: number };
+  pendientes_mes_actual: { cantidad: number; total: number };
+  pendientes_mes_seleccionado: { cantidad: number; total: number };
   pendientes_mes_que_viene: { cantidad: number; total: number };
   deuda_por_cliente: { id: number; nombre: string; deuda_total: number }[];
   proximos_vencimientos: {
@@ -47,31 +48,49 @@ type ClienteResultado = {
 };
 
 export default function Pagos() {
-  const { user } = useAuth();
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<PagoResumen | null>(null);
+  const [dataMesActual, setDataMesActual] = useState<PagoResumen | null>(null);
 
-  const [mes, setMes] = useState<string>(
-    new Date().toISOString().substring(0, 7)
-  );
+  const getMesActual = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  };
+
+  const [mes, setMes] = useState<string>(getMesActual);
 
   // Buscador de clientes
   const [queryCliente, setQueryCliente] = useState("");
-  const [resultadosCliente, setResultadosCliente] = useState<ClienteResultado[]>([]);
+  const [resultadosCliente, setResultadosCliente] = useState<
+    ClienteResultado[]
+  >([]);
   const [buscandoCliente, setBuscandoCliente] = useState(false);
 
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `${API_URL}/api/pagos/resumen?mes=${mes}&tipo=vencimiento`
+      const mesActual = getMesActual();
+      const resSeleccionado = await fetch(
+        `${API_URL}/api/pagos/resumen?mes=${mes}&tipo=vencimiento`,
       );
-      if (res.ok) {
-        const json = await res.json();
+      if (resSeleccionado.ok) {
+        const json = await resSeleccionado.json();
         setData(json);
+
+        if (mes === mesActual) {
+          setDataMesActual(json);
+        } else {
+          const resActual = await fetch(
+            `${API_URL}/api/pagos/resumen?mes=${mesActual}&tipo=vencimiento`,
+          );
+          if (resActual.ok) {
+            const jsonActual = await resActual.json();
+            setDataMesActual(jsonActual);
+          }
+        }
       } else {
         console.error("Error al cargar resumen de pagos");
       }
@@ -96,7 +115,7 @@ export default function Pagos() {
       setBuscandoCliente(true);
       try {
         const res = await fetch(
-          `${API_URL}/api/clientes/buscar?q=${encodeURIComponent(queryCliente)}`
+          `${API_URL}/api/clientes/buscar?q=${encodeURIComponent(queryCliente)}`,
         );
         if (res.ok) {
           const data = await res.json();
@@ -137,10 +156,24 @@ export default function Pagos() {
   };
 
   const proximos5 = data?.proximos_vencimientos?.slice(0, 5) ?? [];
+  const calcularPendientes = (resumen: PagoResumen | null) => {
+    const cuotasPendientes =
+      resumen?.cuotas_del_mes?.filter((cuota) => Number(cuota.pagado) === 0) ??
+      [];
+
+    return cuotasPendientes.reduce(
+      (acc, cuota) => ({
+        cantidad: acc.cantidad + 1,
+        total: acc.total + Number(cuota.monto) + Number(cuota.interes),
+      }),
+      { cantidad: 0, total: 0 },
+    );
+  };
+  const pendientesMesActual = calcularPendientes(dataMesActual);
+  const pendientesMesSeleccionado = calcularPendientes(data);
 
   return (
     <div className="w-full h-full min-h-0 flex flex-col gap-4 p-4 overflow-y-auto">
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold flex items-center gap-2 shrink-0">
@@ -175,12 +208,13 @@ export default function Pagos() {
                       navigate(`/clientes/${c.id}`);
                       setQueryCliente("");
                       setResultadosCliente([]);
-                    }}
-                  >
+                    }}>
                     <UserRound className="w-4 h-4 text-orange-400 shrink-0" />
                     <span className="font-bold">{c.nombre}</span>
                     {c.telefono && (
-                      <span className="text-white/40 text-xs ml-auto">{c.telefono}</span>
+                      <span className="text-white/40 text-xs ml-auto">
+                        {c.telefono}
+                      </span>
                     )}
                   </li>
                 ))}
@@ -229,17 +263,32 @@ export default function Pagos() {
             <CalendarDays className="w-32 h-32" />
           </div>
           <h2 className="text-white/60 text-sm font-bold uppercase tracking-wider">
-            Pendientes mes que viene
+            Pendientes mes actual
           </h2>
           <div className="text-3xl font-extrabold text-orange-400">
-            {formatCurrency(data?.pendientes_mes_que_viene?.total)}
+            {formatCurrency(pendientesMesActual?.total)}
           </div>
           <div className="text-xs text-white/40">
-            {data?.pendientes_mes_que_viene?.cantidad || 0} cuotas
+            {pendientesMesActual?.cantidad || 0} cuotas
           </div>
         </div>
 
-        <div className="bg-zinc-900 border border-white/10 p-5 rounded-2xl shadow-xl flex flex-col gap-2 relative overflow-hidden group lg:col-span-2">
+        <div className="bg-zinc-900 border border-white/10 p-5 rounded-2xl shadow-xl flex flex-col gap-2 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Wallet className="w-32 h-32" />
+          </div>
+          <h2 className="text-white/60 text-sm font-bold uppercase tracking-wider">
+            Pendientes mes seleccionado
+          </h2>
+          <div className="text-3xl font-extrabold text-orange-400">
+            {formatCurrency(pendientesMesSeleccionado?.total)}
+          </div>
+          <div className="text-xs text-white/40">
+            {pendientesMesSeleccionado?.cantidad || 0} cuotas
+          </div>
+        </div>
+
+        <div className="bg-zinc-900 border border-white/10 p-5 rounded-2xl shadow-xl flex flex-col gap-2 relative overflow-hidden group">
           <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <Wallet className="w-32 h-32" />
           </div>
@@ -250,8 +299,8 @@ export default function Pagos() {
             {formatCurrency(
               data?.deuda_por_cliente?.reduce(
                 (acc, curr) => acc + Number(curr.deuda_total),
-                0
-              )
+                0,
+              ),
             )}
           </div>
           <div className="text-xs text-white/40">
@@ -262,7 +311,6 @@ export default function Pagos() {
 
       {/* Tablas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
-
         {/* Próximos 5 vencimientos */}
         <div className="bg-zinc-900 border border-white/10 rounded-2xl shadow-xl flex flex-col overflow-hidden">
           <div className="p-4 border-b border-white/10 bg-zinc-950/50 flex items-center justify-between">
@@ -280,13 +328,11 @@ export default function Pagos() {
                 {proximos5.map((p) => (
                   <div
                     key={p.id}
-                    className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-colors flex justify-between items-center"
-                  >
+                    className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-colors flex justify-between items-center">
                     <div>
                       <Link
                         to={`/clientes/${p.cliente_id}`}
-                        className="font-bold hover:text-orange-400 transition-colors uppercase text-sm"
-                      >
+                        className="font-bold hover:text-orange-400 transition-colors uppercase text-sm">
                         {p.cliente_nombre}
                       </Link>
                       <div className="text-xs text-white/60 mt-1 flex items-center gap-2 flex-wrap">
@@ -303,8 +349,7 @@ export default function Pagos() {
                               backgroundColor: p.metodo_color + "30",
                               color: p.metodo_color || "#aaa",
                               border: `1px solid ${p.metodo_color}50`,
-                            }}
-                          >
+                            }}>
                             {p.metodo_nombre}
                           </span>
                         )}
@@ -338,12 +383,10 @@ export default function Pagos() {
                 {data.deuda_por_cliente.map((c) => (
                   <div
                     key={c.id}
-                    className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-colors flex justify-between items-center"
-                  >
+                    className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-colors flex justify-between items-center">
                     <Link
                       to={`/clientes/${c.id}`}
-                      className="font-bold hover:text-orange-400 transition-colors uppercase text-sm flex-1"
-                    >
+                      className="font-bold hover:text-orange-400 transition-colors uppercase text-sm flex-1">
                       {c.nombre}
                     </Link>
                     <div className="font-bold text-red-400 text-lg shrink-0 ml-2">
