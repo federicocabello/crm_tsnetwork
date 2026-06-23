@@ -218,12 +218,18 @@ def inicio():
                         CASE 
                             WHEN hojas.id IS NOT NULL THEN 1
                             ELSE 0
-                        END AS tiene_hoja
+                        END AS tiene_hoja,
+                        hojas_inspeccion.id AS idinspeccion,
+                        CASE 
+                            WHEN hojas_inspeccion.id IS NOT NULL THEN 1
+                            ELSE 0
+                        END AS tiene_inspeccion
                     FROM citas
                     JOIN clientes ON clientes.id = citas.cliente
                     JOIN auth ON auth.id = citas.asignado
                     JOIN citas_estados ON citas_estados.id = citas.estado
-                    LEFT JOIN hojas ON hojas.cita = citas.id;
+                    LEFT JOIN hojas ON hojas.cita = citas.id
+                    LEFT JOIN hojas_inspeccion ON hojas_inspeccion.cita = citas.id;
                    """)
     citas = cursor.fetchall()
     cursor.execute("SELECT * FROM citas_estados;")
@@ -1596,6 +1602,81 @@ def actualizar_pago_metodo(id_metodo):
             return jsonify({"error": "Metodo no encontrado"}), 404
 
         return jsonify({"msg": "Metodo de pago actualizado correctamente"}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.get("/api/inspeccion/<int:id_cita>")
+def get_inspeccion(id_cita):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT id FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
+        inspeccion = cursor.fetchone()
+        
+        if not inspeccion:
+            return jsonify({"id": None, "items": []}), 200
+            
+        inspeccion_id = inspeccion["id"]
+        
+        cursor.execute("""
+            SELECT 
+                hi.id AS item_id,
+                hi.producto_id,
+                p.descrip AS producto_descrip,
+                p.stock AS producto_stock,
+                hi.cantidad,
+                hi.detalle
+            FROM hojas_inspeccion_items hi
+            JOIN productos p ON p.id = hi.producto_id
+            WHERE hi.inspeccion_id = %s
+        """, (inspeccion_id,))
+        
+        items = cursor.fetchall()
+        return jsonify({"id": inspeccion_id, "items": items}), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.post("/api/inspeccion/<int:id_cita>")
+def guardar_inspeccion(id_cita):
+    data = request.get_json(silent=True) or {}
+    items = data.get("items") or []
+    
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT id FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
+        inspeccion = cursor.fetchone()
+        
+        if not inspeccion:
+            cursor.execute("INSERT INTO hojas_inspeccion (cita) VALUES (%s)", (id_cita,))
+            inspeccion_id = cursor.lastrowid
+        else:
+            inspeccion_id = inspeccion["id"]
+            
+        cursor.execute("DELETE FROM hojas_inspeccion_items WHERE inspeccion_id = %s", (inspeccion_id,))
+        
+        if items:
+            items_insert = []
+            for item in items:
+                items_insert.append((
+                    inspeccion_id,
+                    int(item["producto_id"]),
+                    int(item["cantidad"]),
+                    item.get("detalle", "")
+                ))
+                
+            cursor.executemany("""
+                INSERT INTO hojas_inspeccion_items (inspeccion_id, producto_id, cantidad, detalle)
+                VALUES (%s, %s, %s, %s)
+            """, items_insert)
+            
+        mysql.connection.commit()
+        return jsonify({"msg": "Hoja de inspeccion guardada exitosamente"}), 200
+        
     except Exception as e:
         mysql.connection.rollback()
         return jsonify({"error": str(e)}), 500

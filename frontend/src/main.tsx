@@ -12,6 +12,7 @@ import NuevoRegistro from "./pages/NuevoRegistro";
 import Inventario from "./pages/Inventario";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
+import RoleRoute from "./auth/RoleRoute";
 import Layout from "./components/Layout";
 import Cliente from "./pages/Cliente";
 import Pagos from "./pages/Pagos";
@@ -38,33 +39,33 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/configuracion"
             element={
-              <ProtectedRoute>
+              <RoleRoute allow={["administrador", "superadmin"]}>
                 <Layout>
                   <Configuracion />
                 </Layout>
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
 
           <Route
             path="/nuevo-registro"
             element={
-              <ProtectedRoute>
+              <RoleRoute allow={["administrador", "superadmin", "moderador", "usuario"]}>
                 <Layout>
                   <NuevoRegistro />
                 </Layout>
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
 
           <Route
             path="/inventario"
             element={
-              <ProtectedRoute>
+              <RoleRoute allow={["administrador", "superadmin"]}>
                 <Layout>
                   <Inventario />
                 </Layout>
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
 
@@ -82,11 +83,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/pagos"
             element={
-              <ProtectedRoute>
+              <RoleRoute allow={["administrador", "superadmin", "moderador", "usuario"]}>
                 <Layout>
                   <Pagos />
                 </Layout>
-              </ProtectedRoute>
+              </RoleRoute>
             }
           />
 
