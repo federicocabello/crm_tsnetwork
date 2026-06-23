@@ -2,7 +2,7 @@ from flask import Flask, jsonify, send_from_directory
 from flask_mysqldb import MySQL
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager, get_jwt, get_jwt_identity, jwt_required
-import os, re
+import os, re, json
 from flask_cors import CORS
 from datetime import datetime
 from werkzeug.utils import secure_filename
@@ -1612,13 +1612,14 @@ def actualizar_pago_metodo(id_metodo):
 def get_inspeccion(id_cita):
     cursor = mysql.connection.cursor()
     try:
-        cursor.execute("SELECT id FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
+        cursor.execute("SELECT id, dibujo FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
         inspeccion = cursor.fetchone()
         
         if not inspeccion:
-            return jsonify({"id": None, "items": []}), 200
+            return jsonify({"id": None, "items": [], "dibujo": None}), 200
             
         inspeccion_id = inspeccion["id"]
+        dibujo = inspeccion.get("dibujo")
         
         cursor.execute("""
             SELECT 
@@ -1634,7 +1635,7 @@ def get_inspeccion(id_cita):
         """, (inspeccion_id,))
         
         items = cursor.fetchall()
-        return jsonify({"id": inspeccion_id, "items": items}), 200
+        return jsonify({"id": inspeccion_id, "items": items, "dibujo": dibujo}), 200
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1643,8 +1644,18 @@ def get_inspeccion(id_cita):
 
 @app.post("/api/inspeccion/<int:id_cita>")
 def guardar_inspeccion(id_cita):
-    data = request.get_json(silent=True) or {}
-    items = data.get("items") or []
+    # Handle JSON or form-data
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        items = data.get("items") or []
+    else:
+        items_str = request.form.get("items", "[]")
+        try:
+            items = json.loads(items_str)
+        except:
+            items = []
+            
+    archivo_dibujo = request.files.get("dibujo")
     
     cursor = mysql.connection.cursor()
     try:
@@ -1656,6 +1667,25 @@ def guardar_inspeccion(id_cita):
             inspeccion_id = cursor.lastrowid
         else:
             inspeccion_id = inspeccion["id"]
+            
+        # Process image upload if exists
+        dibujo_path = None
+        if archivo_dibujo:
+            carpeta = os.path.join(UPLOADS_DIR, f"cita_{id_cita}")
+            os.makedirs(carpeta, exist_ok=True)
+            
+            nombre_original = archivo_dibujo.filename
+            nombre_seguro = secure_filename(nombre_original)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            nombre_final = f"dibujo_{timestamp}_{nombre_seguro}"
+            
+            ruta_guardado = os.path.join(carpeta, nombre_final)
+            archivo_dibujo.save(ruta_guardado)
+            
+            dibujo_path = f"/uploads/cita_{id_cita}/{nombre_final}"
+            
+            # Update database with new drawing
+            cursor.execute("UPDATE hojas_inspeccion SET dibujo = %s WHERE id = %s", (dibujo_path, inspeccion_id))
             
         cursor.execute("DELETE FROM hojas_inspeccion_items WHERE inspeccion_id = %s", (inspeccion_id,))
         

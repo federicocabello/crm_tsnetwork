@@ -172,7 +172,9 @@ export default function Inicio() {
   const [openInspeccion, setOpenInspeccion] = useState(false);
   const [idCitaInspeccion, setIdCitaInspeccion] = useState<number | null>(null);
   const [idHojaInspeccion, setIdHojaInspeccion] = useState<number | null>(null);
-  const [inspeccionItemsMap, setInspeccionItemsMap] = useState<Record<string, { items: any[]; visible: boolean }>>({});
+  const [inspeccionItemsMap, setInspeccionItemsMap] = useState<
+    Record<string, { items: any[]; visible: boolean }>
+  >({});
   const [idCotizacion, setIdCotizacion] = useState<number | null>(null);
   const [cotizacionBloqueada, setCotizacionBloqueada] = useState(false);
   const [modoCotizacion, setModoCotizacion] = useState<"nuevo" | "editar">(
@@ -395,7 +397,7 @@ export default function Inicio() {
 
   const toggleInspeccionItems = async (idcita: string) => {
     if (inspeccionItemsMap[idcita]) {
-      setInspeccionItemsMap(prev => ({
+      setInspeccionItemsMap((prev) => ({
         ...prev,
         [idcita]: { ...prev[idcita], visible: !prev[idcita].visible },
       }));
@@ -405,7 +407,7 @@ export default function Inicio() {
       const res = await fetch(`${API_URL}/api/inspeccion/${idcita}`);
       if (res.ok) {
         const data = await res.json();
-        setInspeccionItemsMap(prev => ({
+        setInspeccionItemsMap((prev) => ({
           ...prev,
           [idcita]: { items: data.items ?? [], visible: true },
         }));
@@ -570,7 +572,7 @@ export default function Inicio() {
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-3 xl:flex-row">
+    <div className="flex h-full min-h-0 w-full flex-col gap-3 xl:flex-row overflow-y-auto">
       <div className="w-full shrink-0 xl:h-full xl:w-1/4 xl:overflow-y-auto xl:pr-1">
         <div className="w-full cuadro">
           <div className="flex flex-col gap-3 text-center mb-3">
@@ -579,7 +581,7 @@ export default function Inicio() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-around gap-2 flex-wrap">
             <button
               onClick={goPrev}
               className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold hover:bg-white/10 cursor-pointer sm:text-sm">
@@ -1050,7 +1052,9 @@ export default function Inicio() {
                                 onClick={() => {
                                   setOpenInspeccion(true);
                                   setIdCitaInspeccion(Number(it.idcita));
-                                  setIdHojaInspeccion(it.idhoja ? parseInt(it.idhoja) : null);
+                                  setIdHojaInspeccion(
+                                    it.idhoja ? parseInt(it.idhoja) : null,
+                                  );
                                 }}>
                                 Ver / editar hoja inspección
                               </span>
@@ -1063,7 +1067,9 @@ export default function Inicio() {
                                 onClick={() => {
                                   setOpenInspeccion(true);
                                   setIdCitaInspeccion(Number(it.idcita));
-                                  setIdHojaInspeccion(it.idhoja ? parseInt(it.idhoja) : null);
+                                  setIdHojaInspeccion(
+                                    it.idhoja ? parseInt(it.idhoja) : null,
+                                  );
                                 }}>
                                 Crear hoja inspección
                               </span>
@@ -1084,39 +1090,45 @@ export default function Inicio() {
                             onClick={() => toggleInspeccionItems(it.idcita)}
                             className="text-xs text-white/50 hover:text-white/80 flex items-center gap-1 transition-colors mb-1">
                             <ListChevronsUpDown className="h-3.5 w-3.5" />
-                            {inspeccionItemsMap[it.idcita]?.visible ? "Ocultar materiales" : "Ver materiales"}
+                            {inspeccionItemsMap[it.idcita]?.visible
+                              ? "Ocultar materiales"
+                              : "Ver materiales"}
                           </button>
 
                           {inspeccionItemsMap[it.idcita]?.visible && (
                             <div className="rounded-xl border border-white/8 overflow-hidden bg-zinc-900/50">
-                              {inspeccionItemsMap[it.idcita].items.length === 0 ? (
-                                <p className="p-3 text-xs text-white/40 italic">Sin materiales cargados</p>
+                              {inspeccionItemsMap[it.idcita].items.length ===
+                              0 ? (
+                                <p className="p-3 text-xs text-white/40 italic">
+                                  Sin materiales cargados
+                                </p>
                               ) : (
-                                inspeccionItemsMap[it.idcita].items.map((item: any, idx: number) => (
-                                  <div
-                                    key={idx}
-                                    className="flex items-start gap-2 px-3 py-2 border-b border-white/5 last:border-b-0">
-                                    <span className="shrink-0 bg-orange-500/15 border border-orange-500/30 rounded-md px-1.5 py-0.5 text-xs font-bold text-orange-300">
-                                      ×{item.cantidad}
-                                    </span>
-                                    <div className="min-w-0">
-                                      <p className="text-xs font-semibold text-white truncate">
-                                        {item.producto_descrip}
-                                      </p>
-                                      {item.detalle && (
-                                        <p className="text-xs text-white/40 italic truncate">
-                                          {item.detalle}
+                                inspeccionItemsMap[it.idcita].items.map(
+                                  (item: any, idx: number) => (
+                                    <div
+                                      key={idx}
+                                      className="flex items-start gap-2 px-3 py-2 border-b border-white/5 last:border-b-0">
+                                      <span className="shrink-0 bg-orange-500/15 border border-orange-500/30 rounded-md px-1.5 py-0.5 text-xs font-bold text-orange-300">
+                                        ×{item.cantidad}
+                                      </span>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-semibold text-white truncate">
+                                          {item.producto_descrip}
                                         </p>
-                                      )}
+                                        {item.detalle && (
+                                          <p className="text-xs text-white/40 italic truncate">
+                                            {item.detalle}
+                                          </p>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                ))
+                                  ),
+                                )
                               )}
                             </div>
                           )}
                         </div>
                       ) : null}
-
 
                       {/* Ver archivos */}
                       <div className="flex flex-wrap items-center gap-2">
@@ -1265,7 +1277,9 @@ export default function Inicio() {
                                     onClick={() => {
                                       setOpenInspeccion(true);
                                       setIdCitaInspeccion(Number(it.idcita));
-                                      setIdHojaInspeccion(it.idhoja ? parseInt(it.idhoja) : null);
+                                      setIdHojaInspeccion(
+                                        it.idhoja ? parseInt(it.idhoja) : null,
+                                      );
                                     }}>
                                     Ver hoja inspección
                                   </span>
@@ -1279,7 +1293,9 @@ export default function Inicio() {
                                     onClick={() => {
                                       setOpenInspeccion(true);
                                       setIdCitaInspeccion(Number(it.idcita));
-                                      setIdHojaInspeccion(it.idhoja ? parseInt(it.idhoja) : null);
+                                      setIdHojaInspeccion(
+                                        it.idhoja ? parseInt(it.idhoja) : null,
+                                      );
                                     }}>
                                     Crear hoja inspección
                                   </span>
