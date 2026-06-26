@@ -87,10 +87,10 @@ const ConfiguracionCitas = ({ citasEstados, refreshData }: Props) => {
         );
         refreshData();
       } else {
-        console.error("Error al cambiar nombre. CÃ³digo:", res.status);
+        console.error("Error al cambiar nombre. Código:", res.status);
       }
     } catch (err) {
-      console.error("Error de conexiÃ³n al cambiar nombre:", err);
+      console.error("Error de conexión al cambiar nombre:", err);
     }
   };
 

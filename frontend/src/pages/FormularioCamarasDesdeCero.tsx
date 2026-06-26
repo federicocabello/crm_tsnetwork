@@ -6,6 +6,7 @@ import DatePicker from "react-datepicker";
 import Cotizador from "./Cotizador";
 import "react-datepicker/dist/react-datepicker.css";
 import { useNavigate } from "react-router-dom";
+import { agendaDayClassName, dateKeyToDate, formatDateKey, isSelectableAgendaDate, isSundayKey } from "../utils/agendaFechas";
 
 export default function FormularioCamarasDesdeCero() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
@@ -133,6 +134,10 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
 
       const submitFormularioCamarasDesdeCero = async (e: React.FormEvent) => {
           e.preventDefault();
+          if (isSundayKey(formRegistro.fecha)) {
+            alert("No se pueden agendar visitas los domingos.");
+            return;
+          }
           setLoading(true);
 
           const datosCompletos = {
@@ -466,7 +471,22 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
         <div className="flex items-center justify-around gap-2">
             <div className="w-48">
               <label className="text-xs text-white/60">Fecha de visita</label>
-                <input type="date" name="fecha" className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer" value={formRegistro.fecha} onChange={handleInputChange} />
+              <DatePicker
+                selected={dateKeyToDate(formRegistro.fecha)}
+                onChange={(date: Date | null) => {
+                  setFormRegistro((prev) => ({
+                    ...prev,
+                    fecha: date ? formatDateKey(date) : "",
+                  }));
+                }}
+                filterDate={isSelectableAgendaDate}
+                dayClassName={agendaDayClassName}
+                dateFormat="MM/dd/yyyy"
+                placeholderText="Seleccionar fecha"
+                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer"
+                wrapperClassName="w-full"
+                calendarClassName="agenda-datepicker"
+              />
             </div>
             
             <div className="w-32">

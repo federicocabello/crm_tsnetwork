@@ -40,6 +40,7 @@ type Props = {
   idPago: number;
   idCita: number;
   total: number;
+  enganche: number;
   cuotas: Cuota[];
   onActualizado?: () => void;   // callback para refrescar Cliente.tsx
 };
@@ -77,7 +78,7 @@ function normalizarCuotas(cuotas: Cuota[]): Cuota[] {
   }));
 }
 
-export default function VerPlanDePagos({ idPago, idCita, cuotas: cuotasIniciales, onActualizado }: Props) {
+export default function VerPlanDePagos({ idPago, idCita, total, enganche, cuotas: cuotasIniciales, onActualizado }: Props) {
   const [cuotas, setCuotas] = useState<Cuota[]>(normalizarCuotas(cuotasIniciales));
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([]);
   const [error, setError] = useState("");
@@ -105,6 +106,7 @@ export default function VerPlanDePagos({ idPago, idCita, cuotas: cuotasIniciales
     cargarMetodos();
   }, []);
 
+  const enganchePlan = Number(enganche || 0);
   const cuotasPagadas = cuotas.filter((c) => c.pagado).length;
   const totalReal = cuotas.reduce(
     (acc, c) => acc + c.monto,
@@ -114,6 +116,9 @@ export default function VerPlanDePagos({ idPago, idCita, cuotas: cuotasIniciales
     .filter((c) => c.pagado)
     .reduce((acc, c) => acc + c.monto, 0);
   const montoPendiente = totalReal - montoPagado;
+  const totalConEnganche = enganchePlan + totalReal;
+  const totalGuardado = Number(total || 0);
+
 
   const handleCuotaChange = (
     index: number,
@@ -187,7 +192,7 @@ export default function VerPlanDePagos({ idPago, idCita, cuotas: cuotasIniciales
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          montoTotal: totalReal,
+          montoTotal: totalConEnganche,
           cuotas: cuotas.map((c) => ({
             idcuota: c.idcuota,
             monto: c.monto,
@@ -261,11 +266,16 @@ export default function VerPlanDePagos({ idPago, idCita, cuotas: cuotasIniciales
               <div className="flex items-center gap-2 rounded-xl bg-black/20 border border-white/10 px-3 py-1.5 text-xs">
                 <DollarSign className="h-3 w-3 text-white/40" />
                 <span className="text-white/40">Total:</span>
-                <span className="text-white font-bold"><FormatearNumero numero={totalReal} /></span>
+                <span className="text-white font-bold"><FormatearNumero numero={totalConEnganche || totalGuardado} /></span>
               </div>
               <div className="flex items-center gap-2 rounded-xl bg-green-500/10 border border-green-500/20 px-3 py-1.5 text-xs">
                 <CheckCircle className="h-3 w-3 text-green-400" />
-                <span className="text-white/40">Pagado:</span>
+                <span className="text-white/40">Enganche:</span>
+                <span className="text-green-400 font-bold"><FormatearNumero numero={enganchePlan} /></span>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl bg-green-500/10 border border-green-500/20 px-3 py-1.5 text-xs">
+                <CheckCircle className="h-3 w-3 text-green-400" />
+                <span className="text-white/40">Pagado cuotas:</span>
                 <span className="text-green-400 font-bold"><FormatearNumero numero={montoPagado} /></span>
               </div>
               <div className="flex items-center gap-2 rounded-xl bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 text-xs">
@@ -510,3 +520,9 @@ export default function VerPlanDePagos({ idPago, idCita, cuotas: cuotasIniciales
       </div>
   );
 }
+
+
+
+
+
+
