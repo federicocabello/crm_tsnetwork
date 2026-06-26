@@ -21,6 +21,7 @@ with app.app_context():
     CREATE TABLE IF NOT EXISTS hojas_inspeccion (
         id INT AUTO_INCREMENT PRIMARY KEY,
         cita INT NOT NULL,
+        dibujo VARCHAR(255) DEFAULT NULL,
         FOREIGN KEY (cita) REFERENCES citas(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     """)

@@ -1612,14 +1612,15 @@ def actualizar_pago_metodo(id_metodo):
 def get_inspeccion(id_cita):
     cursor = mysql.connection.cursor()
     try:
-        cursor.execute("SELECT id, dibujo FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
+        cursor.execute("SELECT id, dibujo, firma FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
         inspeccion = cursor.fetchone()
         
         if not inspeccion:
-            return jsonify({"id": None, "items": [], "dibujo": None}), 200
+            return jsonify({"id": None, "items": [], "dibujo": None, "firma": None}), 200
             
         inspeccion_id = inspeccion["id"]
         dibujo = inspeccion.get("dibujo")
+        firma  = inspeccion.get("firma")
         
         cursor.execute("""
             SELECT 
@@ -1635,7 +1636,7 @@ def get_inspeccion(id_cita):
         """, (inspeccion_id,))
         
         items = cursor.fetchall()
-        return jsonify({"id": inspeccion_id, "items": items, "dibujo": dibujo}), 200
+        return jsonify({"id": inspeccion_id, "items": items, "dibujo": dibujo, "firma": firma}), 200
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1656,6 +1657,7 @@ def guardar_inspeccion(id_cita):
             items = []
             
     archivo_dibujo = request.files.get("dibujo")
+    archivo_firma  = request.files.get("firma")
     
     cursor = mysql.connection.cursor()
     try:
@@ -1668,24 +1670,27 @@ def guardar_inspeccion(id_cita):
         else:
             inspeccion_id = inspeccion["id"]
             
-        # Process image upload if exists
+        carpeta = os.path.join(UPLOADS_DIR, f"cita_{id_cita}")
+        os.makedirs(carpeta, exist_ok=True)
+
+        # Process drawing upload if exists
         dibujo_path = None
         if archivo_dibujo:
-            carpeta = os.path.join(UPLOADS_DIR, f"cita_{id_cita}")
-            os.makedirs(carpeta, exist_ok=True)
-            
-            nombre_original = archivo_dibujo.filename
-            nombre_seguro = secure_filename(nombre_original)
+            nombre_seguro = secure_filename(archivo_dibujo.filename)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             nombre_final = f"dibujo_{timestamp}_{nombre_seguro}"
-            
-            ruta_guardado = os.path.join(carpeta, nombre_final)
-            archivo_dibujo.save(ruta_guardado)
-            
+            archivo_dibujo.save(os.path.join(carpeta, nombre_final))
             dibujo_path = f"/uploads/cita_{id_cita}/{nombre_final}"
-            
-            # Update database with new drawing
             cursor.execute("UPDATE hojas_inspeccion SET dibujo = %s WHERE id = %s", (dibujo_path, inspeccion_id))
+
+        # Process signature upload if exists
+        if archivo_firma:
+            nombre_seguro_firma = secure_filename(archivo_firma.filename)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            nombre_final_firma = f"firma_{timestamp}_{nombre_seguro_firma}"
+            archivo_firma.save(os.path.join(carpeta, nombre_final_firma))
+            firma_path = f"/uploads/cita_{id_cita}/{nombre_final_firma}"
+            cursor.execute("UPDATE hojas_inspeccion SET firma = %s WHERE id = %s", (firma_path, inspeccion_id))
             
         cursor.execute("DELETE FROM hojas_inspeccion_items WHERE inspeccion_id = %s", (inspeccion_id,))
         
