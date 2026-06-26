@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { Pencil } from "lucide-react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { agendaDayClassName, dateKeyToDate, formatDateKey, isSelectableAgendaDate, isSundayKey } from "../utils/agendaFechas";
 
 type AgendaItem = {
   idcita: string;
@@ -60,6 +63,15 @@ export default function EditAgendaModal({
         );
     };
 
+    const guardarCambios = () => {
+        if (isSundayKey(form.dia)) {
+            alert("No se pueden reprogramar citas los domingos.");
+            return;
+        }
+
+        onSave(form);
+    };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <div className="w-1/2 rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-xl">
@@ -114,12 +126,25 @@ export default function EditAgendaModal({
 
                 <div>
                     <label className="text-xs text-white/60">Fecha</label>
-                    <input
-                        type="date"
-                        name="dia"
-                        value={form.dia}
-                        onChange={handleChange}
+                    <DatePicker
+                        selected={dateKeyToDate(form.dia)}
+                        onChange={(date: Date | null) => {
+                            setForm((prev) =>
+                                prev
+                                    ? {
+                                        ...prev,
+                                        dia: date ? formatDateKey(date) : "",
+                                    }
+                                    : prev
+                            );
+                        }}
+                        filterDate={isSelectableAgendaDate}
+                        dayClassName={agendaDayClassName}
+                        dateFormat="MM/dd/yyyy"
+                        placeholderText="Seleccionar fecha"
                         className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40"
+                        wrapperClassName="w-full"
+                        calendarClassName="agenda-datepicker"
                     />
                 </div>
 
@@ -132,7 +157,7 @@ export default function EditAgendaModal({
                     </button>
 
                     <button
-                        onClick={() => onSave(form)}
+                        onClick={guardarCambios}
                         className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-white hover:bg-orange-600"
                     >
                         Guardar cambios

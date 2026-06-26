@@ -10,6 +10,7 @@ import type { Usuarios } from "../types/auth";
 import FormatearNumero from "../components/FormatearNumero.tsx";
 import PlanDePagos from "../components/PlanDePagos";
 import VerPlanDePagos from "../components/VerPlanDePagos";
+import { agendaDayClassName, dateKeyToDate, formatDateKey, isSelectableAgendaDate, isSundayKey } from "../utils/agendaFechas";
 
 type Cita = {
   idcita: number;
@@ -63,6 +64,7 @@ export default function Cliente() {
   const [cuotas, setCuotas] = useState<{ idcuota: number, monto: number, interes: number, pagado: boolean, vencimiento: string, fechapago: string | null, idmetodo: number, metodo: string, nota?: string, comprobante?: string }[]>([]);
   const [idPago, setIdPago] = useState<number | null>(null);
   const [totalPlan, setTotalPlan] = useState<number>(0);
+  const [enganchePlan, setEnganchePlan] = useState<number>(0);
 
   const setearCitaSeleccionada = async (cita: Cita) => {
     setCitaSeleccionada(cita.idcita);
@@ -96,6 +98,7 @@ export default function Cliente() {
       setCuotas(data.cuotas ?? []);
       setIdPago(data.id_pago ?? null);
       setTotalPlan(data.total ?? 0);
+      setEnganchePlan(Number(data.enganche ?? 0));
 
     } catch (error) {
       alert("Error de conexión con el backend.");
@@ -134,6 +137,11 @@ export default function Cliente() {
   }, [idCliente]);
 
   const actualizarCita = async () => {
+    if (isSundayKey(fecha)) {
+      alert("No se pueden reprogramar citas los domingos.");
+      return;
+    }
+
     try {
       const res = await fetch(`${API_URL}/api/citas/actualizar/${citaSeleccionada}`, {
         method: "PUT",
@@ -184,7 +192,7 @@ export default function Cliente() {
       });
 
       if (!res.ok) {
-        console.error("Error al actualizar el email. CÃ³digo:", res.status);
+        console.error("Error al actualizar el email. Código:", res.status);
         alert("No se pudo actualizar el email.");
         return;
       }
@@ -192,7 +200,7 @@ export default function Cliente() {
       setCliente({ ...cliente, email });
     } catch (error) {
       console.error("Error al actualizar el email:", error);
-      alert("Error de conexiÃ³n con el backend.");
+      alert("Error de conexión con el backend.");
     }
   };
 
@@ -330,6 +338,7 @@ export default function Cliente() {
                 idPago={idPago}
                 idCita={citaSeleccionada}
                 total={totalPlan}
+                enganche={enganchePlan}
                 cuotas={cuotas}
                 onActualizado={() => {
                   // Refrescar cuotas y deuda después de guardar
@@ -410,12 +419,16 @@ export default function Cliente() {
                   <div className="flex items-end gap-2">
                     <div>
                       <label className="text-xs text-white/60">Fecha</label>
-                      <input
-                        type="date"
-                        name="dia_format"
-                        value={fecha}
-                        onChange={(e) => setFecha(e.target.value)}
+                      <DatePicker
+                        selected={dateKeyToDate(fecha)}
+                        onChange={(date: Date | null) => setFecha(date ? formatDateKey(date) : "")}
+                        filterDate={isSelectableAgendaDate}
+                        dayClassName={agendaDayClassName}
+                        dateFormat="MM/dd/yyyy"
+                        placeholderText="Seleccionar fecha"
                         className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40"
+                        wrapperClassName="w-full"
+                        calendarClassName="agenda-datepicker"
                       />
                     </div>
 
@@ -468,3 +481,5 @@ export default function Cliente() {
     </div>
   );
 }
+
+

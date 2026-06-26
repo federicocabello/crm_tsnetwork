@@ -1196,7 +1196,7 @@ def obtener_datos_cliente(id_cliente):
         cursor.execute("SELECT id, estado FROM citas_estados ORDER BY estado;")
         estados = cursor.fetchall()
         cursor.execute("""
-            SELECT COALESCE(SUM(p.total - COALESCE(cuotas_pagadas.total_pagado, 0)), 0) AS deuda_total
+            SELECT COALESCE(SUM(p.total - COALESCE(p.enganche, 0) - COALESCE(cuotas_pagadas.total_pagado, 0)), 0) AS deuda_total
             FROM pagos p
             LEFT JOIN (
                 SELECT pago, SUM(monto) AS total_pagado
@@ -1296,7 +1296,7 @@ def obtener_pagos_cliente(id_cita):
     try:
         # Traer el plan de pagos (registro padre)
         cursor.execute(
-            "SELECT id AS id_pago, total FROM pagos WHERE cita = %s LIMIT 1",
+            "SELECT id AS id_pago, total, COALESCE(enganche, 0) AS enganche FROM pagos WHERE cita = %s LIMIT 1",
             (id_cita,)
         )
         plan = cursor.fetchone()
@@ -1306,6 +1306,7 @@ def obtener_pagos_cliente(id_cita):
 
         id_pago = plan["id_pago"]
         total   = float(plan["total"])
+        enganche = float(plan.get("enganche") or 0)
 
         cursor.execute(
             """
@@ -1327,7 +1328,7 @@ def obtener_pagos_cliente(id_cita):
             (id_pago,)
         )
         cuotas = cursor.fetchall()
-        return jsonify({"cuotas": cuotas, "id_pago": id_pago, "total": total}), 200
+        return jsonify({"cuotas": cuotas, "id_pago": id_pago, "total": total, "enganche": enganche}), 200
     except Exception as e:
         print("Error interno:", e)
         return jsonify({"error": str(e)}), 500
@@ -1338,6 +1339,7 @@ def obtener_pagos_cliente(id_cita):
 def actualizar_plan_de_pagos(id_pago):
     data = request.get_json(silent=True) or {}
     monto_total = data.get("montoTotal")
+    enganche    = data.get("enganche", 0)
     cuotas      = data.get("cuotas", [])
 
     if monto_total is None or not cuotas:
@@ -1345,7 +1347,7 @@ def actualizar_plan_de_pagos(id_pago):
 
     cursor = mysql.connection.cursor()
     try:
-        cursor.execute("SELECT id FROM pagos WHERE id = %s LIMIT 1", (id_pago,))
+        cursor.execute("SELECT id, COALESCE(enganche, 0) AS enganche FROM pagos WHERE id = %s LIMIT 1", (id_pago,))
         if not cursor.fetchone():
             return jsonify({"error": "Plan de pagos no encontrado"}), 404
 
@@ -1403,17 +1405,22 @@ def crear_plan_de_pagos():
     id_cliente = data.get("idCliente")
     id_cita    = data.get("idCita")
     monto_total = data.get("montoTotal")
+    enganche    = data.get("enganche", 0)
     cuotas      = data.get("cuotas", [])
 
     if not id_cliente or not id_cita or monto_total is None or not cuotas:
         return jsonify({"error": "Faltan datos obligatorios"}), 400
 
+    enganche = float(enganche or 0)
+    if enganche <= 0:
+        return jsonify({"error": "El enganche debe ser mayor a 0"}), 400
+
     cursor = mysql.connection.cursor()
     try:
         # 1) Crear el registro de pago padre
         cursor.execute(
-            "INSERT INTO pagos (cliente, cita, total) VALUES (%s, %s, %s)",
-            (id_cliente, id_cita, float(monto_total))
+            "INSERT INTO pagos (cliente, cita, total, enganche) VALUES (%s, %s, %s, %s)",
+            (id_cliente, id_cita, float(monto_total), enganche)
         )
         id_pago = cursor.lastrowid
 
@@ -1604,3 +1611,4 @@ def actualizar_pago_metodo(id_metodo):
 
 if __name__ == "__main__":
     app.run(debug=True)
+

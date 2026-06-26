@@ -63,3 +63,18 @@ html {
   scrollbar-width: thin;
   scrollbar-color: rgba(249, 115, 22, 0.5) transparent;
 }
+
+.agenda-datepicker .agenda-sunday-blocked,
+.react-datepicker__day.agenda-sunday-blocked,
+.react-datepicker__day--disabled.agenda-sunday-blocked {
+  color: #f87171 !important;
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-radius: 0.5rem;
+  text-decoration: line-through;
+  cursor: not-allowed !important;
+}
+
+.agenda-datepicker .agenda-sunday-blocked:hover,
+.react-datepicker__day.agenda-sunday-blocked:hover {
+  background: rgba(239, 68, 68, 0.18) !important;
+}
