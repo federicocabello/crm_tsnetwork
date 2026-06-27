@@ -3,6 +3,7 @@ import {
   X,
   Plus,
   Save,
+  Download,
   Trash2,
   PackageSearch,
   FileText,
@@ -12,9 +13,16 @@ import {
 import CanvasDibujo from "./CanvasDibujo";
 import FirmaModal from "./FirmaModal";
 
+interface ClienteInspeccionInfo {
+  nombre: string;
+  direccion: string;
+  telefono: string;
+}
+
 interface HojaInspeccionProps {
   idCita: number;
   idHoja?: number | null; // ID de la cotización (para pre-cargar artículos)
+  cliente?: ClienteInspeccionInfo | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -38,6 +46,7 @@ interface InspeccionItem {
 export default function HojaInspeccion({
   idCita,
   idHoja,
+  cliente,
   onClose,
   onSaved,
 }: HojaInspeccionProps) {
@@ -58,6 +67,7 @@ export default function HojaInspeccion({
   );
   const [dibujoFile, setDibujoFile] = useState<File | null>(null);
   const [dibujoUrl, setDibujoUrl] = useState<string | null>(null);
+  const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
 
   useEffect(() => {
@@ -76,13 +86,17 @@ export default function HojaInspeccion({
       // Intenta cargar inspección guardada (aislado para no bloquear carga de cotización)
       let inspeccionTieneItems = false;
       try {
+        setLoading(true);
         const resInspeccion = await fetch(
           `${API_URL}/api/inspeccion/${idCita}`,
         );
         if (resInspeccion.ok) {
           const dataInspeccion = await resInspeccion.json();
           if (dataInspeccion.dibujo) {
-            setDibujoUrl(`${API_URL}${dataInspeccion.dibujo}`);
+            setDibujoUrl(API_URL + dataInspeccion.dibujo);
+          }
+          if (dataInspeccion.firma) {
+            setFirmaUrl(API_URL + dataInspeccion.firma);
           }
           if (dataInspeccion.items && dataInspeccion.items.length > 0) {
             // Tiene items guardados en la inspección → úsalos y no cargar cotización
@@ -221,6 +235,258 @@ export default function HojaInspeccion({
     }
   };
 
+  const puedeDescargarPdf = Boolean(dibujoUrl && firmaUrl && items.length > 0);
+
+  const escapePdfHtml = (value: string | number) =>
+    String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  const handleDownloadPdf = () => {
+    if (!dibujoUrl || !firmaUrl || items.length === 0) {
+      alert(
+        "Para descargar el PDF, la hoja debe tener imagen, productos y firma guardados.",
+      );
+      return;
+    }
+
+    const rows = items
+      .map(
+        (item, index) =>
+          `<tr>` +
+          `<td class="idx">${escapePdfHtml(index + 1)}</td>` +
+          `<td class="product">${escapePdfHtml(item.producto_descrip)}</td>` +
+          `<td class="qty">${escapePdfHtml(item.cantidad)}</td>` +
+          `<td class="detail">${escapePdfHtml(item.detalle || "-")}</td>` +
+          `</tr>`,
+      )
+      .join("");
+    const clientePdf = {
+      nombre: cliente?.nombre?.trim() || "No disponible",
+      direccion: cliente?.direccion?.trim() || "No disponible",
+      telefono: cliente?.telefono?.trim() || "No disponible",
+    };
+    const logoUrl = new URL("/logo_tsnetwork.png", window.location.origin).href;
+
+    const printWindow = window.open("", "_blank", "width=900,height=1100");
+    if (printWindow === null) {
+      alert("No se pudo abrir la ventana para generar el PDF.");
+      return;
+    }
+
+    const html = `
+      <html>
+        <head>
+          <title>Hoja de inspecci&oacute;n ${escapePdfHtml(idCita)}</title>
+          <style>
+            @page { size: letter; margin: 14mm; }
+            * { box-sizing: border-box; }
+            body {
+              margin: 0;
+              font-family: Arial, Helvetica, sans-serif;
+              color: #111827;
+              background: #ffffff;
+              font-size: 12px;
+              line-height: 1.35;
+            }
+            .page { position: relative; min-height: 100vh; }
+            .header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              border-bottom: 2px solid #111827;
+              padding-bottom: 12px;
+              margin-bottom: 18px;
+            }
+            .brand { display: flex; align-items: center; gap: 12px; }
+            .logo { width: 128px; max-height: 56px; object-fit: contain; }
+            .brand-fallback {
+              display: none;
+              font-size: 18px;
+              font-weight: 900;
+              letter-spacing: .4px;
+              color: #111827;
+            }
+            .doc-meta { text-align: right; color: #4b5563; font-size: 11px; }
+            .doc-meta strong {
+              display: block;
+              color: #111827;
+              font-size: 16px;
+              text-transform: uppercase;
+              letter-spacing: .08em;
+            }
+            h1 {
+              font-size: 24px;
+              line-height: 1.05;
+              margin: 0 0 14px;
+              text-transform: uppercase;
+              letter-spacing: .05em;
+              color: #111827;
+            }
+            h2 {
+              font-size: 13px;
+              margin: 0 0 10px;
+              text-transform: uppercase;
+              letter-spacing: .08em;
+              color: #111827;
+            }
+            .client-card {
+              display: grid;
+              grid-template-columns: 1.2fr 1.5fr .8fr;
+              gap: 12px;
+              margin: 0 0 20px;
+              border: 1px solid #d1d5db;
+              border-left: 5px solid #f97316;
+              background: #f9fafb;
+              padding: 14px;
+            }
+            .client-field span {
+              display: block;
+              font-size: 10px;
+              text-transform: uppercase;
+              letter-spacing: .08em;
+              color: #6b7280;
+              margin-bottom: 4px;
+            }
+            .client-field strong {
+              display: block;
+              font-size: 13px;
+              color: #111827;
+              overflow-wrap: anywhere;
+            }
+            .section { margin-top: 18px; break-inside: avoid; }
+            table { width: 100%; border-collapse: collapse; border: 1px solid #d1d5db; }
+            thead { display: table-header-group; }
+            tr { break-inside: avoid; }
+            th {
+              background: #111827;
+              color: #ffffff;
+              font-size: 10px;
+              text-transform: uppercase;
+              letter-spacing: .08em;
+              padding: 9px 10px;
+              text-align: left;
+            }
+            td { border-top: 1px solid #e5e7eb; padding: 9px 10px; vertical-align: top; }
+            tbody tr:nth-child(even) { background: #f9fafb; }
+            .idx { width: 42px; text-align: center; color: #6b7280; }
+            .qty { width: 76px; text-align: center; font-weight: 800; color: #111827; }
+            .product { font-weight: 700; color: #111827; }
+            .detail { color: #4b5563; }
+            .mapa {
+              border: 1px solid #d1d5db;
+              background: #f9fafb;
+              padding: 10px;
+              break-inside: avoid;
+            }
+            .mapa img {
+              display: block;
+              width: 100%;
+              max-height: 520px;
+              object-fit: contain;
+              background: #ffffff;
+              border: 1px solid #e5e7eb;
+            }
+            .final-signature {
+              margin-top: 28px;
+              padding-top: 18px;
+              border-top: 1px solid #d1d5db;
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+            .signature-layout {
+              display: flex;
+              justify-content: flex-end;
+            }
+            .signature-box { text-align: center; min-width: 280px; }
+            .signature-box img {
+              display: block;
+              width: 260px;
+              max-height: 82px;
+              object-fit: contain;
+              margin: 0 auto 6px;
+            }
+            .signature-line {
+              border-top: 1px solid #111827;
+              padding-top: 4px;
+              font-size: 10px;
+              text-transform: uppercase;
+              letter-spacing: .08em;
+              color: #374151;
+            }
+            .avoid-break { break-inside: avoid; }
+          </style>
+        </head>
+        <body>
+
+          <main class="page">
+            <header class="header">
+              <div class="brand">
+                <img class="logo" src="${escapePdfHtml(logoUrl)}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
+                <div class="brand-fallback">TS Network</div>
+              </div>
+              <div class="doc-meta">
+                <strong>Hoja de inspecci&oacute;n</strong>
+                Cita #${escapePdfHtml(idCita)}
+              </div>
+            </header>
+
+            <h1>Hoja de inspecci&oacute;n</h1>
+            <section class="client-card">
+              <div class="client-field">
+                <span>Cliente</span>
+                <strong>${escapePdfHtml(clientePdf.nombre)}</strong>
+              </div>
+              <div class="client-field">
+                <span>Direcci&oacute;n</span>
+                <strong>${escapePdfHtml(clientePdf.direccion)}</strong>
+              </div>
+              <div class="client-field">
+                <span>Tel&eacute;fono</span>
+                <strong>${escapePdfHtml(clientePdf.telefono)}</strong>
+              </div>
+            </section>
+
+            <section class="section">
+              <h2>Materiales requeridos</h2>
+              <table>
+                <thead>
+                  <tr>
+                    <th class="idx">#</th>
+                    <th>Material</th>
+                    <th class="qty">Cant.</th>
+                    <th>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </section>
+
+            <section class="section avoid-break">
+              <h2>Mapa / imagen de instalaci&oacute;n</h2>
+              <div class="mapa"><img src="${escapePdfHtml(dibujoUrl)}" /></div>
+            </section>
+
+            <section class="final-signature">
+              <h2>Firma de conformidad</h2>
+              <div class="signature-layout">
+                <div class="signature-box">
+                  <img src="${escapePdfHtml(firmaUrl)}" />
+                  <div class="signature-line">Firma del cliente</div>
+                </div>
+              </div>
+            </section>
+          </main>
+          <script>setTimeout(function(){window.focus();window.print();},600);</script>
+        </body>
+      </html>`;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
   return (
     <>
       {showFirmaModal && (
@@ -275,7 +541,7 @@ export default function HojaInspeccion({
                     : "text-white/40 hover:bg-white/5 hover:text-white/80"
                 }`}>
                 <PencilRuler className="w-4 h-4" />
-                Imagen
+                Mapa
               </button>
             </div>
 
@@ -424,6 +690,18 @@ export default function HojaInspeccion({
               onClick={onClose}
               className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors">
               Cancelar
+            </button>
+            <button
+              onClick={handleDownloadPdf}
+              disabled={saving || loading || !puedeDescargarPdf}
+              title={
+                puedeDescargarPdf
+                  ? "Descargar PDF"
+                  : "Requiere imagen, productos y firma guardados"
+              }
+              className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+              <Download className="w-4 h-4" />
+              PDF
             </button>
             <button
               onClick={handleSave}

@@ -61,6 +61,12 @@ type AgendaItem = {
   mostrarImagenes: boolean;
 };
 
+type ClienteInspeccion = {
+  nombre: string;
+  direccion: string;
+  telefono: string;
+};
+
 type CitasEstados = {
   id: string;
   estado: string;
@@ -172,6 +178,19 @@ export default function Inicio() {
   const [openInspeccion, setOpenInspeccion] = useState(false);
   const [idCitaInspeccion, setIdCitaInspeccion] = useState<number | null>(null);
   const [idHojaInspeccion, setIdHojaInspeccion] = useState<number | null>(null);
+  const [clienteInspeccion, setClienteInspeccion] =
+    useState<ClienteInspeccion | null>(null);
+  const abrirHojaInspeccion = (item: AgendaItem) => {
+    setOpenInspeccion(true);
+    setIdCitaInspeccion(Number(item.idcita));
+    setIdHojaInspeccion(item.idhoja ? parseInt(item.idhoja) : null);
+    setClienteInspeccion({
+      nombre: item.nombre || "",
+      direccion: item.direccion || "",
+      telefono: item.telefono || "",
+    });
+  };
+
   const [inspeccionItemsMap, setInspeccionItemsMap] = useState<
     Record<string, { items: any[]; visible: boolean }>
   >({});
@@ -1050,11 +1069,7 @@ export default function Inicio() {
                               <span
                                 className="text-blue-500 font-bold hover:underline cursor-pointer"
                                 onClick={() => {
-                                  setOpenInspeccion(true);
-                                  setIdCitaInspeccion(Number(it.idcita));
-                                  setIdHojaInspeccion(
-                                    it.idhoja ? parseInt(it.idhoja) : null,
-                                  );
+                                  abrirHojaInspeccion(it);
                                 }}>
                                 Ver / editar hoja inspección
                               </span>
@@ -1065,11 +1080,7 @@ export default function Inicio() {
                               <span
                                 className="hover:underline cursor-pointer text-blue-400 font-bold"
                                 onClick={() => {
-                                  setOpenInspeccion(true);
-                                  setIdCitaInspeccion(Number(it.idcita));
-                                  setIdHojaInspeccion(
-                                    it.idhoja ? parseInt(it.idhoja) : null,
-                                  );
+                                  abrirHojaInspeccion(it);
                                 }}>
                                 Crear hoja inspección
                               </span>
@@ -1275,11 +1286,7 @@ export default function Inicio() {
                                   <span
                                     className="text-blue-500 font-bold hover:underline cursor-pointer"
                                     onClick={() => {
-                                      setOpenInspeccion(true);
-                                      setIdCitaInspeccion(Number(it.idcita));
-                                      setIdHojaInspeccion(
-                                        it.idhoja ? parseInt(it.idhoja) : null,
-                                      );
+                                      abrirHojaInspeccion(it);
                                     }}>
                                     Ver hoja inspección
                                   </span>
@@ -1291,11 +1298,7 @@ export default function Inicio() {
                                   <span
                                     className="hover:underline cursor-pointer text-blue-400 font-bold"
                                     onClick={() => {
-                                      setOpenInspeccion(true);
-                                      setIdCitaInspeccion(Number(it.idcita));
-                                      setIdHojaInspeccion(
-                                        it.idhoja ? parseInt(it.idhoja) : null,
-                                      );
+                                      abrirHojaInspeccion(it);
                                     }}>
                                     Crear hoja inspección
                                   </span>
@@ -1505,10 +1508,12 @@ export default function Inicio() {
           <HojaInspeccion
             idCita={idCitaInspeccion}
             idHoja={idHojaInspeccion}
+            cliente={clienteInspeccion}
             onClose={() => {
               setOpenInspeccion(false);
               setIdCitaInspeccion(null);
               setIdHojaInspeccion(null);
+              setClienteInspeccion(null);
             }}
             onSaved={cargarInicio}
           />
