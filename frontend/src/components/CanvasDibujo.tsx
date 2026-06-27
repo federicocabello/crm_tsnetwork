@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { ImagePlus, Eraser, Trash2 } from "lucide-react";
+import Loading from "./Loading";
 
 interface CanvasDibujoProps {
   initialImage?: string | null;
@@ -17,6 +18,7 @@ export default function CanvasDibujo({
   const [color, setColor] = useState("#ef4444"); // Red default
   const [lineWidth, setLineWidth] = useState(3);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+  const [loadingImage, setLoadingImage] = useState(false);
 
   // Colors palette
   const colors = [
@@ -30,18 +32,33 @@ export default function CanvasDibujo({
 
   // Initialize canvas with background image
   useEffect(() => {
-    if (initialImage && !bgImage) {
+    if (initialImage) {
+      setLoadingImage(true);
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = initialImage;
       img.onload = () => {
         setBgImage(img);
         drawInitialState(img);
+        setLoadingImage(false);
       };
+      img.onerror = () => {
+        setBgImage(null);
+        drawInitialState(null, false);
+        setLoadingImage(false);
+      };
+      return;
     }
+
+    setBgImage(null);
+    drawInitialState(null, false);
+    setLoadingImage(false);
   }, [initialImage]);
 
-  const drawInitialState = (img: HTMLImageElement | null) => {
+  const drawInitialState = (
+    img: HTMLImageElement | null,
+    shouldExport = true,
+  ) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -73,7 +90,9 @@ export default function CanvasDibujo({
       );
     }
 
-    exportCanvas();
+    if (shouldExport) {
+      exportCanvas();
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,13 +100,21 @@ export default function CanvasDibujo({
     if (!file) return;
 
     const reader = new FileReader();
+    setLoadingImage(true);
     reader.onload = (event) => {
       const img = new Image();
       img.onload = () => {
         setBgImage(img);
         drawInitialState(img);
+        setLoadingImage(false);
+      };
+      img.onerror = () => {
+        setLoadingImage(false);
       };
       img.src = event.target?.result as string;
+    };
+    reader.onerror = () => {
+      setLoadingImage(false);
     };
     reader.readAsDataURL(file);
   };
@@ -236,7 +263,12 @@ export default function CanvasDibujo({
           onTouchCancel={stopDrawing}
           onTouchMove={draw}
         />
-        {!bgImage && !isDrawing && (
+        {loadingImage && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-zinc-900/80 text-white">
+            <Loading />
+          </div>
+        )}
+        {!loadingImage && !bgImage && !isDrawing && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
             <p className="text-white text-sm font-semibold">
               Usa el mouse o el dedo para dibujar
