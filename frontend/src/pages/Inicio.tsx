@@ -207,9 +207,13 @@ export default function Inicio() {
 
   const dayItems = useMemo(() => {
     return items
-      .filter((i) => i.dia === selectedDay)
+      .filter((i) => {
+        if (i.dia !== selectedDay) return false;
+        if (user?.rol === "tecnico" && Number(i.idagente) !== Number(user?.id)) return false;
+        return true;
+      })
       .sort((a, b) => a.hora.localeCompare(b.hora));
-  }, [items, selectedDay]);
+  }, [items, selectedDay, user]);
 
   const [citasEstados, setCitasEstados] = useState<CitasEstados[]>([]);
 
