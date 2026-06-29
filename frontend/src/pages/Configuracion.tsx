@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import type { Usuarios } from "../types/auth";
-import { PencilIcon, PlusCircleIcon, ArrowRightLeftIcon, ContactRoundIcon, CalendarDays, CreditCard, UsersRound } from "lucide-react";
+import { PencilIcon, PlusCircleIcon, ArrowRightLeftIcon, ContactRoundIcon, CalendarDays, CreditCard, UsersRound, FolderOpen } from "lucide-react";
 import { ROLES } from "../types/auth";
 import Loading from "../components/Loading";
 import ConfiguracionCitas from "./ConfiguracionCitas";
 import ConfiguracionPagos from "./ConfiguracionPagos";
+import UsuarioArchivos from "../components/UsuarioArchivos";
 import type { EstadoCita } from "../types/configuracion";
 
 export default function Users() {
@@ -12,6 +13,8 @@ export default function Users() {
   const [users, setUsers] = useState<Usuarios[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [citasEstados, setCitasEstados] = useState<EstadoCita[]>([]);
+  const [usuarioArchivosAbierto, setUsuarioArchivosAbierto] = useState(false);
+  const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<{ id: number, fullname: string } | null>(null);
 
   type InicioResponse = {
     usuarios: Usuarios[];
@@ -204,6 +207,9 @@ export default function Users() {
                             <span className="font-bold">{user.habilitado ? "Habilitado" : "Deshabilitado"}</span>
                           </span>
                           <span title="Habilitar/deshabilitar" className="border border-transparent hover:border-white rounded-full transition-all p-1 hover:scale-120"><ArrowRightLeftIcon className="h-4 w-4 cursor-pointer" onClick={() => handleGestionUsuario(Number(user.id), String(!user.habilitado), 4, false)} /></span>
+                          <span title="Archivos" className="border border-transparent hover:border-white rounded-full transition-all p-1 hover:scale-120 text-orange-400 hover:text-orange-300">
+                            <FolderOpen className="h-4 w-4 cursor-pointer" onClick={() => { setUsuarioSeleccionado({ id: Number(user.id), fullname: user.fullname }); setUsuarioArchivosAbierto(true); }} />
+                          </span>
                         </div>
                       </td>
                     </tr>
@@ -243,6 +249,14 @@ export default function Users() {
 
       {ventanaActiva == "pagos" && (
         <ConfiguracionPagos />
+      )}
+
+      {usuarioArchivosAbierto && usuarioSeleccionado && (
+        <UsuarioArchivos
+          usuarioId={usuarioSeleccionado.id}
+          usuarioNombre={usuarioSeleccionado.fullname}
+          onClose={() => { setUsuarioArchivosAbierto(false); setUsuarioSeleccionado(null); }}
+        />
       )}
     </div>
   );

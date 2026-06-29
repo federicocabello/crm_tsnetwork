@@ -14,8 +14,8 @@ app = Flask(__name__)
 CORS(
     app,
     resources={
-        r"/api/*": {"origins": "http://localhost:5175"},
-        r"/uploads/*": {"origins": "http://localhost:5175"}
+        r"/api/*": {"origins": "http://localhost:5176"},
+        r"/uploads/*": {"origins": "http://localhost:5176"}
     },
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],
@@ -164,6 +164,62 @@ def configuracion_gestion_de_usuarios():
     cursor.close()
 
     return jsonify({"msg": "Usuario modificado con éxito."}), 201
+
+@app.get("/api/configuracion/usuarios/<int:usuario_id>/archivos")
+def get_usuario_archivos(usuario_id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM usuarios_archivos WHERE usuario = %s", (usuario_id,))
+    archivos = cursor.fetchall()
+    cursor.close()
+    return jsonify(archivos), 200
+
+@app.post("/api/configuracion/usuarios/<int:usuario_id>/archivos")
+def upload_usuario_archivo(usuario_id):
+    if "archivo" not in request.files:
+        return jsonify({"msg": "No se encontró archivo"}), 400
+    
+    file = request.files["archivo"]
+    if file.filename == "":
+        return jsonify({"msg": "Ningún archivo seleccionado"}), 400
+    
+    original = secure_filename(file.filename)
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S_")
+    directorio = timestamp + original
+    
+    save_path = os.path.join(app.root_path, "uploads", "usuarios", directorio)
+    file.save(save_path)
+    
+    cursor = mysql.connection.cursor()
+    cursor.execute(
+        "INSERT INTO usuarios_archivos (usuario, original, directorio) VALUES (%s, %s, %s)",
+        (usuario_id, original, directorio)
+    )
+    mysql.connection.commit()
+    cursor.close()
+    
+    return jsonify({"msg": "Archivo subido correctamente"}), 201
+
+@app.delete("/api/configuracion/usuarios/archivos/<int:archivo_id>")
+def delete_usuario_archivo(archivo_id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT directorio FROM usuarios_archivos WHERE id = %s", (archivo_id,))
+    row = cursor.fetchone()
+    
+    if row:
+        directorio = row["directorio"]
+        file_path = os.path.join(app.root_path, "uploads", "usuarios", directorio)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+        cursor.execute("DELETE FROM usuarios_archivos WHERE id = %s", (archivo_id,))
+        mysql.connection.commit()
+    
+    cursor.close()
+    return jsonify({"msg": "Archivo eliminado con éxito"}), 200
+
+@app.get("/uploads/usuarios/<path:filename>")
+def get_upload_usuario(filename):
+    return send_from_directory(os.path.join(app.root_path, "uploads", "usuarios"), filename)
 
 @app.get("/api/clientes/buscar")
 def buscar_clientes():
