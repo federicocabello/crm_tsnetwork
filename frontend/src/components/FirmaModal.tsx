@@ -1,12 +1,13 @@
-﻿import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { PenLine, RotateCcw, Check, X } from "lucide-react";
 
 interface FirmaModalProps {
   onConfirm: (firmaBlob: Blob) => void;
   onCancel: () => void;
+  showLeyenda?: boolean;
 }
 
-export default function FirmaModal({ onConfirm, onCancel }: FirmaModalProps) {
+export default function FirmaModal({ onConfirm, onCancel, showLeyenda = false }: FirmaModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasFirma, setHasFirma] = useState(false);
@@ -102,7 +103,7 @@ export default function FirmaModal({ onConfirm, onCancel }: FirmaModalProps) {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[95dvh] overflow-y-auto"
         style={{ animation: "fadeScaleIn 0.25s ease-out" }}
       >
         <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-5 py-4 flex items-center justify-between">
@@ -128,6 +129,24 @@ export default function FirmaModal({ onConfirm, onCancel }: FirmaModalProps) {
         </div>
 
         <div className="p-4 flex flex-col gap-3">
+          {showLeyenda && (
+            <div className="border-2 border-orange-400 bg-orange-50 rounded-xl p-3">
+              <h3 className="text-orange-700 font-black text-xs uppercase text-center mb-2 tracking-wider border-b border-orange-200 pb-2">
+                Aviso Importante y Garantía
+              </h3>
+              <p className="text-red-600 font-bold text-center text-xs uppercase mb-3">
+                En caso de que el cliente no cumpla con los pagos tenemos derecho a retirar los equipos instalados.
+              </p>
+              <div className="text-xs text-slate-700 leading-relaxed">
+                <strong className="text-slate-800 block mb-1">Términos de Garantía:</strong>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>La garantía <strong>NO CUBRE</strong>: Equipos con golpes o daños físicos. Cables dañados por causas externas. Fallas provocadas por variaciones o subidas de tensión eléctrica.</li>
+                  <li><strong className="text-orange-600">Importante:</strong> Si el cliente modifica la contraseña del equipo, no nos responsabilizamos por su recuperación.</li>
+                  <li><strong>Garantía por 6 meses</strong> (falla solo por problema de equipo).</li>
+                </ul>
+              </div>
+            </div>
+          )}
           <p className="text-slate-500 text-xs text-center font-medium">
             Firme con el dedo o el mouse en el area de abajo
           </p>

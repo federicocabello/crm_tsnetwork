@@ -14,8 +14,8 @@ app = Flask(__name__)
 CORS(
     app,
     resources={
-        r"/api/*": {"origins": "http://localhost:5175"},
-        r"/uploads/*": {"origins": "http://localhost:5175"}
+        r"/api/*": {"origins": "http://localhost:5176"},
+        r"/uploads/*": {"origins": "http://localhost:5176"}
     },
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],
@@ -164,6 +164,62 @@ def configuracion_gestion_de_usuarios():
     cursor.close()
 
     return jsonify({"msg": "Usuario modificado con éxito."}), 201
+
+@app.get("/api/configuracion/usuarios/<int:usuario_id>/archivos")
+def get_usuario_archivos(usuario_id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT * FROM usuarios_archivos WHERE usuario = %s", (usuario_id,))
+    archivos = cursor.fetchall()
+    cursor.close()
+    return jsonify(archivos), 200
+
+@app.post("/api/configuracion/usuarios/<int:usuario_id>/archivos")
+def upload_usuario_archivo(usuario_id):
+    if "archivo" not in request.files:
+        return jsonify({"msg": "No se encontró archivo"}), 400
+    
+    file = request.files["archivo"]
+    if file.filename == "":
+        return jsonify({"msg": "Ningún archivo seleccionado"}), 400
+    
+    original = secure_filename(file.filename)
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S_")
+    directorio = timestamp + original
+    
+    save_path = os.path.join(app.root_path, "uploads", "usuarios", directorio)
+    file.save(save_path)
+    
+    cursor = mysql.connection.cursor()
+    cursor.execute(
+        "INSERT INTO usuarios_archivos (usuario, original, directorio) VALUES (%s, %s, %s)",
+        (usuario_id, original, directorio)
+    )
+    mysql.connection.commit()
+    cursor.close()
+    
+    return jsonify({"msg": "Archivo subido correctamente"}), 201
+
+@app.delete("/api/configuracion/usuarios/archivos/<int:archivo_id>")
+def delete_usuario_archivo(archivo_id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT directorio FROM usuarios_archivos WHERE id = %s", (archivo_id,))
+    row = cursor.fetchone()
+    
+    if row:
+        directorio = row["directorio"]
+        file_path = os.path.join(app.root_path, "uploads", "usuarios", directorio)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+        cursor.execute("DELETE FROM usuarios_archivos WHERE id = %s", (archivo_id,))
+        mysql.connection.commit()
+    
+    cursor.close()
+    return jsonify({"msg": "Archivo eliminado con éxito"}), 200
+
+@app.get("/uploads/usuarios/<path:filename>")
+def get_upload_usuario(filename):
+    return send_from_directory(os.path.join(app.root_path, "uploads", "usuarios"), filename)
 
 @app.get("/api/clientes/buscar")
 def buscar_clientes():
@@ -836,11 +892,16 @@ def get_cotizacion(idCotizacion):
 
     total = cursor.fetchone()["total"] or 0
 
+    cursor.execute("SELECT firma_instalacion FROM hojas WHERE id = %s", (idCotizacion,))
+    hoja_info = cursor.fetchone()
+    firma_instalacion = hoja_info["firma_instalacion"] if hoja_info else None
+
     cursor.close()
 
     return jsonify({
         "productos": productos,
-        "total": float(total)
+        "total": float(total),
+        "firma_instalacion": firma_instalacion
     }), 200
     
 @app.put("/api/cotizaciones/<int:id_hoja>")
@@ -1021,6 +1082,43 @@ def confirmar_instalacion(id_hoja):
         mysql.connection.rollback()
         return jsonify({"error": str(e)}), 500
 
+    finally:
+        cursor.close()
+
+@app.post("/api/cotizaciones/<int:id_hoja>/firma-instalacion")
+def guardar_firma_instalacion(id_hoja):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT id, cita, tipo FROM hojas WHERE id = %s", (id_hoja,))
+        hoja = cursor.fetchone()
+        if not hoja:
+            return jsonify({"error": "Cotizacion no encontrada"}), 404
+        if hoja.get("tipo") != "instalacion_confirmada":
+            return jsonify({"error": "La instalacion no esta confirmada aun"}), 400
+
+        id_cita = hoja["cita"]
+        archivo_firma = request.files.get("firma")
+        
+        firma_path = None
+        if archivo_firma:
+            from werkzeug.utils import secure_filename
+            import os
+            import time
+            nombre_seguro = secure_filename(archivo_firma.filename)
+            timestamp = int(time.time())
+            nombre_final = f"firma_inst_{timestamp}_{nombre_seguro}"
+            carpeta = os.path.join(app.root_path, "uploads", f"cita_{id_cita}")
+            os.makedirs(carpeta, exist_ok=True)
+            archivo_firma.save(os.path.join(carpeta, nombre_final))
+            firma_path = f"/uploads/cita_{id_cita}/{nombre_final}"
+            
+            cursor.execute("UPDATE hojas SET firma_instalacion = %s WHERE id = %s", (firma_path, id_hoja))
+            mysql.connection.commit()
+            
+        return jsonify({"msg": "Firma guardada correctamente", "firma_instalacion": firma_path}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
 

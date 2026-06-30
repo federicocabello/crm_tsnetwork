@@ -23,6 +23,7 @@ interface HojaInspeccionProps {
   idCita: number;
   idHoja?: number | null; // ID de la cotización (para pre-cargar artículos)
   cliente?: ClienteInspeccionInfo | null;
+  bloqueada?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -47,6 +48,7 @@ export default function HojaInspeccion({
   idCita,
   idHoja,
   cliente,
+  bloqueada = false,
   onClose,
   onSaved,
 }: HojaInspeccionProps) {
@@ -270,6 +272,7 @@ export default function HojaInspeccion({
       telefono: cliente?.telefono?.trim() || "No disponible",
     };
     const logoUrl = new URL("/logo_tsnetwork.png", window.location.origin).href;
+    const fechaEmision = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const printWindow = window.open("", "_blank", "width=900,height=1100");
     if (printWindow === null) {
@@ -286,6 +289,7 @@ export default function HojaInspeccion({
             * { box-sizing: border-box; }
             body {
               margin: 0;
+              padding: 40px;
               font-family: Arial, Helvetica, sans-serif;
               color: #111827;
               background: #ffffff;
@@ -373,7 +377,7 @@ export default function HojaInspeccion({
             td { border-top: 1px solid #e5e7eb; padding: 9px 10px; vertical-align: top; }
             tbody tr:nth-child(even) { background: #f9fafb; }
             .idx { width: 42px; text-align: center; color: #6b7280; }
-            .qty { width: 76px; text-align: center; font-weight: 800; color: #111827; }
+            .qty { width: 140px; text-align: center; font-weight: 800; color: #111827; }
             .product { font-weight: 700; color: #111827; }
             .detail { color: #4b5563; }
             .mapa {
@@ -430,7 +434,8 @@ export default function HojaInspeccion({
               </div>
               <div class="doc-meta">
                 <strong>Hoja de inspecci&oacute;n</strong>
-                Cita #${escapePdfHtml(idCita)}
+                Cita #${escapePdfHtml(idCita)}<br/>
+                Fecha: ${fechaEmision}
               </div>
             </header>
 
@@ -457,7 +462,7 @@ export default function HojaInspeccion({
                   <tr>
                     <th class="idx">#</th>
                     <th>Material</th>
-                    <th class="qty">Cant.</th>
+                    <th class="qty">Cantidad de material</th>
                     <th>Detalle</th>
                   </tr>
                 </thead>
@@ -552,10 +557,11 @@ export default function HojaInspeccion({
             ) : activeTab === "materiales" ? (
               <>
                 {/* Add Item Form */}
-                <div className="p-4 border-b border-white/10 bg-zinc-950/40 flex flex-col gap-3 shrink-0">
-                  <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
-                    Agregar material
-                  </p>
+                {!bloqueada && (
+                  <div className="p-4 border-b border-white/10 bg-zinc-950/40 flex flex-col gap-3 shrink-0">
+                    <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
+                      Agregar material
+                    </p>
 
                   {/* Producto selector */}
                   <div>
@@ -616,6 +622,7 @@ export default function HojaInspeccion({
                     Agregar material
                   </button>
                 </div>
+                )}
 
                 {/* Items list wrapper */}
                 <div className="flex-1 flex flex-col min-h-0 p-4">
@@ -663,11 +670,13 @@ export default function HojaInspeccion({
                             </div>
 
                             {/* Delete */}
-                            <button
-                              onClick={() => handleRemoveItem(index)}
-                              className="shrink-0 p-1.5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {!bloqueada && (
+                              <button
+                                onClick={() => handleRemoveItem(index)}
+                                className="shrink-0 p-1.5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -680,6 +689,7 @@ export default function HojaInspeccion({
               <CanvasDibujo
                 initialImage={dibujoUrl}
                 onImageChange={(file) => setDibujoFile(file)}
+                readOnly={bloqueada}
               />
             )}
           </div>
@@ -703,17 +713,19 @@ export default function HojaInspeccion({
               <Download className="w-4 h-4" />
               PDF
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saving || loading}
-              className="flex-2 bg-orange-500 hover:bg-orange-400 active:bg-orange-600 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-500/20">
-              {saving ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              Guardar
-            </button>
+            {!bloqueada && (
+              <button
+                onClick={handleSave}
+                disabled={saving || loading}
+                className="flex-2 bg-orange-500 hover:bg-orange-400 active:bg-orange-600 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-500/20">
+                {saving ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Guardar
+              </button>
+            )}
           </div>
         </div>
       </div>
