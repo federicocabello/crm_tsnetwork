@@ -31,5 +31,12 @@ with app.app_context():
         print("Column 'firma' added successfully.")
     except Exception as e:
         print("Error or column already exists (firma):", e)
+    # Agregar columna 'firma_instalacion' para guardar la firma de la hoja de instalacion
+    try:
+        cur.execute("ALTER TABLE hojas ADD COLUMN firma_instalacion VARCHAR(255) DEFAULT NULL;")
+        mysql.connection.commit()
+        print("Column 'firma_instalacion' added successfully.")
+    except Exception as e:
+        print("Error or column already exists (firma_instalacion):", e)
     finally:
         cur.close()

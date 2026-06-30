@@ -892,11 +892,16 @@ def get_cotizacion(idCotizacion):
 
     total = cursor.fetchone()["total"] or 0
 
+    cursor.execute("SELECT firma_instalacion FROM hojas WHERE id = %s", (idCotizacion,))
+    hoja_info = cursor.fetchone()
+    firma_instalacion = hoja_info["firma_instalacion"] if hoja_info else None
+
     cursor.close()
 
     return jsonify({
         "productos": productos,
-        "total": float(total)
+        "total": float(total),
+        "firma_instalacion": firma_instalacion
     }), 200
     
 @app.put("/api/cotizaciones/<int:id_hoja>")
@@ -1077,6 +1082,43 @@ def confirmar_instalacion(id_hoja):
         mysql.connection.rollback()
         return jsonify({"error": str(e)}), 500
 
+    finally:
+        cursor.close()
+
+@app.post("/api/cotizaciones/<int:id_hoja>/firma-instalacion")
+def guardar_firma_instalacion(id_hoja):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT id, cita, tipo FROM hojas WHERE id = %s", (id_hoja,))
+        hoja = cursor.fetchone()
+        if not hoja:
+            return jsonify({"error": "Cotizacion no encontrada"}), 404
+        if hoja.get("tipo") != "instalacion_confirmada":
+            return jsonify({"error": "La instalacion no esta confirmada aun"}), 400
+
+        id_cita = hoja["cita"]
+        archivo_firma = request.files.get("firma")
+        
+        firma_path = None
+        if archivo_firma:
+            from werkzeug.utils import secure_filename
+            import os
+            import time
+            nombre_seguro = secure_filename(archivo_firma.filename)
+            timestamp = int(time.time())
+            nombre_final = f"firma_inst_{timestamp}_{nombre_seguro}"
+            carpeta = os.path.join(app.root_path, "uploads", f"cita_{id_cita}")
+            os.makedirs(carpeta, exist_ok=True)
+            archivo_firma.save(os.path.join(carpeta, nombre_final))
+            firma_path = f"/uploads/cita_{id_cita}/{nombre_final}"
+            
+            cursor.execute("UPDATE hojas SET firma_instalacion = %s WHERE id = %s", (firma_path, id_hoja))
+            mysql.connection.commit()
+            
+        return jsonify({"msg": "Firma guardada correctamente", "firma_instalacion": firma_path}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
 

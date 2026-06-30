@@ -20,6 +20,7 @@ import {
   UserRoundSearch,
   CircleCheck,
   X,
+  FileText,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -27,6 +28,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { darkenColor } from "../utils/colores";
 import Cotizador from "./Cotizador";
 import HojaInspeccion from "../components/HojaInspeccion";
+import HojaInstalacion from "../components/HojaInstalacion";
 import ModalEditarRegistro from "../components/ModalEditarRegistro";
 import GaleriaCita from "../components/GaleriaCita";
 import EditarDetalles from "../components/EditarDetalles";
@@ -178,13 +180,31 @@ export default function Inicio() {
   const [openInspeccion, setOpenInspeccion] = useState(false);
   const [idCitaInspeccion, setIdCitaInspeccion] = useState<number | null>(null);
   const [idHojaInspeccion, setIdHojaInspeccion] = useState<number | null>(null);
+  const [inspeccionBloqueada, setInspeccionBloqueada] = useState(false);
   const [clienteInspeccion, setClienteInspeccion] =
     useState<ClienteInspeccion | null>(null);
   const abrirHojaInspeccion = (item: AgendaItem) => {
     setOpenInspeccion(true);
+    setInspeccionBloqueada(item.tipo_hoja === "instalacion_confirmada");
     setIdCitaInspeccion(Number(item.idcita));
     setIdHojaInspeccion(item.idhoja ? parseInt(item.idhoja) : null);
     setClienteInspeccion({
+      nombre: item.nombre || "",
+      direccion: item.direccion || "",
+      telefono: item.telefono || "",
+    });
+  };
+
+  const [openInstalacion, setOpenInstalacion] = useState(false);
+  const [idCitaInstalacion, setIdCitaInstalacion] = useState<number | null>(null);
+  const [idHojaInstalacion, setIdHojaInstalacion] = useState<number | null>(null);
+  const [clienteInstalacion, setClienteInstalacion] = useState<ClienteInspeccion | null>(null);
+  
+  const abrirHojaInstalacion = (item: AgendaItem) => {
+    setOpenInstalacion(true);
+    setIdCitaInstalacion(Number(item.idcita));
+    setIdHojaInstalacion(item.idhoja ? parseInt(item.idhoja) : null);
+    setClienteInstalacion({
       nombre: item.nombre || "",
       direccion: item.direccion || "",
       telefono: item.telefono || "",
@@ -1090,6 +1110,18 @@ export default function Inicio() {
                               </span>
                             </div>
                           ))}
+
+                        {/* Hoja de Instalación - solo cuando ya fue confirmada */}
+                        {it.tiene_hoja === 1 && it.tipo_hoja === "instalacion_confirmada" && (
+                          <div className="text-sm flex items-center gap-1">
+                            •<FileText className="h-4 w-4 text-orange-400" />
+                            <span
+                              className="text-orange-400 font-bold hover:underline cursor-pointer"
+                              onClick={() => abrirHojaInstalacion(it)}>
+                              Ver Hoja / Firma
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {it.notas && (
@@ -1363,9 +1395,16 @@ export default function Inicio() {
                               Confirmar Instalación
                             </button>
                           </div>
-                        ) : (
-                          ""
-                        )}
+                        ) : it.tiene_hoja && it.tipo_hoja === "instalacion_confirmada" && user?.rol === "tecnico" ? (
+                          <div className="shrink-0">
+                            <button
+                              onClick={() => abrirHojaInstalacion(it)}
+                              className="group flex w-full items-center justify-center gap-1.5 rounded-full border border-orange-400/30 bg-orange-500/15 px-3 py-1 text-xs font-extrabold text-orange-200 shadow-sm shadow-orange-500/10 transition-all hover:border-orange-300/70 hover:bg-orange-500/25 hover:text-white hover:shadow-orange-500/20 sm:w-auto">
+                              <FileText className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+                              Ver Hoja / Firma
+                            </button>
+                          </div>
+                        ) : ""}
                       </div>
 
                       {it.notas && (
@@ -1518,6 +1557,22 @@ export default function Inicio() {
               setIdCitaInspeccion(null);
               setIdHojaInspeccion(null);
               setClienteInspeccion(null);
+            }}
+            onSaved={cargarInicio}
+            bloqueada={inspeccionBloqueada}
+          />
+        )}
+
+        {openInstalacion && idCitaInstalacion && idHojaInstalacion && (
+          <HojaInstalacion
+            idCita={idCitaInstalacion}
+            idHoja={idHojaInstalacion}
+            cliente={clienteInstalacion}
+            onClose={() => {
+              setOpenInstalacion(false);
+              setIdCitaInstalacion(null);
+              setIdHojaInstalacion(null);
+              setClienteInstalacion(null);
             }}
             onSaved={cargarInicio}
           />
