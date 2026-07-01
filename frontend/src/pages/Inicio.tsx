@@ -1395,7 +1395,7 @@ export default function Inicio() {
                               Confirmar Instalación
                             </button>
                           </div>
-                        ) : it.tiene_hoja && it.tipo_hoja === "instalacion_confirmada" && user?.rol === "tecnico" ? (
+                        ) : it.tiene_hoja && it.tipo_hoja === "instalacion_confirmada" ? (
                           <div className="shrink-0">
                             <button
                               onClick={() => abrirHojaInstalacion(it)}

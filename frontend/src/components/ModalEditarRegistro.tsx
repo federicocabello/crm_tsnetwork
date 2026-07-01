@@ -21,7 +21,10 @@ type AgendaItem = {
   telefono: string;
   direccion: string;
   idhoja: string;
+  tipo_hoja?: string;
   tiene_hoja: number;
+  idinspeccion: string;
+  tiene_inspeccion: number;
   detalles: boolean;
   preguntas?: { pregunta: string; respuesta: string }[];
   mostrarImagenes: boolean;

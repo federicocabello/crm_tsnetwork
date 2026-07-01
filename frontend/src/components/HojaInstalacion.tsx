@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { X, Save, Download, FileText, CheckCircle } from "lucide-react";
+import {
+  CheckCircle,
+  Download,
+  FileText,
+  PackageSearch,
+  Plus,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
 import FirmaModal from "./FirmaModal";
 
 interface ClienteInstalacionInfo {
@@ -16,10 +25,19 @@ interface HojaInstalacionProps {
   onSaved: () => void;
 }
 
-interface ProductoCotizado {
+interface Producto {
   id: number;
   descrip: string;
+  stock: number;
+  precio: number;
+}
+
+interface InstalacionItem {
+  producto_id: number;
+  producto_descrip: string;
+  producto_stock: number;
   cantidad: number;
+  detalle: string;
   precioFinal: number;
 }
 
@@ -33,60 +51,225 @@ export default function HojaInstalacion({
   const API_URL = "http://localhost:5000";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [items, setItems] = useState<ProductoCotizado[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [items, setItems] = useState<InstalacionItem[]>([]);
+  const [selectedProducto, setSelectedProducto] = useState<number | "">("");
+  const [cantidad, setCantidad] = useState<number>(1);
+  const [detalle, setDetalle] = useState<string>("");
   const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
+  const [cargadoDeInspeccion, setCargadoDeInspeccion] = useState(false);
+
+  const bloqueada = Boolean(firmaUrl);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const resCotizacion = await fetch(`${API_URL}/api/cotizacion/${idHoja}`);
+
+        const [resProductos, resCotizacion] = await Promise.all([
+          fetch(`${API_URL}/api/productos`),
+          fetch(`${API_URL}/api/cotizacion/${idHoja}`),
+        ]);
+
+        if (resProductos.ok) {
+          const dataProductos = await resProductos.json();
+          setProductos(dataProductos);
+        }
+
         if (resCotizacion.ok) {
           const dataCotizacion = await resCotizacion.json();
-          if (dataCotizacion.productos) {
-            setItems(dataCotizacion.productos);
-          }
+          const productosInstalacion = Array.isArray(dataCotizacion.productos)
+            ? dataCotizacion.productos
+            : [];
+
           if (dataCotizacion.firma_instalacion) {
             setFirmaUrl(API_URL + dataCotizacion.firma_instalacion);
           }
+
+          if (productosInstalacion.length > 0) {
+            setItems(
+              productosInstalacion.map((p: any) => ({
+                producto_id: Number(p.id),
+                producto_descrip: p.descrip,
+                producto_stock: 0,
+                cantidad: Math.ceil(Number(p.cantidad || 0)) || 1,
+                detalle: p.detalle || "",
+                precioFinal: Number(p.precioFinal || 0),
+              })),
+            );
+          } else if (
+            Array.isArray(dataCotizacion.inspeccion_items) &&
+            dataCotizacion.inspeccion_items.length > 0
+          ) {
+            setItems(
+              dataCotizacion.inspeccion_items.map((p: any) => ({
+                producto_id: Number(p.producto_id),
+                producto_descrip: p.producto_descrip,
+                producto_stock: Number(p.producto_stock || 0),
+                cantidad: Math.ceil(Number(p.cantidad || 0)) || 1,
+                detalle: p.detalle || "",
+                precioFinal: Number(p.producto_precio || 0),
+              })),
+            );
+            setCargadoDeInspeccion(true);
+          }
         }
       } catch (error) {
-        console.error("Error al cargar cotización:", error);
+        console.error("Error al cargar hoja de instalacion:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-  }, [idHoja, API_URL]);
 
-  const handleSave = () => {
-    setShowFirmaModal(true);
+    fetchData();
+  }, [idHoja]);
+
+  const handleAddItem = () => {
+    if (!selectedProducto || cantidad <= 0 || bloqueada) return;
+
+    const producto = productos.find((p) => p.id === Number(selectedProducto));
+    if (!producto) return;
+
+    const existingIndex = items.findIndex((item) => item.producto_id === producto.id);
+    if (existingIndex >= 0) {
+      const newItems = [...items];
+      newItems[existingIndex] = {
+        ...newItems[existingIndex],
+        cantidad: newItems[existingIndex].cantidad + cantidad,
+        detalle: detalle
+          ? newItems[existingIndex].detalle
+            ? `${newItems[existingIndex].detalle} | ${detalle}`
+            : detalle
+          : newItems[existingIndex].detalle,
+      };
+      setItems(newItems);
+    } else {
+      setItems([
+        ...items,
+        {
+          producto_id: producto.id,
+          producto_descrip: producto.descrip,
+          producto_stock: producto.stock,
+          cantidad,
+          detalle,
+          precioFinal: producto.precio || 0,
+        },
+      ]);
+    }
+
+    setCargadoDeInspeccion(false);
+    setSelectedProducto("");
+    setCantidad(1);
+    setDetalle("");
+  };
+
+  const handleRemoveItem = (index: number) => {
+    if (bloqueada) return;
+
+    const newItems = [...items];
+    newItems.splice(index, 1);
+    setItems(newItems);
+    setCargadoDeInspeccion(false);
+  };
+
+  const handleUpdateItem = (
+    index: number,
+    updates: Partial<Pick<InstalacionItem, "cantidad" | "detalle">>,
+  ) => {
+    if (bloqueada) return;
+
+    setItems((current) =>
+      current.map((item, idx) =>
+        idx === index
+          ? {
+              ...item,
+              ...updates,
+              cantidad:
+                updates.cantidad !== undefined
+                  ? Math.max(1, Math.floor(updates.cantidad || 1))
+                  : item.cantidad,
+            }
+          : item,
+      ),
+    );
+    setCargadoDeInspeccion(false);
+  };
+
+  const buildFormData = (firmaBlob?: Blob) => {
+    const formData = new FormData();
+    formData.append(
+      "items",
+      JSON.stringify(
+        items.map((item) => ({
+          producto_id: item.producto_id,
+          cantidad: item.cantidad,
+          detalle: item.detalle,
+          precioFinal: item.precioFinal,
+        })),
+      ),
+    );
+
+    if (firmaBlob) {
+      formData.append("firma", new File([firmaBlob], "firma.png", { type: "image/png" }));
+    }
+
+    return formData;
+  };
+
+  const parseError = async (res: Response) => {
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 409 && Array.isArray(data.productos)) {
+      const detalleStock = data.productos
+        .map((p: any) => `${p.descrip}: stock ${p.stock}, requerido ${p.cantidad}`)
+        .join("\n");
+      return `${data.error || "Stock insuficiente"}\n\n${detalleStock}`;
+    }
+    return data.error || "No se pudo guardar la hoja de instalacion";
+  };
+
+  const handleGuardarCambios = async () => {
+    if (bloqueada) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_URL}/api/cotizaciones/${idHoja}/firma-instalacion`, {
+        method: "POST",
+        body: buildFormData(),
+      });
+
+      if (res.ok) {
+        onSaved();
+        alert("Cambios guardados correctamente");
+      } else {
+        alert(await parseError(res));
+      }
+    } catch (error) {
+      console.error("Error al guardar cambios:", error);
+      alert("Error de conexion al guardar cambios");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveWithFirma = async (firmaBlob: Blob) => {
     setShowFirmaModal(false);
     setSaving(true);
     try {
-      const formData = new FormData();
-      const firmaFile = new File([firmaBlob], "firma.png", { type: "image/png" });
-      formData.append("firma", firmaFile);
-
       const res = await fetch(`${API_URL}/api/cotizaciones/${idHoja}/firma-instalacion`, {
         method: "POST",
-        body: formData,
+        body: buildFormData(firmaBlob),
       });
 
       if (res.ok) {
         onSaved();
         onClose();
       } else {
-        const data = await res.json();
-        alert(data.error || "Error al guardar la firma de instalación");
+        alert(await parseError(res));
       }
     } catch (error) {
-      console.error("Error al guardar:", error);
-      alert("Error de conexión al guardar la firma");
+      console.error("Error al guardar firma:", error);
+      alert("Error de conexion al guardar la firma");
     } finally {
       setSaving(false);
     }
@@ -104,7 +287,7 @@ export default function HojaInstalacion({
 
   const handleDownloadPdf = () => {
     if (!firmaUrl || items.length === 0) {
-      alert("Para descargar el PDF, la hoja debe tener productos y la firma del cliente guardada.");
+      alert("Para descargar el PDF, la hoja debe tener productos y firma guardados.");
       return;
     }
 
@@ -113,20 +296,26 @@ export default function HojaInstalacion({
         (item, index) =>
           `<tr>` +
           `<td class="idx">${escapePdfHtml(index + 1)}</td>` +
-          `<td class="product">${escapePdfHtml(item.descrip)}</td>` +
+          `<td class="product">${escapePdfHtml(item.producto_descrip)}${
+            item.detalle ? `<div class="detail">${escapePdfHtml(item.detalle)}</div>` : ""
+          }</td>` +
           `<td class="qty">${escapePdfHtml(item.cantidad)}</td>` +
           `</tr>`,
       )
       .join("");
-      
+
     const clientePdf = {
       nombre: cliente?.nombre?.trim() || "No disponible",
       direccion: cliente?.direccion?.trim() || "No disponible",
       telefono: cliente?.telefono?.trim() || "No disponible",
     };
-    
+
     const logoUrl = new URL("/logo_tsnetwork.png", window.location.origin).href;
-    const fechaEmision = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+    const fechaEmision = new Date().toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
 
     const printWindow = window.open("", "_blank", "width=900,height=1100");
     if (printWindow === null) {
@@ -150,7 +339,6 @@ export default function HojaInstalacion({
               font-size: 12px;
               line-height: 1.35;
             }
-            .page { position: relative; min-height: 100vh; }
             .header {
               display: flex;
               align-items: center;
@@ -175,14 +363,12 @@ export default function HojaInstalacion({
               margin: 0 0 14px;
               text-transform: uppercase;
               letter-spacing: .05em;
-              color: #111827;
             }
             h2 {
               font-size: 13px;
               margin: 0 0 10px;
               text-transform: uppercase;
               letter-spacing: .08em;
-              color: #111827;
             }
             .client-card {
               display: grid;
@@ -205,7 +391,6 @@ export default function HojaInstalacion({
             .client-field strong {
               display: block;
               font-size: 13px;
-              color: #111827;
               overflow-wrap: anywhere;
             }
             .section { margin-top: 18px; break-inside: avoid; }
@@ -224,16 +409,15 @@ export default function HojaInstalacion({
             td { border-top: 1px solid #e5e7eb; padding: 9px 10px; vertical-align: top; }
             tbody tr:nth-child(even) { background: #f9fafb; }
             .idx { width: 42px; text-align: center; color: #6b7280; }
-            .qty { width: 140px; text-align: center; font-weight: 800; color: #111827; }
-            .product { font-weight: 700; color: #111827; }
-            
+            .qty { width: 110px; text-align: center; font-weight: 800; }
+            .product { font-weight: 700; }
+            .detail { margin-top: 4px; color: #6b7280; font-size: 11px; font-weight: 400; }
             .warranty-box {
               border: 2px solid #f97316;
               background-color: #fff7ed;
               padding: 16px;
               border-radius: 8px;
               margin-top: 25px;
-              color: #111827;
               font-size: 11px;
               line-height: 1.5;
               break-inside: avoid;
@@ -249,21 +433,13 @@ export default function HojaInstalacion({
               border-bottom: 1px solid #fdba74;
               padding-bottom: 8px;
             }
-            .warranty-box .important-note {
-              font-weight: bold;
-              color: #ea580c;
-            }
             .final-signature {
               margin-top: 28px;
               padding-top: 18px;
               border-top: 1px solid #d1d5db;
               break-inside: avoid;
-              page-break-inside: avoid;
             }
-            .signature-layout {
-              display: flex;
-              justify-content: flex-end;
-            }
+            .signature-layout { display: flex; justify-content: flex-end; }
             .signature-box { text-align: center; min-width: 280px; }
             .signature-box img {
               display: block;
@@ -280,11 +456,10 @@ export default function HojaInstalacion({
               letter-spacing: .08em;
               color: #374151;
             }
-            .avoid-break { break-inside: avoid; }
           </style>
         </head>
         <body>
-          <main class="page">
+          <main>
             <header class="header">
               <div class="brand">
                 <img class="logo" src="${escapePdfHtml(logoUrl)}" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" />
@@ -329,13 +504,13 @@ export default function HojaInstalacion({
 
             <section class="warranty-box">
               <h3>Aviso Importante y Garant&iacute;a</h3>
-              <p style="margin-top: 0; margin-bottom: 12px; text-align: center; font-size: 12px;">
-                <strong style="color: #b91c1c; text-transform: uppercase;">En caso de que el cliente no cumpla con los pagos tenemos derecho a retirar los equipos instalados.</strong>
+              <p style="margin-top:0;margin-bottom:12px;text-align:center;font-size:12px;">
+                <strong style="color:#b91c1c;text-transform:uppercase;">En caso de que el cliente no cumpla con los pagos tenemos derecho a retirar los equipos instalados.</strong>
               </p>
               <strong>T&eacute;rminos de Garant&iacute;a:</strong>
-              <ul style="margin: 5px 0 0 0; padding-left: 20px;">
+              <ul style="margin:5px 0 0 0;padding-left:20px;">
                 <li>La garant&iacute;a <strong>NO CUBRE</strong>: Equipos con golpes o da&ntilde;os f&iacute;sicos. Cables da&ntilde;ados por causas externas. Fallas provocadas por variaciones o subidas de tensi&oacute;n el&eacute;ctrica.</li>
-                <li><span class="important-note">Importante:</span> Si el cliente modifica la contrase&ntilde;a del equipo, no nos responsabilizamos por su recuperaci&oacute;n.</li>
+                <li><strong>Importante:</strong> Si el cliente modifica la contrase&ntilde;a del equipo, no nos responsabilizamos por su recuperaci&oacute;n.</li>
                 <li><strong>Garant&iacute;a por 6 meses</strong> (falla solo por problema de equipo).</li>
               </ul>
             </section>
@@ -368,8 +543,7 @@ export default function HojaInstalacion({
         />
       )}
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="bg-zinc-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95dvh]">
-          {/* Header */}
+        <div className="bg-zinc-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl shadow-2xl overflow-hidden flex flex-col h-[95dvh]">
           <div className="bg-zinc-800 px-4 py-3 border-b border-white/10 flex justify-between items-center shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="bg-green-500/20 p-1.5 rounded-lg border border-green-500/30 shrink-0">
@@ -377,10 +551,10 @@ export default function HojaInstalacion({
               </div>
               <div>
                 <h2 className="text-base font-bold text-white leading-tight">
-                  Hoja de Instalación
+                  Hoja de Instalacion
                 </h2>
                 <p className="text-xs text-white/50">
-                  Equipos instalados y garantía
+                  {bloqueada ? "Firmada y bloqueada" : "Materiales y firma"}
                 </p>
               </div>
             </div>
@@ -391,77 +565,166 @@ export default function HojaInstalacion({
             </button>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
-            {loading ? (
-              <div className="flex justify-center items-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-              </div>
-            ) : (
-              <>
-                {/* Lista de equipos instalados */}
-                <div className="bg-zinc-950/40 border border-white/10 rounded-xl overflow-hidden">
-                  <div className="bg-zinc-800/80 px-4 py-2 border-b border-white/10 flex items-center justify-between">
-                    <p className="text-xs font-bold text-white/60 uppercase tracking-wider">
-                      Equipos Instalados
-                    </p>
-                    <span className="text-xs bg-green-500/20 text-green-400 font-bold px-2 py-0.5 rounded-full border border-green-500/30">
-                      Confirmado
-                    </span>
+          {loading ? (
+            <div className="flex-1 flex justify-center items-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col min-h-0">
+              {!bloqueada && (
+                <div className="p-4 border-b border-white/10 bg-zinc-950/40 flex flex-col gap-3 shrink-0">
+                  <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
+                    Agregar material
+                  </p>
+                  <div>
+                    <label className="block text-xs font-semibold text-white/60 mb-1">
+                      Producto
+                    </label>
+                    <select
+                      value={selectedProducto}
+                      onChange={(e) =>
+                        setSelectedProducto(e.target.value ? Number(e.target.value) : "")
+                      }
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-green-500/50">
+                      <option value="">Selecciona un producto...</option>
+                      {productos.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.descrip} - Stock: {p.stock}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="flex flex-col">
-                    {items.length === 0 ? (
-                      <div className="p-6 text-center text-white/40 text-sm">
-                        No hay equipos registrados.
-                      </div>
-                    ) : (
-                      items.map((item, idx) => (
-                        <div key={item.id} className={"px-4 py-3 flex items-center justify-between " + (idx !== items.length - 1 ? "border-b border-white/5" : "")}>
-                          <div className="flex items-center gap-3">
-                            <span className="text-white/40 text-sm font-bold w-4">{idx + 1}.</span>
-                            <span className="text-white text-sm font-semibold">{item.descrip}</span>
+                  <div className="flex gap-2">
+                    <div className="w-24 shrink-0">
+                      <label className="block text-xs font-semibold text-white/60 mb-1">
+                        Cant.
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={cantidad}
+                        onChange={(e) => setCantidad(Number(e.target.value))}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-green-500/50 text-center"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-semibold text-white/60 mb-1">
+                        Detalle
+                      </label>
+                      <input
+                        type="text"
+                        value={detalle}
+                        maxLength={255}
+                        onChange={(e) => setDetalle(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                        placeholder="Color, largo, ubicacion, etc."
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-green-500/50"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleAddItem}
+                    disabled={!selectedProducto || cantidad <= 0}
+                    className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+                    <Plus className="w-4 h-4" />
+                    Agregar material
+                  </button>
+                </div>
+              )}
+
+              <div className="flex-1 flex flex-col min-h-0 p-4">
+                {items.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-white/30">
+                    <PackageSearch className="w-10 h-10 mb-2 opacity-40" />
+                    <p className="text-sm">No hay materiales cargados</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between mb-2 shrink-0">
+                      <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
+                        Lista de materiales ({items.length})
+                      </p>
+                      {cargadoDeInspeccion && (
+                        <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
+                          <FileText className="w-3 h-3" />
+                          Pre-cargado desde inspeccion
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2">
+                      {items.map((item, index) => (
+                        <div
+                          key={`${item.producto_id}-${index}`}
+                          className="grid grid-cols-[88px_1fr_auto] gap-3 bg-zinc-800/60 border border-white/8 rounded-xl p-3 shrink-0">
+                          <div>
+                            <label className="block text-[10px] font-bold text-white/40 uppercase mb-1">
+                              Cant.
+                            </label>
+                            {bloqueada ? (
+                              <div className="bg-green-500/15 border border-green-500/30 rounded-lg px-2 py-2 text-center text-green-300 font-bold text-sm">
+                                {item.cantidad}
+                              </div>
+                            ) : (
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.cantidad}
+                                onChange={(e) =>
+                                  handleUpdateItem(index, { cantidad: Number(e.target.value) })
+                                }
+                                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-2 py-2 text-sm text-white text-center focus:outline-none focus:border-green-500/50"
+                              />
+                            )}
                           </div>
-                          <div className="bg-white/10 px-2 py-0.5 rounded text-white text-xs font-bold">
-                            Cant: {item.cantidad}
+
+                          <div className="min-w-0">
+                            <p className="text-white font-semibold text-sm leading-tight mb-2">
+                              {item.producto_descrip}
+                            </p>
+                            {bloqueada ? (
+                              item.detalle && (
+                                <p className="text-white/50 text-xs italic">{item.detalle}</p>
+                              )
+                            ) : (
+                              <input
+                                type="text"
+                                value={item.detalle}
+                                maxLength={255}
+                                onChange={(e) =>
+                                  handleUpdateItem(index, { detalle: e.target.value })
+                                }
+                                placeholder="Detalle"
+                                className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500/50"
+                              />
+                            )}
                           </div>
+
+                          {!bloqueada && (
+                            <button
+                              onClick={() => handleRemoveItem(index)}
+                              className="self-start shrink-0 p-2 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors"
+                              title="Eliminar material">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Leyenda y Garantia (Preview in UI) */}
-                <div className="bg-orange-500/10 border-2 border-orange-500/30 rounded-xl p-4 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-orange-500"></div>
-                  <h3 className="text-orange-400 font-black text-sm uppercase text-center mb-2 tracking-wider">
-                    Aviso Importante y Garantía
-                  </h3>
-                  <div className="text-red-400 font-bold text-center text-xs uppercase mb-4 px-4">
-                    En caso de que el cliente no cumpla con los pagos tenemos derecho a retirar los equipos instalados.
-                  </div>
-                  
-                  <div className="text-xs text-orange-200/80 leading-relaxed">
-                    <strong className="text-orange-300 block mb-1">Términos de Garantía:</strong>
-                    <ul className="list-disc pl-4 space-y-1">
-                      <li>La garantía <strong className="text-white">NO CUBRE</strong>: Equipos con golpes o daños físicos. Cables dañados por causas externas. Fallas provocadas por variaciones o subidas de tensión eléctrica.</li>
-                      <li><strong className="text-orange-400">Importante:</strong> Si el cliente modifica la contraseña del equipo, no nos responsabilizamos por su recuperación.</li>
-                      <li><strong className="text-white">Garantía por 6 meses</strong> (falla solo por problema de equipo).</li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Status de Firma */}
-                {firmaUrl && (
-                  <div className="bg-zinc-800/50 border border-white/10 rounded-xl p-4 flex flex-col items-center justify-center">
-                    <p className="text-xs text-white/50 uppercase font-bold tracking-wider mb-2">Firma Guardada</p>
-                    <img src={firmaUrl} alt="Firma del cliente" className="max-h-20 bg-white/5 rounded p-2" />
-                  </div>
+                      ))}
+                    </div>
+                  </>
                 )}
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          )}
 
-          {/* Footer */}
+          {firmaUrl && (
+            <div className="bg-zinc-900 px-4 py-2 border-t border-white/10 flex items-center justify-center gap-3 shrink-0">
+              <span className="text-xs text-white/50 uppercase font-bold tracking-wider">
+                Firma guardada
+              </span>
+              <img src={firmaUrl} alt="Firma del cliente" className="max-h-12 bg-white/5 rounded p-1" />
+            </div>
+          )}
+
           <div className="bg-zinc-800 px-4 py-3 border-t border-white/10 flex gap-2 shrink-0">
             <button
               onClick={onClose}
@@ -471,23 +734,32 @@ export default function HojaInstalacion({
             <button
               onClick={handleDownloadPdf}
               disabled={loading || !puedeDescargarPdf}
-              title={puedeDescargarPdf ? "Descargar PDF" : "Requiere firma guardada"}
+              title={puedeDescargarPdf ? "Descargar PDF" : "Requiere productos y firma"}
               className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
               <Download className="w-4 h-4" />
               PDF
             </button>
-            {!firmaUrl && (
-              <button
-                onClick={handleSave}
-                disabled={saving || loading || items.length === 0}
-                className="flex-2 bg-green-500 hover:bg-green-400 active:bg-green-600 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-green-500/20">
-                {saving ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
+            {!bloqueada && (
+              <>
+                <button
+                  onClick={handleGuardarCambios}
+                  disabled={saving || loading}
+                  className="flex-1 bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
                   <Save className="w-4 h-4" />
-                )}
-                Firma Cliente
-              </button>
+                  Guardar Cambios
+                </button>
+                <button
+                  onClick={() => setShowFirmaModal(true)}
+                  disabled={saving || loading || items.length === 0}
+                  className="flex-1 bg-green-500 hover:bg-green-400 active:bg-green-600 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-green-500/20">
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <CheckCircle className="w-4 h-4" />
+                  )}
+                  Firma Cliente
+                </button>
+              </>
             )}
           </div>
         </div>
