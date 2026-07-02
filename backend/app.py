@@ -400,9 +400,20 @@ def sync_speech():
 
 UPLOAD_FOLDER = os.getenv("UPLOADS_DIR")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf", "docx", "xlsx", "txt"}
+ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg"}
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_image_file(file):
+    filename = file.filename or ""
+    extension_ok = "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+    mimetype_ok = (file.mimetype or "").lower() in {
+        "image/png", "image/jpeg", "image/jpg", "image/gif",
+        "image/webp", "image/heic", "image/heif"
+    }
+    # Accept if either extension OR mimetype is valid (camera photos may lack extension)
+    return extension_ok or mimetype_ok
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
@@ -1129,7 +1140,7 @@ def get_cotizacion_detallada(idCotizacion):
     try:
         cursor.execute(
             """
-            SELECT id, cita, firma_instalacion
+            SELECT id, cita, firma_instalacion, firma_foto_instalacion
             FROM hojas
             WHERE id = %s
             """,
@@ -1211,6 +1222,7 @@ def get_cotizacion_detallada(idCotizacion):
             "productos": productos,
             "total": float(total),
             "firma_instalacion": hoja_info.get("firma_instalacion"),
+            "firma_foto_instalacion": hoja_info.get("firma_foto_instalacion"),
             "inspeccion_items": inspeccion_items,
         }), 200
     except Exception as e:
@@ -1280,6 +1292,7 @@ def guardar_firma_instalacion_con_materiales(id_hoja):
         items = []
 
     archivo_firma = request.files.get("firma")
+    archivo_foto = request.files.get("firma_foto")
 
     cursor = mysql.connection.cursor()
     try:
@@ -1328,6 +1341,11 @@ def guardar_firma_instalacion_con_materiales(id_hoja):
             mysql.connection.rollback()
             return jsonify({"error": "La hoja de instalacion debe tener materiales para firmar"}), 400
 
+        if archivo_firma:
+            if archivo_foto and not allowed_image_file(archivo_foto):
+                mysql.connection.rollback()
+                return jsonify({"error": "La foto del cliente debe ser una imagen PNG o JPG"}), 400
+
         precios_actuales = {}
         if producto_ids:
             placeholders = ", ".join(["%s"] * len(producto_ids))
@@ -1370,6 +1388,7 @@ def guardar_firma_instalacion_con_materiales(id_hoja):
             )
 
         firma_path = None
+        foto_path = None
         productos_actualizados = []
 
         if archivo_firma:
@@ -1438,16 +1457,28 @@ def guardar_firma_instalacion_con_materiales(id_hoja):
             nombre_final_firma = f"firma_inst_{timestamp}_{nombre_seguro_firma}"
             archivo_firma.save(os.path.join(carpeta, nombre_final_firma))
             firma_path = f"/uploads/cita_{id_cita}/{nombre_final_firma}"
-            cursor.execute(
-                "UPDATE hojas SET firma_instalacion = %s WHERE id = %s",
-                (firma_path, id_hoja)
-            )
+
+            if archivo_foto:
+                nombre_seguro_foto = secure_filename(archivo_foto.filename)
+                nombre_final_foto = f"foto_firma_inst_{timestamp}_{nombre_seguro_foto}"
+                archivo_foto.save(os.path.join(carpeta, nombre_final_foto))
+                foto_path = f"/uploads/cita_{id_cita}/{nombre_final_foto}"
+                cursor.execute(
+                    "UPDATE hojas SET firma_instalacion = %s, firma_foto_instalacion = %s WHERE id = %s",
+                    (firma_path, foto_path, id_hoja)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE hojas SET firma_instalacion = %s WHERE id = %s",
+                    (firma_path, id_hoja)
+                )
 
         mysql.connection.commit()
 
         return jsonify({
             "msg": "Hoja de instalacion guardada correctamente",
             "firma_instalacion": firma_path,
+            "firma_foto_instalacion": foto_path,
             "productos": productos_actualizados,
         }), 200
     except Exception as e:

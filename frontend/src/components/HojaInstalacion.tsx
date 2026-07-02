@@ -48,7 +48,7 @@ export default function HojaInstalacion({
   onClose,
   onSaved,
 }: HojaInstalacionProps) {
-  const API_URL = "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_BASE_URL;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -57,6 +57,7 @@ export default function HojaInstalacion({
   const [cantidad, setCantidad] = useState<number>(1);
   const [detalle, setDetalle] = useState<string>("");
   const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
+  const [firmaFotoUrl, setFirmaFotoUrl] = useState<string | null>(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [cargadoDeInspeccion, setCargadoDeInspeccion] = useState(false);
 
@@ -85,6 +86,9 @@ export default function HojaInstalacion({
 
           if (dataCotizacion.firma_instalacion) {
             setFirmaUrl(API_URL + dataCotizacion.firma_instalacion);
+          }
+          if (dataCotizacion.firma_foto_instalacion) {
+            setFirmaFotoUrl(API_URL + dataCotizacion.firma_foto_instalacion);
           }
 
           if (productosInstalacion.length > 0) {
@@ -196,7 +200,7 @@ export default function HojaInstalacion({
     setCargadoDeInspeccion(false);
   };
 
-  const buildFormData = (firmaBlob?: Blob) => {
+  const buildFormData = (firmaBlob?: Blob, fotoFile?: File) => {
     const formData = new FormData();
     formData.append(
       "items",
@@ -212,6 +216,9 @@ export default function HojaInstalacion({
 
     if (firmaBlob) {
       formData.append("firma", new File([firmaBlob], "firma.png", { type: "image/png" }));
+    }
+    if (fotoFile) {
+      formData.append("firma_foto", fotoFile);
     }
 
     return formData;
@@ -252,13 +259,13 @@ export default function HojaInstalacion({
     }
   };
 
-  const handleSaveWithFirma = async (firmaBlob: Blob) => {
+  const handleSaveWithFirma = async (firmaBlob: Blob, fotoFile?: File) => {
     setShowFirmaModal(false);
     setSaving(true);
     try {
       const res = await fetch(`${API_URL}/api/cotizaciones/${idHoja}/firma-instalacion`, {
         method: "POST",
-        body: buildFormData(firmaBlob),
+        body: buildFormData(firmaBlob, fotoFile),
       });
 
       if (res.ok) {
@@ -290,6 +297,9 @@ export default function HojaInstalacion({
       alert("Para descargar el PDF, la hoja debe tener productos y firma guardados.");
       return;
     }
+
+    const firmaPdfUrl = firmaUrl;
+    const firmaFotoPdfUrl = firmaFotoUrl;
 
     const rows = items
       .map(
@@ -439,14 +449,28 @@ export default function HojaInstalacion({
               border-top: 1px solid #d1d5db;
               break-inside: avoid;
             }
-            .signature-layout { display: flex; justify-content: flex-end; }
-            .signature-box { text-align: center; min-width: 280px; }
-            .signature-box img {
+            .signature-layout {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 18px;
+              align-items: end;
+            }
+            .signature-box { text-align: center; min-width: 0; }
+            .signature-box img.signature-img {
               display: block;
               width: 260px;
               max-height: 82px;
               object-fit: contain;
               margin: 0 auto 6px;
+            }
+            .signature-box img.client-photo {
+              display: block;
+              width: 150px;
+              height: 150px;
+              object-fit: cover;
+              border: 1px solid #d1d5db;
+              margin: 0 auto 8px;
+              background: #ffffff;
             }
             .signature-line {
               border-top: 1px solid #111827;
@@ -513,16 +537,25 @@ export default function HojaInstalacion({
                 <li><strong>Importante:</strong> Si el cliente modifica la contrase&ntilde;a del equipo, no nos responsabilizamos por su recuperaci&oacute;n.</li>
                 <li><strong>Garant&iacute;a por 6 meses</strong> (falla solo por problema de equipo).</li>
               </ul>
+              <p style="margin:12px 0 0;color:#b91c1c;font-size:11px;">
+                <strong>Nota:</strong> En caso de retraso en el pago de la cuota, el valor aumentar&aacute; en <u>1% por d&iacute;a</u> de retraso.
+              </p>
             </section>
 
             <section class="final-signature">
               <h2>Firma de conformidad</h2>
               <div class="signature-layout">
                 <div class="signature-box">
-                  <img src="${escapePdfHtml(firmaUrl)}" />
+                  <img class="signature-img" src="${escapePdfHtml(firmaPdfUrl)}" />
                   <div class="signature-line">Firma del cliente</div>
                 </div>
+                ${firmaFotoPdfUrl ? `
+                <div class="signature-box">
+                  <img class="client-photo" src="${escapePdfHtml(firmaFotoPdfUrl)}" />
+                  <div class="signature-line">Foto del cliente</div>
+                </div>` : ''}
               </div>
+              ${firmaFotoPdfUrl ? '<p style="margin:12px 0 0;text-align:right;color:#6b7280;font-size:10px;">Este documento incluye una foto del cliente como constancia de firma.</p>' : ''}
             </section>
           </main>
           <script>setTimeout(function(){window.focus();window.print();},600);</script>
@@ -540,6 +573,7 @@ export default function HojaInstalacion({
           onConfirm={handleSaveWithFirma}
           onCancel={() => setShowFirmaModal(false)}
           showLeyenda={true}
+          requirePhoto={false}
         />
       )}
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -717,11 +751,27 @@ export default function HojaInstalacion({
           )}
 
           {firmaUrl && (
-            <div className="bg-zinc-900 px-4 py-2 border-t border-white/10 flex items-center justify-center gap-3 shrink-0">
+            <div className="bg-zinc-900 px-4 py-2 border-t border-white/10 flex items-center justify-center gap-4 shrink-0">
               <span className="text-xs text-white/50 uppercase font-bold tracking-wider">
                 Firma guardada
               </span>
-              <img src={firmaUrl} alt="Firma del cliente" className="max-h-12 bg-white/5 rounded p-1" />
+              <img
+                src={firmaUrl}
+                alt="Firma del cliente"
+                className="max-h-12 bg-white/5 rounded p-1"
+              />
+              {firmaFotoUrl && (
+                <>
+                  <span className="text-xs text-white/30 uppercase font-bold tracking-wider">
+                    Foto
+                  </span>
+                  <img
+                    src={firmaFotoUrl}
+                    alt="Foto del cliente"
+                    className="h-12 w-12 object-cover bg-white/5 rounded p-0.5"
+                  />
+                </>
+              )}
             </div>
           )}
 
@@ -734,7 +784,7 @@ export default function HojaInstalacion({
             <button
               onClick={handleDownloadPdf}
               disabled={loading || !puedeDescargarPdf}
-              title={puedeDescargarPdf ? "Descargar PDF" : "Requiere productos y firma"}
+              title={puedeDescargarPdf ? "Descargar PDF" : "Requiere productos, firma y foto"}
               className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
               <Download className="w-4 h-4" />
               PDF

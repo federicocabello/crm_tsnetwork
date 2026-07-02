@@ -1,16 +1,34 @@
 import { useRef, useState, useEffect } from "react";
-import { PenLine, RotateCcw, Check, X } from "lucide-react";
+import { Camera, Check, PenLine, RotateCcw, X } from "lucide-react";
 
 interface FirmaModalProps {
-  onConfirm: (firmaBlob: Blob) => void;
+  onConfirm: (firmaBlob: Blob, fotoFile?: File) => void;
   onCancel: () => void;
   showLeyenda?: boolean;
+  requirePhoto?: boolean;
 }
 
-export default function FirmaModal({ onConfirm, onCancel, showLeyenda = false }: FirmaModalProps) {
+export default function FirmaModal({
+  onConfirm,
+  onCancel,
+  showLeyenda = false,
+  requirePhoto = false,
+}: FirmaModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasFirma, setHasFirma] = useState(false);
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [showPhoto, setShowPhoto] = useState(false);
+
+  // Auto‑open file picker (front camera) when the user wants to add a photo
+  useEffect(() => {
+    if (showPhoto && fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, [showPhoto]);
+  const [showLeyendaState, setShowLeyendaState] = useState(showLeyenda);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -20,6 +38,12 @@ export default function FirmaModal({ onConfirm, onCancel, showLeyenda = false }:
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+    };
+  }, [fotoPreview]);
 
   const getPos = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current!;
@@ -88,12 +112,33 @@ export default function FirmaModal({ onConfirm, onCancel, showLeyenda = false }:
     setHasFirma(false);
   };
 
+  const handleFotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      alert("La foto debe ser una imagen.");
+      e.target.value = "";
+      return;
+    }
+    if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+    setFotoFile(file);
+    setFotoPreview(URL.createObjectURL(file));
+  };
+
+  const clearFoto = () => {
+    if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+    setFotoFile(null);
+    setFotoPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleConfirm = () => {
+    if (requirePhoto && !fotoFile) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.toBlob(
       (blob) => {
-        if (blob) onConfirm(blob);
+        if (blob) onConfirm(blob, fotoFile || undefined);
       },
       "image/png",
       0.95
@@ -102,10 +147,12 @@ export default function FirmaModal({ onConfirm, onCancel, showLeyenda = false }:
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[95dvh] overflow-y-auto"
-        style={{ animation: "fadeScaleIn 0.25s ease-out" }}
-      >
+        <div
+          className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-sm sm:max-w-md mx-2 overflow-hidden flex flex-col max-h-[95dvh]"
+          style={{ animation: "fadeScaleIn 0.25s ease-out" }}
+        >
+          <div className="overflow-y-auto p-4 flex-1 overscroll-contain">
+
         <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-white/10 p-2 rounded-xl border border-white/20">
@@ -129,7 +176,13 @@ export default function FirmaModal({ onConfirm, onCancel, showLeyenda = false }:
         </div>
 
         <div className="p-4 flex flex-col gap-3">
-          {showLeyenda && (
+          {requirePhoto && (
+            <div className="border border-yellow-300 bg-yellow-50 rounded-xl p-3 text-yellow-900 text-xs leading-relaxed">
+              <strong>Importante:</strong> Al firmar, también se capturará una foto del cliente con la cámara frontal o selector del dispositivo para registrar la identidad en esta hoja de instalación.
+            </div>
+          )}
+
+          {showLeyendaState && (
             <div className="border-2 border-orange-400 bg-orange-50 rounded-xl p-3">
               <h3 className="text-orange-700 font-black text-xs uppercase text-center mb-2 tracking-wider border-b border-orange-200 pb-2">
                 Aviso Importante y Garantía
@@ -147,43 +200,94 @@ export default function FirmaModal({ onConfirm, onCancel, showLeyenda = false }:
               </div>
             </div>
           )}
+
+          {!showPhoto && !requirePhoto && (
+            <button
+              type="button"
+              onClick={() => setShowPhoto(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 bg-white border border-dashed border-slate-300 hover:bg-slate-100 transition-colors"
+            >
+              <Camera className="w-4 h-4" />
+              Agregar foto (opcional)
+            </button>
+          )}
+
+          {showPhoto && (
+            <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                Foto del cliente
+              </p>
+              {fotoPreview ? (
+                <div className="flex items-center gap-3">
+                  <img
+                    src={fotoPreview}
+                    alt="Foto del cliente"
+                    className="h-16 w-16 sm:h-24 sm:w-24 rounded-lg object-cover border border-slate-200 bg-white"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-slate-600 truncate mb-2">{fotoFile?.name}</p>
+                    <button
+                      type="button"
+                      onClick={clearFoto}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 transition-colors"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Volver a tomar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-slate-700 bg-white border border-dashed border-slate-300 hover:bg-slate-100 transition-colors"
+                >
+                  <Camera className="w-4 h-4" />
+                  Tomar foto
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                onChange={handleFotoChange}
+                className="hidden"
+              />
+            </div>
+          )}
+
           <p className="text-slate-500 text-xs text-center font-medium">
             Firme con el dedo o el mouse en el area de abajo
           </p>
-
-          <div
-            className="relative border-2 border-dashed border-slate-200 rounded-xl overflow-hidden bg-white select-none"
-            style={{ touchAction: "none" }}
-          >
-            <canvas
-              ref={canvasRef}
-              width={600}
-              height={220}
-              className="w-full h-44 cursor-crosshair block"
-              onMouseDown={startDrawing}
-              onMouseMove={draw}
-              onMouseUp={stopDrawing}
-              onMouseLeave={stopDrawing}
-              onTouchStart={startDrawing}
-              onTouchMove={draw}
-              onTouchEnd={stopDrawing}
-              onTouchCancel={stopDrawing}
-            />
-            {!hasFirma && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="flex flex-col items-center gap-2 opacity-20">
-                  <PenLine className="w-10 h-10 text-slate-400" />
-                  <p className="text-slate-400 text-sm font-semibold">Firme aqui</p>
-                </div>
-              </div>
-            )}
-            <div className="absolute bottom-8 left-8 right-8 border-b border-slate-300 pointer-events-none" />
-            <p className="absolute bottom-2 left-0 right-0 text-center text-slate-300 text-xs pointer-events-none">
-              Firma del cliente
-            </p>
+            <div className="relative">
+              {/* Overlay for drawing instructions */}
+            <div className={`absolute inset-x-0 top-4 flex justify-center ${hasFirma ? 'hidden' : ''}`}>
+    <div className="bg-white/80 backdrop-blur-sm rounded-md px-2 py-1 flex items-center gap-2 shadow-md">
+      <PenLine className="w-5 h-5 text-gray-800" />
+      <span className="text-sm font-semibold text-gray-800">Firme aquí</span>
+    </div>
+  </div>
+            <div className="relative overflow-hidden" style={{ touchAction: "none" }}>
+              <canvas
+                ref={canvasRef}
+                width={600}
+                height={220}
+                className="w-full h-44 cursor-crosshair block bg-slate-50 border rounded-lg"
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                onTouchCancel={stopDrawing}
+              />
+            </div>
+          </div>
           </div>
 
-          <div className="flex gap-2 mt-1">
+          <div className="flex gap-2 mt-1 p-4 bg-slate-50 border-t border-slate-200">
             <button
               onClick={clearFirma}
               disabled={!hasFirma}
@@ -200,7 +304,7 @@ export default function FirmaModal({ onConfirm, onCancel, showLeyenda = false }:
             </button>
             <button
               onClick={handleConfirm}
-              disabled={!hasFirma}
+              disabled={!hasFirma || (requirePhoto && !fotoFile)}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-500/30"
             >
               <Check className="w-4 h-4" />
@@ -208,14 +312,9 @@ export default function FirmaModal({ onConfirm, onCancel, showLeyenda = false }:
             </button>
           </div>
         </div>
-      </div>
 
-      <style>{`
-        @keyframes fadeScaleIn {
-          from { opacity: 0; transform: scale(0.92); }
-          to   { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
+        <style>{`\n          @keyframes fadeScaleIn {\n            from { opacity: 0; transform: scale(0.92); }\n            to   { opacity: 1; transform: scale(1); }\n          }\n        `}</style>
+      </div>
     </div>
   );
 }
