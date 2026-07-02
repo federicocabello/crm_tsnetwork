@@ -400,9 +400,20 @@ def sync_speech():
 
 UPLOAD_FOLDER = os.getenv("UPLOADS_DIR")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf", "docx", "xlsx", "txt"}
+ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg"}
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_image_file(file):
+    filename = file.filename or ""
+    extension_ok = "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+    mimetype_ok = (file.mimetype or "").lower() in {
+        "image/png", "image/jpeg", "image/jpg", "image/gif",
+        "image/webp", "image/heic", "image/heif"
+    }
+    # Accept if either extension OR mimetype is valid (camera photos may lack extension)
+    return extension_ok or mimetype_ok
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
@@ -892,16 +903,21 @@ def get_cotizacion(idCotizacion):
 
     total = cursor.fetchone()["total"] or 0
 
-    cursor.execute("SELECT firma_instalacion FROM hojas WHERE id = %s", (idCotizacion,))
+    cursor.execute(
+        "SELECT firma_instalacion, firma_foto_instalacion FROM hojas WHERE id = %s",
+        (idCotizacion,),
+    )
     hoja_info = cursor.fetchone()
     firma_instalacion = hoja_info["firma_instalacion"] if hoja_info else None
+    firma_foto_instalacion = hoja_info["firma_foto_instalacion"] if hoja_info else None
 
     cursor.close()
 
     return jsonify({
         "productos": productos,
         "total": float(total),
-        "firma_instalacion": firma_instalacion
+        "firma_instalacion": firma_instalacion,
+        "firma_foto_instalacion": firma_foto_instalacion,
     }), 200
     
 @app.put("/api/cotizaciones/<int:id_hoja>")
@@ -969,7 +985,7 @@ def actualizar_cotizacion(id_hoja):
     finally:
         cursor.close()
 
-@app.post("/api/cotizaciones/<int:id_hoja>/confirmar-instalacion")
+@app.post("/api/cotizaciones/<int:id_hoja>/confirmar-instalacion-legacy")
 def confirmar_instalacion(id_hoja):
     cursor = mysql.connection.cursor()
 
@@ -1085,7 +1101,7 @@ def confirmar_instalacion(id_hoja):
     finally:
         cursor.close()
 
-@app.post("/api/cotizaciones/<int:id_hoja>/firma-instalacion")
+@app.post("/api/cotizaciones/<int:id_hoja>/firma-instalacion-legacy")
 def guardar_firma_instalacion(id_hoja):
     cursor = mysql.connection.cursor()
     try:
@@ -1116,6 +1132,360 @@ def guardar_firma_instalacion(id_hoja):
             mysql.connection.commit()
             
         return jsonify({"msg": "Firma guardada correctamente", "firma_instalacion": firma_path}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.get("/api/cotizacion/<int:idCotizacion>")
+def get_cotizacion_detallada(idCotizacion):
+    cursor = mysql.connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            SELECT id, cita, firma_instalacion, firma_foto_instalacion
+            FROM hojas
+            WHERE id = %s
+            """,
+            (idCotizacion,)
+        )
+        hoja_info = cursor.fetchone()
+
+        if not hoja_info:
+            return jsonify({"error": "Cotizacion no encontrada"}), 404
+
+        cursor.execute(
+            """
+            SELECT
+                hp.producto,
+                p.descrip,
+                hp.cantidad,
+                hp.precio_final,
+                hp.detalle
+            FROM hojas_productos hp
+            JOIN productos p ON hp.producto = p.id
+            WHERE hp.hoja = %s
+            """,
+            (idCotizacion,)
+        )
+        query_productos = cursor.fetchall()
+
+        productos = [
+            {
+                "id": hoja["producto"],
+                "cantidad": float(hoja["cantidad"]),
+                "precioFinal": float(hoja["precio_final"] or 0),
+                "descrip": hoja["descrip"],
+                "detalle": hoja.get("detalle") or "",
+            }
+            for hoja in query_productos
+        ]
+
+        cursor.execute(
+            """
+            SELECT SUM(precio_final) as total
+            FROM hojas_productos
+            WHERE hoja = %s
+            """,
+            (idCotizacion,)
+        )
+        total = cursor.fetchone()["total"] or 0
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM hojas_inspeccion
+            WHERE cita = %s
+            """,
+            (hoja_info["cita"],)
+        )
+        inspeccion = cursor.fetchone()
+
+        inspeccion_items = []
+
+        if inspeccion:
+            cursor.execute(
+                """
+                SELECT
+                    hi.producto_id,
+                    p.descrip AS producto_descrip,
+                    p.stock AS producto_stock,
+                    p.precio AS producto_precio,
+                    hi.cantidad,
+                    hi.detalle
+                FROM hojas_inspeccion_items hi
+                JOIN productos p ON p.id = hi.producto_id
+                WHERE hi.inspeccion_id = %s
+                """,
+                (inspeccion["id"],)
+            )
+            inspeccion_items = cursor.fetchall()
+
+        return jsonify({
+            "productos": productos,
+            "total": float(total),
+            "firma_instalacion": hoja_info.get("firma_instalacion"),
+            "firma_foto_instalacion": hoja_info.get("firma_foto_instalacion"),
+            "inspeccion_items": inspeccion_items,
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.post("/api/cotizaciones/<int:id_hoja>/confirmar-instalacion")
+def confirmar_instalacion_sin_stock(id_hoja):
+    cursor = mysql.connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            SELECT id, tipo, cita
+            FROM hojas
+            WHERE id = %s
+            FOR UPDATE
+            """,
+            (id_hoja,)
+        )
+        hoja = cursor.fetchone()
+
+        if not hoja:
+            mysql.connection.rollback()
+            return jsonify({"error": "Cotizacion no encontrada"}), 404
+
+        if hoja.get("tipo") == "instalacion_confirmada":
+            mysql.connection.rollback()
+            return jsonify({"error": "Esta instalacion ya fue confirmada"}), 409
+
+        cursor.execute(
+            """
+            UPDATE hojas
+            SET tipo = 'instalacion_confirmada'
+            WHERE id = %s
+            """,
+            (id_hoja,)
+        )
+
+        cursor.execute(
+            """
+            UPDATE citas
+            SET estado = 9
+            WHERE id = %s
+            """,
+            (hoja["cita"],)
+        )
+
+        mysql.connection.commit()
+
+        return jsonify({"msg": "Instalacion confirmada"}), 200
+
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        cursor.close()
+
+@app.post("/api/cotizaciones/<int:id_hoja>/firma-instalacion")
+def guardar_firma_instalacion_con_materiales(id_hoja):
+    items_str = request.form.get("items", "[]")
+    try:
+        items = json.loads(items_str)
+    except Exception:
+        items = []
+
+    archivo_firma = request.files.get("firma")
+    archivo_foto = request.files.get("firma_foto")
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT id, cita, tipo, firma_instalacion
+            FROM hojas
+            WHERE id = %s
+            FOR UPDATE
+            """,
+            (id_hoja,)
+        )
+        hoja = cursor.fetchone()
+
+        if not hoja:
+            mysql.connection.rollback()
+            return jsonify({"error": "Cotizacion no encontrada"}), 404
+
+        if hoja.get("tipo") != "instalacion_confirmada":
+            mysql.connection.rollback()
+            return jsonify({"error": "La instalacion no esta confirmada aun"}), 400
+
+        if hoja.get("firma_instalacion"):
+            mysql.connection.rollback()
+            return jsonify({"error": "La hoja de instalacion ya esta firmada y no se puede editar"}), 409
+
+        productos_insert = []
+        producto_ids = []
+
+        for item in items:
+            producto_id = int(item.get("producto_id") or item.get("id") or 0)
+            cantidad = int(float(item.get("cantidad", 0) or 0))
+
+            if producto_id <= 0 or cantidad <= 0:
+                continue
+
+            producto_ids.append(producto_id)
+            productos_insert.append({
+                "producto_id": producto_id,
+                "cantidad": cantidad,
+                "precio_final": float(item.get("precioFinal", item.get("precio_final", 0)) or 0),
+                "detalle": (item.get("detalle") or "")[:255],
+            })
+
+        if archivo_firma and not productos_insert:
+            mysql.connection.rollback()
+            return jsonify({"error": "La hoja de instalacion debe tener materiales para firmar"}), 400
+
+        if archivo_firma:
+            if archivo_foto and not allowed_image_file(archivo_foto):
+                mysql.connection.rollback()
+                return jsonify({"error": "La foto del cliente debe ser una imagen PNG o JPG"}), 400
+
+        precios_actuales = {}
+        if producto_ids:
+            placeholders = ", ".join(["%s"] * len(producto_ids))
+            cursor.execute(
+                f"""
+                SELECT producto, precio_final
+                FROM hojas_productos
+                WHERE hoja = %s AND producto IN ({placeholders})
+                """,
+                tuple([id_hoja] + producto_ids)
+            )
+            precios_actuales = {
+                int(row["producto"]): float(row["precio_final"] or 0)
+                for row in cursor.fetchall()
+            }
+
+        cursor.execute("DELETE FROM hojas_productos WHERE hoja = %s", (id_hoja,))
+
+        if productos_insert:
+            rows = []
+            for item in productos_insert:
+                precio_final = item["precio_final"]
+                if precio_final <= 0:
+                    precio_final = precios_actuales.get(item["producto_id"], 0)
+
+                rows.append((
+                    id_hoja,
+                    item["producto_id"],
+                    item["cantidad"],
+                    precio_final,
+                    item["detalle"],
+                ))
+
+            cursor.executemany(
+                """
+                INSERT INTO hojas_productos (hoja, producto, cantidad, precio_final, detalle)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                rows
+            )
+
+        firma_path = None
+        foto_path = None
+        productos_actualizados = []
+
+        if archivo_firma:
+            id_cita = hoja["cita"]
+            carpeta = os.path.join(UPLOADS_DIR, f"cita_{id_cita}")
+            os.makedirs(carpeta, exist_ok=True)
+
+            cursor.execute(
+                """
+                SELECT
+                    hp.producto,
+                    hp.cantidad,
+                    p.descrip,
+                    p.stock
+                FROM hojas_productos hp
+                JOIN productos p ON p.id = hp.producto
+                WHERE hp.hoja = %s
+                FOR UPDATE
+                """,
+                (id_hoja,)
+            )
+            productos = cursor.fetchall()
+
+            sin_stock = [
+                {
+                    "id": producto["producto"],
+                    "descrip": producto["descrip"],
+                    "stock": int(producto["stock"] or 0),
+                    "cantidad": int(producto["cantidad"] or 0),
+                }
+                for producto in productos
+                if int(producto["stock"] or 0) < int(producto["cantidad"] or 0)
+            ]
+
+            if sin_stock:
+                mysql.connection.rollback()
+                return jsonify({
+                    "error": "Stock insuficiente para firmar la instalacion",
+                    "productos": sin_stock,
+                }), 409
+
+            for producto in productos:
+                cantidad = int(producto["cantidad"] or 0)
+                producto_id = int(producto["producto"])
+                stock_anterior = int(producto["stock"] or 0)
+
+                cursor.execute(
+                    """
+                    UPDATE productos
+                    SET stock = stock - %s
+                    WHERE id = %s
+                    """,
+                    (cantidad, producto_id)
+                )
+
+                productos_actualizados.append({
+                    "id": producto_id,
+                    "descrip": producto["descrip"],
+                    "cantidad_descontada": cantidad,
+                    "stock_anterior": stock_anterior,
+                    "stock_actual": stock_anterior - cantidad,
+                })
+
+            nombre_seguro_firma = secure_filename(archivo_firma.filename)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            nombre_final_firma = f"firma_inst_{timestamp}_{nombre_seguro_firma}"
+            archivo_firma.save(os.path.join(carpeta, nombre_final_firma))
+            firma_path = f"/uploads/cita_{id_cita}/{nombre_final_firma}"
+
+            if archivo_foto:
+                nombre_seguro_foto = secure_filename(archivo_foto.filename)
+                nombre_final_foto = f"foto_firma_inst_{timestamp}_{nombre_seguro_foto}"
+                archivo_foto.save(os.path.join(carpeta, nombre_final_foto))
+                foto_path = f"/uploads/cita_{id_cita}/{nombre_final_foto}"
+                cursor.execute(
+                    "UPDATE hojas SET firma_instalacion = %s, firma_foto_instalacion = %s WHERE id = %s",
+                    (firma_path, foto_path, id_hoja)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE hojas SET firma_instalacion = %s WHERE id = %s",
+                    (firma_path, id_hoja)
+                )
+
+        mysql.connection.commit()
+
+        return jsonify({
+            "msg": "Hoja de instalacion guardada correctamente",
+            "firma_instalacion": firma_path,
+            "firma_foto_instalacion": foto_path,
+            "productos": productos_actualizados,
+        }), 200
     except Exception as e:
         mysql.connection.rollback()
         return jsonify({"error": str(e)}), 500
@@ -1717,11 +2087,33 @@ def actualizar_pago_metodo(id_metodo):
 def get_inspeccion(id_cita):
     cursor = mysql.connection.cursor()
     try:
+        cursor.execute(
+            """
+            SELECT firma_foto_instalacion
+            FROM hojas
+            WHERE cita = %s
+              AND firma_foto_instalacion IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (id_cita,),
+        )
+        foto_info = cursor.fetchone()
+        firma_foto_instalacion = (
+            foto_info.get("firma_foto_instalacion") if foto_info else None
+        )
+
         cursor.execute("SELECT id, dibujo, firma FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
         inspeccion = cursor.fetchone()
         
         if not inspeccion:
-            return jsonify({"id": None, "items": [], "dibujo": None, "firma": None}), 200
+            return jsonify({
+                "id": None,
+                "items": [],
+                "dibujo": None,
+                "firma": None,
+                "firma_foto_instalacion": firma_foto_instalacion,
+            }), 200
             
         inspeccion_id = inspeccion["id"]
         dibujo = inspeccion.get("dibujo")
@@ -1741,7 +2133,13 @@ def get_inspeccion(id_cita):
         """, (inspeccion_id,))
         
         items = cursor.fetchall()
-        return jsonify({"id": inspeccion_id, "items": items, "dibujo": dibujo, "firma": firma}), 200
+        return jsonify({
+            "id": inspeccion_id,
+            "items": items,
+            "dibujo": dibujo,
+            "firma": firma,
+            "firma_foto_instalacion": firma_foto_instalacion,
+        }), 200
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -38,5 +38,29 @@ with app.app_context():
         print("Column 'firma_instalacion' added successfully.")
     except Exception as e:
         print("Error or column already exists (firma_instalacion):", e)
+
+    # Agregar columna 'firma_foto_instalacion' para guardar la foto tomada al firmar instalacion
+    try:
+        cur.execute("ALTER TABLE hojas ADD COLUMN firma_foto_instalacion VARCHAR(255) DEFAULT NULL;")
+        mysql.connection.commit()
+        print("Column 'firma_foto_instalacion' added successfully.")
+    except Exception as e:
+        print("Error or column already exists (firma_foto_instalacion):", e)
+
+    # Agregar columna 'dibujo' para guardar el croquis de instalacion
+    try:
+        cur.execute("ALTER TABLE hojas ADD COLUMN dibujo VARCHAR(255) DEFAULT NULL;")
+        mysql.connection.commit()
+        print("Column 'hojas.dibujo' added successfully.")
+    except Exception as e:
+        print("Error or column already exists (hojas.dibujo):", e)
+
+    # Agregar columna 'detalle' para notas por material instalado
+    try:
+        cur.execute("ALTER TABLE hojas_productos ADD COLUMN detalle VARCHAR(255) DEFAULT NULL;")
+        mysql.connection.commit()
+        print("Column 'hojas_productos.detalle' added successfully.")
+    except Exception as e:
+        print("Error or column already exists (hojas_productos.detalle):", e)
     finally:
         cur.close()

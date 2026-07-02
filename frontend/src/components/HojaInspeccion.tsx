@@ -70,7 +70,9 @@ export default function HojaInspeccion({
   const [dibujoFile, setDibujoFile] = useState<File | null>(null);
   const [dibujoUrl, setDibujoUrl] = useState<string | null>(null);
   const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
+  const [firmaFotoUrl, setFirmaFotoUrl] = useState<string | null>(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
+  const [showFotoModal, setShowFotoModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -100,6 +102,11 @@ export default function HojaInspeccion({
           if (dataInspeccion.firma) {
             setFirmaUrl(API_URL + dataInspeccion.firma);
           }
+          if (dataInspeccion.firma_foto_instalacion) {
+            setFirmaFotoUrl(API_URL + dataInspeccion.firma_foto_instalacion);
+          } else {
+            setFirmaFotoUrl(null);
+          }
           if (dataInspeccion.items && dataInspeccion.items.length > 0) {
             // Tiene items guardados en la inspección → úsalos y no cargar cotización
             setItems(dataInspeccion.items);
@@ -120,6 +127,9 @@ export default function HojaInspeccion({
           if (resCotizacion.ok) {
             const dataCotizacion = await resCotizacion.json();
             console.log("Respuesta cotización:", dataCotizacion);
+            if (dataCotizacion.firma_foto_instalacion) {
+              setFirmaFotoUrl(API_URL + dataCotizacion.firma_foto_instalacion);
+            }
             if (
               dataCotizacion.productos &&
               dataCotizacion.productos.length > 0
@@ -238,6 +248,7 @@ export default function HojaInspeccion({
   };
 
   const puedeDescargarPdf = Boolean(dibujoUrl && firmaUrl && items.length > 0);
+  const fotoClienteDownloadName = `foto_cliente_cita_${idCita}.jpg`;
 
   const escapePdfHtml = (value: string | number) =>
     String(value)
@@ -693,6 +704,66 @@ export default function HojaInspeccion({
               />
             )}
           </div>
+
+          {firmaFotoUrl && (
+            <div className="bg-zinc-900 px-4 py-2 border-t border-white/10 flex items-center justify-center gap-4 shrink-0">
+              <span className="text-xs text-white/50 uppercase font-bold tracking-wider">
+                Foto del cliente
+              </span>
+              <img
+                src={firmaFotoUrl}
+                alt="Foto del cliente"
+                className="h-12 w-12 object-cover bg-white/5 rounded p-0.5 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setShowFotoModal(true)}
+              />
+              <button
+                type="button"
+                onClick={() => setShowFotoModal(true)}
+                className="ml-2 text-xs font-semibold text-blue-400 hover:text-blue-300 underline"
+              >
+                Ver foto
+              </button>
+            </div>
+          )}
+
+          {firmaFotoUrl && showFotoModal && (
+            <div
+              className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100]"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Foto del cliente"
+              onClick={() => setShowFotoModal(false)}
+            >
+              <div
+                className="relative w-full max-w-4xl max-h-screen p-4 flex flex-col items-center justify-center"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <a
+                    href={firmaFotoUrl}
+                    download={fotoClienteDownloadName}
+                    className="bg-zinc-800/80 hover:bg-zinc-700 p-2 rounded-full text-white backdrop-blur-sm transition-colors"
+                    title="Descargar foto"
+                  >
+                    <Download className="w-5 h-5" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setShowFotoModal(false)}
+                    className="bg-zinc-800/80 hover:bg-zinc-700 p-2 rounded-full text-white backdrop-blur-sm transition-colors"
+                    aria-label="Cerrar foto"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <img
+                  src={firmaFotoUrl}
+                  alt="Foto del cliente (Pantalla completa)"
+                  className="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="bg-zinc-800 px-4 py-3 border-t border-white/10 flex gap-2 shrink-0">

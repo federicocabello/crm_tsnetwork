@@ -5,11 +5,13 @@ import Loading from "./Loading";
 interface CanvasDibujoProps {
   initialImage?: string | null;
   onImageChange: (file: File | null) => void;
+  readOnly?: boolean;
 }
 
 export default function CanvasDibujo({
   initialImage,
   onImageChange,
+  readOnly = false,
 }: CanvasDibujoProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -96,6 +98,8 @@ export default function CanvasDibujo({
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
+
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -120,11 +124,15 @@ export default function CanvasDibujo({
   };
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    if (readOnly) return;
+
     setIsDrawing(true);
     draw(e);
   };
 
   const stopDrawing = () => {
+    if (readOnly) return;
+
     setIsDrawing(false);
     const canvas = canvasRef.current;
     if (canvas) {
@@ -135,6 +143,7 @@ export default function CanvasDibujo({
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (readOnly) return;
     if (!isDrawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -170,10 +179,14 @@ export default function CanvasDibujo({
   };
 
   const clearCanvas = () => {
+    if (readOnly) return;
+
     drawInitialState(bgImage);
   };
 
   const deleteBgAndClear = () => {
+    if (readOnly) return;
+
     setBgImage(null);
     drawInitialState(null);
   };
@@ -198,6 +211,7 @@ export default function CanvasDibujo({
   return (
     <div className="flex flex-col h-full min-h-0 bg-zinc-950/40 border-t border-white/10 p-4">
       {/* Tools */}
+      {!readOnly && (
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4 shrink-0">
         <div className="flex items-center gap-2">
           {colors.map((c) => (
@@ -244,6 +258,7 @@ export default function CanvasDibujo({
           </button>
         </div>
       </div>
+      )}
 
       {/* Canvas Area */}
       <div
@@ -253,7 +268,7 @@ export default function CanvasDibujo({
           ref={canvasRef}
           width={800}
           height={600}
-          className="w-full h-full object-contain cursor-crosshair touch-none"
+          className={`w-full h-full object-contain touch-none ${readOnly ? "cursor-default" : "cursor-crosshair"}`}
           onMouseDown={startDrawing}
           onMouseUp={stopDrawing}
           onMouseOut={stopDrawing}
@@ -268,7 +283,7 @@ export default function CanvasDibujo({
             <Loading />
           </div>
         )}
-        {!loadingImage && !bgImage && !isDrawing && (
+        {!loadingImage && !bgImage && !isDrawing && !readOnly && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
             <p className="text-white text-sm font-semibold">
               Usa el mouse o el dedo para dibujar
