@@ -28,7 +28,7 @@ export default function FirmaModal({
       fileInputRef.current.click();
     }
   }, [showPhoto]);
-  const [showLeyendaState, setShowLeyendaState] = useState(showLeyenda);
+  const showLeyendaState = showLeyenda;
 
   useEffect(() => {
     const canvas = canvasRef.current;

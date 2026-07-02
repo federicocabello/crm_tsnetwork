@@ -903,16 +903,21 @@ def get_cotizacion(idCotizacion):
 
     total = cursor.fetchone()["total"] or 0
 
-    cursor.execute("SELECT firma_instalacion FROM hojas WHERE id = %s", (idCotizacion,))
+    cursor.execute(
+        "SELECT firma_instalacion, firma_foto_instalacion FROM hojas WHERE id = %s",
+        (idCotizacion,),
+    )
     hoja_info = cursor.fetchone()
     firma_instalacion = hoja_info["firma_instalacion"] if hoja_info else None
+    firma_foto_instalacion = hoja_info["firma_foto_instalacion"] if hoja_info else None
 
     cursor.close()
 
     return jsonify({
         "productos": productos,
         "total": float(total),
-        "firma_instalacion": firma_instalacion
+        "firma_instalacion": firma_instalacion,
+        "firma_foto_instalacion": firma_foto_instalacion,
     }), 200
     
 @app.put("/api/cotizaciones/<int:id_hoja>")
@@ -2082,11 +2087,33 @@ def actualizar_pago_metodo(id_metodo):
 def get_inspeccion(id_cita):
     cursor = mysql.connection.cursor()
     try:
+        cursor.execute(
+            """
+            SELECT firma_foto_instalacion
+            FROM hojas
+            WHERE cita = %s
+              AND firma_foto_instalacion IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (id_cita,),
+        )
+        foto_info = cursor.fetchone()
+        firma_foto_instalacion = (
+            foto_info.get("firma_foto_instalacion") if foto_info else None
+        )
+
         cursor.execute("SELECT id, dibujo, firma FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
         inspeccion = cursor.fetchone()
         
         if not inspeccion:
-            return jsonify({"id": None, "items": [], "dibujo": None, "firma": None}), 200
+            return jsonify({
+                "id": None,
+                "items": [],
+                "dibujo": None,
+                "firma": None,
+                "firma_foto_instalacion": firma_foto_instalacion,
+            }), 200
             
         inspeccion_id = inspeccion["id"]
         dibujo = inspeccion.get("dibujo")
@@ -2106,7 +2133,13 @@ def get_inspeccion(id_cita):
         """, (inspeccion_id,))
         
         items = cursor.fetchall()
-        return jsonify({"id": inspeccion_id, "items": items, "dibujo": dibujo, "firma": firma}), 200
+        return jsonify({
+            "id": inspeccion_id,
+            "items": items,
+            "dibujo": dibujo,
+            "firma": firma,
+            "firma_foto_instalacion": firma_foto_instalacion,
+        }), 200
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500

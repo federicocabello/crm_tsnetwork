@@ -59,6 +59,7 @@ export default function HojaInstalacion({
   const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
   const [firmaFotoUrl, setFirmaFotoUrl] = useState<string | null>(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
+  const [showFotoModal, setShowFotoModal] = useState(false);
   const [cargadoDeInspeccion, setCargadoDeInspeccion] = useState(false);
 
   const bloqueada = Boolean(firmaUrl);
@@ -89,6 +90,8 @@ export default function HojaInstalacion({
           }
           if (dataCotizacion.firma_foto_instalacion) {
             setFirmaFotoUrl(API_URL + dataCotizacion.firma_foto_instalacion);
+          } else {
+            setFirmaFotoUrl(null);
           }
 
           if (productosInstalacion.length > 0) {
@@ -566,6 +569,8 @@ export default function HojaInstalacion({
     printWindow.document.close();
   };
 
+  const fotoClienteDownloadName = `foto_cliente_cotizacion_${idHoja}.jpg`;
+
   return (
     <>
       {showFirmaModal && (
@@ -762,14 +767,52 @@ export default function HojaInstalacion({
               />
               {firmaFotoUrl && (
                 <>
-                  <span className="text-xs text-white/30 uppercase font-bold tracking-wider">
-                    Foto
-                  </span>
                   <img
                     src={firmaFotoUrl}
                     alt="Foto del cliente"
-                    className="h-12 w-12 object-cover bg-white/5 rounded p-0.5"
+                    className="h-12 w-12 object-cover bg-white/5 rounded p-0.5 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setShowFotoModal(true)}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowFotoModal(true)}
+                    className="ml-2 text-xs font-semibold text-blue-400 hover:text-blue-300 underline"
+                  >
+                    Ver foto
+                  </button>
+                  {showFotoModal && (
+                    <div 
+                      className="fixed inset-0 bg-black/90 flex items-center justify-center z-[100]"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label="Foto del cliente"
+                      onClick={() => setShowFotoModal(false)}
+                    >
+                      <div className="relative w-full max-w-4xl max-h-screen p-4 flex flex-col items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="absolute top-4 right-4 flex gap-2">
+                          <a 
+                            href={firmaFotoUrl} 
+                            download={fotoClienteDownloadName}
+                            className="bg-zinc-800/80 hover:bg-zinc-700 p-2 rounded-full text-white backdrop-blur-sm transition-colors"
+                            title="Descargar foto"
+                          >
+                            <Download className="w-5 h-5" />
+                          </a>
+                          <button 
+                            onClick={() => setShowFotoModal(false)}
+                            className="bg-zinc-800/80 hover:bg-zinc-700 p-2 rounded-full text-white backdrop-blur-sm transition-colors"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <img 
+                          src={firmaFotoUrl} 
+                          alt="Foto del cliente (Pantalla completa)" 
+                          className="max-h-[85vh] max-w-full object-contain rounded-lg shadow-2xl" 
+                        />
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
