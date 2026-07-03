@@ -398,7 +398,6 @@ def sync_speech():
     finally:
         cur.close()
 
-UPLOAD_FOLDER = os.getenv("UPLOADS_DIR")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "pdf", "docx", "xlsx", "txt"}
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg"}
 
@@ -419,11 +418,19 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
 FRONTEND_UPLOADS_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "frontend", "uploads"))
 COMPROBANTES_UPLOADS_DIR = os.path.join(FRONTEND_UPLOADS_DIR, "comprobantes")
+UPLOAD_FOLDER = os.getenv("UPLOADS_DIR") or UPLOADS_DIR
 
 @app.route('/uploads/<path:filename>')
 def serve_file(filename):
-    if filename.startswith("comprobantes/"):
+    backend_file = os.path.abspath(os.path.join(UPLOADS_DIR, filename))
+    frontend_file = os.path.abspath(os.path.join(FRONTEND_UPLOADS_DIR, filename))
+
+    if backend_file.startswith(os.path.abspath(UPLOADS_DIR)) and os.path.isfile(backend_file):
+        return send_from_directory(UPLOADS_DIR, filename)
+
+    if frontend_file.startswith(os.path.abspath(FRONTEND_UPLOADS_DIR)) and os.path.isfile(frontend_file):
         return send_from_directory(FRONTEND_UPLOADS_DIR, filename)
+
     return send_from_directory(UPLOADS_DIR, filename)
 
 @app.post("/api/comprobantes/<int:id_cita>")
