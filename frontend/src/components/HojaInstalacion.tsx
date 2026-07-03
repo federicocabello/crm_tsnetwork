@@ -302,7 +302,6 @@ export default function HojaInstalacion({
     }
 
     const firmaPdfUrl = firmaUrl;
-    const firmaFotoPdfUrl = firmaFotoUrl;
 
     const rows = items
       .map(
@@ -453,10 +452,8 @@ export default function HojaInstalacion({
               break-inside: avoid;
             }
             .signature-layout {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 18px;
-              align-items: end;
+              display: flex;
+              justify-content: center;
             }
             .signature-box { text-align: center; min-width: 0; }
             .signature-box img.signature-img {
@@ -465,15 +462,6 @@ export default function HojaInstalacion({
               max-height: 82px;
               object-fit: contain;
               margin: 0 auto 6px;
-            }
-            .signature-box img.client-photo {
-              display: block;
-              width: 150px;
-              height: 150px;
-              object-fit: cover;
-              border: 1px solid #d1d5db;
-              margin: 0 auto 8px;
-              background: #ffffff;
             }
             .signature-line {
               border-top: 1px solid #111827;
@@ -552,13 +540,7 @@ export default function HojaInstalacion({
                   <img class="signature-img" src="${escapePdfHtml(firmaPdfUrl)}" />
                   <div class="signature-line">Firma del cliente</div>
                 </div>
-                ${firmaFotoPdfUrl ? `
-                <div class="signature-box">
-                  <img class="client-photo" src="${escapePdfHtml(firmaFotoPdfUrl)}" />
-                  <div class="signature-line">Foto del cliente</div>
-                </div>` : ''}
               </div>
-              ${firmaFotoPdfUrl ? '<p style="margin:12px 0 0;text-align:right;color:#6b7280;font-size:10px;">Este documento incluye una foto del cliente como constancia de firma.</p>' : ''}
             </section>
           </main>
           <script>setTimeout(function(){window.focus();window.print();},600);</script>
@@ -827,7 +809,7 @@ export default function HojaInstalacion({
             <button
               onClick={handleDownloadPdf}
               disabled={loading || !puedeDescargarPdf}
-              title={puedeDescargarPdf ? "Descargar PDF" : "Requiere productos, firma y foto"}
+              title={puedeDescargarPdf ? "Descargar PDF" : "Requiere productos y firma"}
               className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
               <Download className="w-4 h-4" />
               PDF
