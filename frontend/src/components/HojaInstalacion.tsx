@@ -41,6 +41,21 @@ interface InstalacionItem {
   precioFinal: number;
 }
 
+interface CuotaPlanPago {
+  idcuota: number;
+  monto: number;
+  interes: number;
+  pagado: boolean | number;
+  vencimiento: string;
+}
+
+interface PlanPagoInstalacion {
+  id_pago: number | null;
+  total: number;
+  enganche: number;
+  cuotas: CuotaPlanPago[];
+}
+
 export default function HojaInstalacion({
   idCita,
   idHoja,
@@ -61,6 +76,7 @@ export default function HojaInstalacion({
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [showFotoModal, setShowFotoModal] = useState(false);
   const [cargadoDeInspeccion, setCargadoDeInspeccion] = useState(false);
+  const [planPago, setPlanPago] = useState<PlanPagoInstalacion | null>(null);
 
   const bloqueada = Boolean(firmaUrl);
 
@@ -69,9 +85,10 @@ export default function HojaInstalacion({
       try {
         setLoading(true);
 
-        const [resProductos, resCotizacion] = await Promise.all([
+        const [resProductos, resCotizacion, resPlanPago] = await Promise.all([
           fetch(`${API_URL}/api/productos`),
           fetch(`${API_URL}/api/cotizacion/${idHoja}`),
+          fetch(`${API_URL}/api/clientes/pagos/${idCita}`),
         ]);
 
         if (resProductos.ok) {
@@ -122,6 +139,28 @@ export default function HojaInstalacion({
             setCargadoDeInspeccion(true);
           }
         }
+
+        if (resPlanPago.ok) {
+          const dataPlanPago = await resPlanPago.json();
+          const cuotas = Array.isArray(dataPlanPago.cuotas)
+            ? dataPlanPago.cuotas.map((cuota: any) => ({
+                idcuota: Number(cuota.idcuota || 0),
+                monto: Number(cuota.monto || 0),
+                interes: Number(cuota.interes || 0),
+                pagado: cuota.pagado,
+                vencimiento: cuota.vencimiento || "",
+              }))
+            : [];
+
+          setPlanPago({
+            id_pago: dataPlanPago.id_pago ?? null,
+            total: Number(dataPlanPago.total || 0),
+            enganche: Number(dataPlanPago.enganche || 0),
+            cuotas,
+          });
+        } else {
+          setPlanPago(null);
+        }
       } catch (error) {
         console.error("Error al cargar hoja de instalacion:", error);
       } finally {
@@ -130,7 +169,7 @@ export default function HojaInstalacion({
     };
 
     fetchData();
-  }, [idHoja]);
+  }, [idHoja, idCita]);
 
   const handleAddItem = () => {
     if (!selectedProducto || cantidad <= 0 || bloqueada) return;
@@ -295,6 +334,64 @@ export default function HojaInstalacion({
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
 
+  const formatCurrencyPdf = (value: number) =>
+    new Intl.NumberFormat("es-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    }).format(Number(value || 0));
+
+  const formatDatePdf = (value: string) => {
+    if (!value) return "Sin fecha";
+    const textValue = String(value).trim();
+
+    const isoMatch = textValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return `${month}/${day}/${year}`;
+    }
+
+    const rfcMatch = textValue.match(/^[A-Za-z]{3},\s+(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})/);
+    if (rfcMatch) {
+      const [, day, monthName, year] = rfcMatch;
+      const monthMap: Record<string, string> = {
+        Jan: "01",
+        Feb: "02",
+        Mar: "03",
+        Apr: "04",
+        May: "05",
+        Jun: "06",
+        Jul: "07",
+        Aug: "08",
+        Sep: "09",
+        Oct: "10",
+        Nov: "11",
+        Dec: "12",
+      };
+      const month = monthMap[monthName];
+      if (month) return `${month}/${day.padStart(2, "0")}/${year}`;
+    }
+
+    return textValue;
+  };
+
+
+  const normalizePdfProductName = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
+
+  const hiddenPdfProductNames = new Set([
+    "MANODEOBRA",
+    "DIADETRABAJO",
+    "DIADETRABAJOCAYUDANTE",
+    "DISTANCIA",
+  ]);
+
+  const shouldHideProductInPdf = (productName: string) =>
+    hiddenPdfProductNames.has(normalizePdfProductName(productName));
   const handleDownloadPdf = () => {
     if (!firmaUrl || items.length === 0) {
       alert("Para descargar el PDF, la hoja debe tener productos y firma guardados.");
@@ -304,6 +401,7 @@ export default function HojaInstalacion({
     const firmaPdfUrl = firmaUrl;
 
     const rows = items
+      .filter((item) => !shouldHideProductInPdf(item.producto_descrip))
       .map(
         (item, index) =>
           `<tr>` +
@@ -315,6 +413,48 @@ export default function HojaInstalacion({
           `</tr>`,
       )
       .join("");
+
+    const cuotasPlanPago = planPago?.cuotas ?? [];
+    const totalCuotasPlanPago = cuotasPlanPago.reduce(
+      (acc, cuota) => acc + Number(cuota.monto || 0),
+      0,
+    );
+    const totalPlanPago =
+      Number(planPago?.total || 0) || Number(planPago?.enganche || 0) + totalCuotasPlanPago;
+    const planPagoRows = cuotasPlanPago
+      .map(
+        (cuota, index) =>
+          `<tr>` +
+          `<td class="idx">${escapePdfHtml(index + 1)}</td>` +
+          `<td>${escapePdfHtml(formatDatePdf(cuota.vencimiento))}</td>` +
+          `<td class="money">${escapePdfHtml(formatCurrencyPdf(cuota.monto))}</td>` +
+          `<td class="status">${Number(cuota.pagado) === 1 ? "Pagada" : "Pendiente"}</td>` +
+          `</tr>`,
+      )
+      .join("");
+    const planPagoSection =
+      cuotasPlanPago.length > 0
+        ? `
+            <section class="section payment-plan">
+              <h2>Plan de Pagos</h2>
+              <div class="payment-summary">
+                <div><span>Total</span><strong>${escapePdfHtml(formatCurrencyPdf(totalPlanPago))}</strong></div>
+                <div><span>Enganche</span><strong>${escapePdfHtml(formatCurrencyPdf(planPago?.enganche || 0))}</strong></div>
+                <div><span>Saldo en cuotas</span><strong>${escapePdfHtml(formatCurrencyPdf(totalCuotasPlanPago))}</strong></div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th class="idx">#</th>
+                    <th>Vencimiento</th>
+                    <th class="money">Monto</th>
+                    <th class="status">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>${planPagoRows}</tbody>
+              </table>
+            </section>`
+        : "";
 
     const clientePdf = {
       nombre: cliente?.nombre?.trim() || "No disponible",
@@ -424,6 +564,29 @@ export default function HojaInstalacion({
             .qty { width: 110px; text-align: center; font-weight: 800; }
             .product { font-weight: 700; }
             .detail { margin-top: 4px; color: #6b7280; font-size: 11px; font-weight: 400; }
+            .payment-plan { break-inside: avoid; }
+            .payment-summary {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 8px;
+              margin-bottom: 10px;
+            }
+            .payment-summary div {
+              border: 1px solid #d1d5db;
+              background: #f9fafb;
+              padding: 10px;
+            }
+            .payment-summary span {
+              display: block;
+              color: #6b7280;
+              font-size: 10px;
+              text-transform: uppercase;
+              letter-spacing: .08em;
+              margin-bottom: 3px;
+            }
+            .payment-summary strong { font-size: 13px; }
+            .money { width: 120px; text-align: right; font-weight: 800; white-space: nowrap; }
+            .status { width: 110px; text-align: center; }
             .warranty-box {
               border: 2px solid #f97316;
               background-color: #fff7ed;
@@ -516,6 +679,8 @@ export default function HojaInstalacion({
                 <tbody>${rows}</tbody>
               </table>
             </section>
+
+            ${planPagoSection}
 
             <section class="warranty-box">
               <h3>Aviso Importante y Garant&iacute;a</h3>

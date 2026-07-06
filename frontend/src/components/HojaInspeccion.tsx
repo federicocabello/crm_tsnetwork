@@ -258,6 +258,23 @@ export default function HojaInspeccion({
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
 
+
+  const normalizePdfProductName = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
+
+  const hiddenPdfProductNames = new Set([
+    "MANODEOBRA",
+    "DIADETRABAJO",
+    "DIADETRABAJOCAYUDANTE",
+    "DISTANCIA",
+  ]);
+
+  const shouldHideProductInPdf = (productName: string) =>
+    hiddenPdfProductNames.has(normalizePdfProductName(productName));
   const handleDownloadPdf = () => {
     if (!dibujoUrl || !firmaUrl || items.length === 0) {
       alert(
@@ -267,6 +284,7 @@ export default function HojaInspeccion({
     }
 
     const rows = items
+      .filter((item) => !shouldHideProductInPdf(item.producto_descrip))
       .map(
         (item, index) =>
           `<tr>` +
