@@ -117,7 +117,6 @@ export default function Cliente() {
       }
 
       const data = await res.json();
-      console.log("Datos recibidos del backend:", data);
 
       setCliente(data.cliente);
       setCitas(data.citas);

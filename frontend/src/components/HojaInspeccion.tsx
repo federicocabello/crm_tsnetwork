@@ -120,13 +120,11 @@ export default function HojaInspeccion({
       // No hay items en inspección → pre-cargar desde la cotización si existe
       if (!inspeccionTieneItems && idHoja) {
         try {
-          console.log("Cargando artículos desde cotización ID:", idHoja);
           const resCotizacion = await fetch(
             `${API_URL}/api/cotizacion/${idHoja}`,
           );
           if (resCotizacion.ok) {
             const dataCotizacion = await resCotizacion.json();
-            console.log("Respuesta cotización:", dataCotizacion);
             if (dataCotizacion.firma_foto_instalacion) {
               setFirmaFotoUrl(API_URL + dataCotizacion.firma_foto_instalacion);
             }

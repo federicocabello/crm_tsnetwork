@@ -157,8 +157,6 @@ useEffect(() => {
 
       const cotizacion = await res.json();
 
-      console.log("Cotización recibida:", cotizacion);
-
       const rowsCargadas: Record<number, RowData> = {};
 
       cotizacion.productos.forEach((item: any) => {
@@ -169,7 +167,6 @@ useEffect(() => {
         };
       });
 
-      console.log("Rows cargadas:", rowsCargadas);
 
       setRows(rowsCargadas);
     } catch (error) {
