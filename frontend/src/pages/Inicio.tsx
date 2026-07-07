@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Usuarios } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
+import { Link } from "react-router-dom";
 import {
   FilePlusCorner,
   Cctv,
@@ -615,7 +616,21 @@ export default function Inicio() {
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-3 xl:flex-row overflow-y-auto">
+    <div className="flex h-full min-h-0 w-full flex-col gap-3 overflow-y-auto">
+      {user?.rol === "tecnico" && (
+        <div className="mr-4 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm text-orange-50 shadow-lg shadow-black/20">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <strong>Completa tu induccion tecnica</strong>
+              <p className="text-xs text-orange-100/70">Revisa los videos introductorios antes de tus proximas instalaciones.</p>
+            </div>
+            <Link to="/perfil-tecnico" className="boton inline-flex items-center justify-center border border-orange-400/40 bg-orange-600 text-white hover:bg-orange-500">
+              Ver capacitacion
+            </Link>
+          </div>
+        </div>
+      )}
+      <div className="flex min-h-0 w-full flex-col gap-3 xl:flex-row">
       <div className="w-full shrink-0 xl:h-full xl:w-1/4 xl:overflow-y-auto xl:pr-1">
         <div className="w-full cuadro">
           <div className="flex flex-col gap-3 text-center mb-3">
@@ -1678,6 +1693,7 @@ export default function Inicio() {
             background: rgba(239, 68, 68, 0.12);
           }
         `}</style>
+      </div>
       </div>
     </div>
   );

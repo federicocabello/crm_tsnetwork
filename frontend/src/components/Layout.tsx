@@ -33,6 +33,7 @@ function RoleIcon() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const nav = useNavigate();
+  const canOpenTechnicianProfile = user?.rol === "tecnico";
 
   return (
     <div className="h-screen overflow-hidden bg-zinc-950 text-white">
@@ -49,7 +50,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               className={`hidden md:block w-32 opacity-90 drop-shadow-xl pointer-events-none`}
             />
             <div className="flex items-center gap-3">
-              <div className="text-right leading-tight">
+              <div
+                className={`text-right leading-tight ${user?.rol === "tecnico" ? "cursor-pointer hover:opacity-85 transition-all select-none" : ""}`}
+                onClick={() => user?.rol === "tecnico" && nav("/perfil-tecnico")}
+                title={user?.rol === "tecnico" ? "Ir a mi perfil de capacitación" : undefined}
+              >
                 <div className="text-sm font-semibold">{user?.fullname}</div>
 
                 <span

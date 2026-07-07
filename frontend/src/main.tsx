@@ -10,6 +10,8 @@ import Inicio from "./pages/Inicio";
 import Configuracion from "./pages/Configuracion";
 import NuevoRegistro from "./pages/NuevoRegistro";
 import Inventario from "./pages/Inventario";
+import Reclutamiento from "./pages/Reclutamiento";
+import PerfilTecnico from "./pages/PerfilTecnico";
 
 import ProtectedRoute from "./auth/ProtectedRoute";
 import RoleRoute from "./auth/RoleRoute";
@@ -24,6 +26,21 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Routes>
           {/* Login */}
           <Route path="/login" element={<Login />} />
+
+          {/* Reclutamiento (Publico) */}
+          <Route path="/reclutamiento" element={<Reclutamiento />} />
+
+          {/* Perfil Tecnico */}
+          <Route
+            path="/perfil-tecnico"
+            element={
+              <RoleRoute allow={["tecnico", "administrador", "superadmin"]}>
+                <Layout>
+                  <PerfilTecnico />
+                </Layout>
+              </RoleRoute>
+            }
+          />
 
           <Route
             path="/inicio"
@@ -90,7 +107,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               </RoleRoute>
             }
           />
-
           {/* Default */}
           <Route path="/" element={<Navigate to="/inicio" replace />} />
           <Route path="*" element={<Navigate to="/inicio" replace />} />

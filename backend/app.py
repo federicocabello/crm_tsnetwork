@@ -14,8 +14,8 @@ app = Flask(__name__)
 CORS(
     app,
     resources={
-        r"/api/*": {"origins": "http://localhost:5176"},
-        r"/uploads/*": {"origins": "http://localhost:5176"}
+        r"/api/*": {"origins": "http://localhost:5177"},
+        r"/uploads/*": {"origins": "http://localhost:5177"}
     },
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],
@@ -164,6 +164,185 @@ def configuracion_gestion_de_usuarios():
     cursor.close()
 
     return jsonify({"msg": "Usuario modificado con éxito."}), 201
+
+@app.post("/api/reclutamiento/postular")
+def reclutamiento_postular():
+    data = request.get_json(silent=True) or {}
+    nombre = (data.get("nombre") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    telefono = (data.get("telefono") or "").strip()
+    direccion = (data.get("direccion") or "").strip()
+    experiencia = (data.get("experiencia") or "").strip()
+    respuestas = data.get("respuestas") or {}
+
+    if not nombre or not email or not telefono or not direccion:
+        return jsonify({"error": "Faltan datos obligatorios"}), 400
+
+    if not isinstance(respuestas, (dict, list)) or not respuestas:
+        return jsonify({"error": "Debes completar la prueba tecnica"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO postulaciones_tecnicos
+                (nombre, email, telefono, direccion, experiencia, respuestas)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (nombre, email, telefono, direccion, experiencia, json.dumps(respuestas)),
+        )
+        mysql.connection.commit()
+        return jsonify({"msg": "Postulacion enviada correctamente", "id": cursor.lastrowid}), 201
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.get("/api/reclutamiento/postulaciones")
+def reclutamiento_postulaciones():
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT
+                p.id,
+                p.nombre,
+                p.email,
+                p.telefono,
+                p.direccion,
+                p.experiencia,
+                p.respuestas,
+                p.estado,
+                p.comentarios,
+                p.tecnico_usuario_id,
+                DATE_FORMAT(p.fecha_postulacion, '%Y-%m-%d %H:%i') AS fecha_postulacion,
+                DATE_FORMAT(p.fecha_evaluacion, '%Y-%m-%d %H:%i') AS fecha_evaluacion,
+                a.user AS tecnico_user,
+                a.fullname AS tecnico_fullname
+            FROM postulaciones_tecnicos p
+            LEFT JOIN auth a ON a.id = p.tecnico_usuario_id
+            ORDER BY p.fecha_postulacion DESC
+            """
+        )
+        postulaciones = cursor.fetchall()
+
+        for postulacion in postulaciones:
+            respuestas = postulacion.get("respuestas")
+            if isinstance(respuestas, str):
+                try:
+                    postulacion["respuestas"] = json.loads(respuestas)
+                except Exception:
+                    postulacion["respuestas"] = {}
+
+        return jsonify(postulaciones), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.post("/api/reclutamiento/postulaciones/<int:postulacion_id>/evaluar")
+def reclutamiento_evaluar_postulacion(postulacion_id):
+    data = request.get_json(silent=True) or {}
+    estado = (data.get("estado") or "").strip()
+    comentarios = (data.get("comentarios") or "").strip()
+    username = (data.get("user") or data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+
+    if estado not in {"aprobado", "rechazado"}:
+        return jsonify({"error": "Estado invalido"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT * FROM postulaciones_tecnicos WHERE id = %s LIMIT 1", (postulacion_id,))
+        postulacion = cursor.fetchone()
+
+        if not postulacion:
+            return jsonify({"error": "Postulacion no encontrada"}), 404
+
+        tecnico_usuario_id = postulacion.get("tecnico_usuario_id")
+
+        if estado == "aprobado" and not tecnico_usuario_id:
+            if not username or not password:
+                return jsonify({"error": "Usuario y contrasena requeridos para contratar"}), 400
+
+            cursor.execute("SELECT id FROM auth WHERE `user` = %s LIMIT 1", (username,))
+            if cursor.fetchone():
+                return jsonify({"error": "El usuario ya existe"}), 409
+
+            cursor.execute(
+                """
+                INSERT INTO auth (`user`, `password`, fullname, rol, habilitado)
+                VALUES (%s, %s, %s, 'tecnico', 1)
+                """,
+                (username, password, postulacion.get("nombre")),
+            )
+            tecnico_usuario_id = cursor.lastrowid
+
+        cursor.execute(
+            """
+            UPDATE postulaciones_tecnicos
+            SET estado = %s,
+                comentarios = %s,
+                tecnico_usuario_id = %s,
+                fecha_evaluacion = NOW()
+            WHERE id = %s
+            """,
+            (estado, comentarios, tecnico_usuario_id, postulacion_id),
+        )
+
+        mysql.connection.commit()
+        return jsonify({"msg": "Postulacion evaluada correctamente", "tecnico_usuario_id": tecnico_usuario_id}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.get("/api/tecnico/videos-vistos")
+@jwt_required()
+def tecnico_videos_vistos():
+    tecnico_usuario_id = get_jwt_identity()
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            "SELECT video_id FROM tecnicos_videos_vistos WHERE tecnico_usuario_id = %s",
+            (tecnico_usuario_id,),
+        )
+        videos = [row["video_id"] for row in cursor.fetchall()]
+        return jsonify({"videos_vistos": videos}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.post("/api/tecnico/marcar-video-visto")
+@jwt_required()
+def tecnico_marcar_video_visto():
+    tecnico_usuario_id = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    video_id = (data.get("video_id") or "").strip()
+
+    if not video_id:
+        return jsonify({"error": "video_id requerido"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            INSERT INTO tecnicos_videos_vistos (tecnico_usuario_id, video_id)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE visto_en = visto_en
+            """,
+            (tecnico_usuario_id, video_id),
+        )
+        mysql.connection.commit()
+        return jsonify({"msg": "Video marcado como visto", "video_id": video_id}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
 
 @app.get("/api/configuracion/usuarios/<int:usuario_id>/archivos")
 def get_usuario_archivos(usuario_id):
@@ -2222,6 +2401,179 @@ def guardar_inspeccion(id_cita):
         mysql.connection.commit()
         return jsonify({"msg": "Hoja de inspeccion guardada exitosamente"}), 200
         
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+
+# ==========================================
+# ENDPOINTS DE RECLUTAMIENTO Y CAPACITACIÓN
+# ==========================================
+
+@app.post("/api/reclutamiento/postular")
+def postular_tecnico():
+    data = request.get_json(silent=True) or {}
+    nombre = (data.get("nombre") or "").strip()
+    email = (data.get("email") or "").strip()
+    telefono = (data.get("telefono") or "").strip()
+    direccion = (data.get("direccion") or "").strip()
+    experiencia = (data.get("experiencia") or "").strip()
+    respuestas = data.get("respuestas")
+
+    if not nombre or not email or not telefono or not respuestas:
+        return jsonify({"error": "Faltan campos obligatorios"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        # Convert responses to JSON string for MySQL execution
+        respuestas_str = json.dumps(respuestas)
+        cursor.execute(
+            """
+            INSERT INTO postulaciones_tecnicos (nombre, email, telefono, direccion, experiencia, respuestas, estado)
+            VALUES (%s, %s, %s, %s, %s, %s, 'pendiente')
+            """,
+            (nombre, email, telefono, direccion, experiencia, respuestas_str)
+        )
+        mysql.connection.commit()
+        return jsonify({"msg": "Postulación recibida con éxito"}), 201
+    except Exception as e:
+        mysql.connection.rollback()
+        print("Error en postular_tecnico:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.get("/api/reclutamiento/postulaciones")
+@jwt_required()
+def get_postulaciones():
+    claims = get_jwt()
+    user_role = (claims.get("user") or {}).get("rol")
+    if user_role not in ["administrador", "superadmin", "moderador"]:
+        return jsonify({"error": "No autorizado"}), 403
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT id, nombre, email, telefono, direccion, experiencia, respuestas, estado, comentarios, tecnico_usuario_id,
+                   DATE_FORMAT(fecha_postulacion, '%Y-%m-%d %H:%i:%s') as fecha_postulacion,
+                   DATE_FORMAT(fecha_evaluacion, '%Y-%m-%d %H:%i:%s') as fecha_evaluacion
+            FROM postulaciones_tecnicos
+            ORDER BY id DESC
+            """
+        )
+        rows = cursor.fetchall()
+        for r in rows:
+            if r["respuestas"]:
+                try:
+                    r["respuestas"] = json.loads(r["respuestas"])
+                except Exception:
+                    pass
+        return jsonify(rows), 200
+    except Exception as e:
+        print("Error en get_postulaciones:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.post("/api/reclutamiento/postulaciones/<int:id>/evaluar")
+@jwt_required()
+def evaluar_postulacion(id):
+    claims = get_jwt()
+    user_role = (claims.get("user") or {}).get("rol")
+    if user_role not in ["administrador", "superadmin"]:
+        return jsonify({"error": "No autorizado"}), 403
+
+    data = request.get_json(silent=True) or {}
+    estado = data.get("estado") # 'aprobado' o 'rechazado'
+    comentarios = (data.get("comentarios") or "").strip()
+    crear_usuario = data.get("crear_usuario", False)
+    username = (data.get("username") or "").strip().lower()
+    password = (data.get("password") or "").strip()
+
+    if estado not in ["aprobado", "rechazado"]:
+        return jsonify({"error": "Estado inválido"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        tecnico_usuario_id = None
+        if estado == "aprobado" and crear_usuario:
+            if not username or not password:
+                return jsonify({"error": "Faltan credenciales del técnico"}), 400
+
+            # Verificar si el usuario ya existe
+            cursor.execute("SELECT id FROM auth WHERE `user` = %s", (username,))
+            if cursor.fetchone():
+                return jsonify({"error": f"El nombre de usuario '{username}' ya está en uso"}), 400
+
+            # Obtener datos de la postulación
+            cursor.execute("SELECT nombre FROM postulaciones_tecnicos WHERE id = %s", (id,))
+            post = cursor.fetchone()
+            if not post:
+                return jsonify({"error": "Postulación no encontrada"}), 404
+
+            # Crear usuario técnico
+            cursor.execute(
+                "INSERT INTO auth (`user`, `password`, fullname, rol, habilitado) VALUES (%s, %s, %s, 'tecnico', 1)",
+                (username, password, post["nombre"])
+            )
+            tecnico_usuario_id = cursor.lastrowid
+
+        cursor.execute(
+            """
+            UPDATE postulaciones_tecnicos
+            SET estado = %s, comentarios = %s, tecnico_usuario_id = %s, fecha_evaluacion = CURRENT_TIMESTAMP
+            WHERE id = %s
+            """,
+            (estado, comentarios, tecnico_usuario_id, id)
+        )
+        mysql.connection.commit()
+        return jsonify({"msg": "Postulación evaluada correctamente", "tecnico_usuario_id": tecnico_usuario_id}), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        print("Error en evaluar_postulacion:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.get("/api/tecnico/videos-vistos")
+@jwt_required()
+def get_videos_vistos():
+    current_user = get_jwt_identity() # Esto devuelve el id del usuario
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            "SELECT video_id FROM tecnicos_videos_vistos WHERE tecnico_usuario_id = %s",
+            (int(current_user),)
+        )
+        rows = cursor.fetchall()
+        video_ids = [r["video_id"] for r in rows]
+        return jsonify(video_ids), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.post("/api/tecnico/marcar-video-visto")
+@jwt_required()
+def marcar_video_visto():
+    current_user = get_jwt_identity()
+    data = request.get_json(silent=True) or {}
+    video_id = (data.get("video_id") or "").strip()
+
+    if not video_id:
+        return jsonify({"error": "video_id requerido"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            "INSERT IGNORE INTO tecnicos_videos_vistos (tecnico_usuario_id, video_id) VALUES (%s, %s)",
+            (int(current_user), video_id)
+        )
+        mysql.connection.commit()
+        return jsonify({"msg": "Video marcado como visto"}), 201
     except Exception as e:
         mysql.connection.rollback()
         return jsonify({"error": str(e)}), 500
