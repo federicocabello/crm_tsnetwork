@@ -62,5 +62,13 @@ with app.app_context():
         print("Column 'hojas_productos.detalle' added successfully.")
     except Exception as e:
         print("Error or column already exists (hojas_productos.detalle):", e)
+
+    # Agregar columna para guardar el metodo de pago del enganche
+    try:
+        cur.execute("ALTER TABLE pagos ADD COLUMN enganche_metodo INT DEFAULT NULL;")
+        mysql.connection.commit()
+        print("Column 'pagos.enganche_metodo' added successfully.")
+    except Exception as e:
+        print("Error or column already exists (pagos.enganche_metodo):", e)
     finally:
         cur.close()

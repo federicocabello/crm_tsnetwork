@@ -30,6 +30,7 @@ type Cita = {
   idasignado: string;
 };
 
+
 type Cliente = {
   idcliente: number;
   nombre: string;
@@ -65,6 +66,7 @@ export default function Cliente() {
   const [idPago, setIdPago] = useState<number | null>(null);
   const [totalPlan, setTotalPlan] = useState<number>(0);
   const [enganchePlan, setEnganchePlan] = useState<number>(0);
+  const [metodoEnganchePlan, setMetodoEnganchePlan] = useState("");
 
   const setearCitaSeleccionada = async (cita: Cita) => {
     setCitaSeleccionada(cita.idcita);
@@ -99,6 +101,7 @@ export default function Cliente() {
       setIdPago(data.id_pago ?? null);
       setTotalPlan(data.total ?? 0);
       setEnganchePlan(Number(data.enganche ?? 0));
+      setMetodoEnganchePlan(data.metodo_enganche ?? "");
 
     } catch (error) {
       alert("Error de conexión con el backend.");
@@ -253,18 +256,18 @@ export default function Cliente() {
             <div className="text-white/60">Este cliente no tiene citas registradas.</div>
           ) : (
             <div
-              className={`grid gap-4 overflow-y-auto max-h-[340px] pr-1 ${citaSeleccionada > 0
+              className={`grid auto-rows-auto items-start gap-4 overflow-y-auto max-h-[min(560px,calc(100vh-220px))] pr-1 ${citaSeleccionada > 0
                 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
                 : "grid-cols-5"
                 }`}
             >
               {citas.map((cita) => (
-                <div key={cita.idcita} className={`bg-zinc-900 border rounded-xl p-4 shadow transition-all cursor-pointer
+                <div key={cita.idcita} className={`h-fit min-h-max overflow-visible bg-zinc-900 border rounded-xl p-4 shadow transition-all cursor-pointer
                     ${cita.idcita === citaSeleccionada
                     ? "border-orange-500 shadow-orange-500 hover:shadow-orange-500"
                     : "border-white/10 hover:border-orange-500 hover:shadow-xs"
                   }`} onClick={() => setearCitaSeleccionada(cita)}>
-                  <div className=" flex flex-col gap-2">
+                  <div className="flex min-w-0 flex-col gap-2">
                     <div className="text-white font-bold flex items-center gap-2 justify-between">
                       <div className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-200 text-center"><CalendarFold className="h-4 w-4" />{cita.dia}</div>
                       <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-200 text-center"><Clock className="h-4 w-4" />{cita.hora}</div>
@@ -274,9 +277,9 @@ export default function Cliente() {
                       <div>
                         <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1 w-full">
                           <Cctv className="h-4 w-4" />
-                          <span>INSTALACIÓN DE CÁMARAS</span>
+                          <span>INSTALACION DE CAMARAS</span>
                         </div>
-                        {(cita.tipo == "camaras-tiene-nuevo-instalacion" || cita.tipo == "camaras-tiene-existente-instalacion") && (<div className="text-xs text-yellow-500 font-bold italic flex items-center gap-1 justify-center mt-2"><TriangleAlert className="h-4 w-4" />Ya tiene cámaras instaladas</div>)}
+                        {(cita.tipo == "camaras-tiene-nuevo-instalacion" || cita.tipo == "camaras-tiene-existente-instalacion") && (<div className="text-xs text-yellow-500 font-bold italic flex items-center gap-1 justify-center mt-2"><TriangleAlert className="h-4 w-4" />Ya tiene camaras instaladas</div>)}
                       </div>
                     )}
 
@@ -286,19 +289,18 @@ export default function Cliente() {
                         <span>SOPORTE</span>
                       </div>
                     )}
-
                     <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 flex justify-center items-center gap-1 w-full" style={{ backgroundColor: cita.color, borderColor: darkenColor(cita.color, 0.5), }}>
                       {cita.estado}
                     </div>
 
                     {cita.domicilio.trim() && (
-                      <div className="text-white text-sm flex gap-1 items-center justify-center font-bold italic"><House className="h-4 w-4" />
+                      <div className="min-w-0 text-white text-sm flex gap-1 items-start justify-center font-bold italic break-words"><House className="h-4 w-4 shrink-0" />
                         {cita.domicilio}
                       </div>
                     )}
 
                     {cita.notas.trim() && (
-                      <div className="text-white/50 text-sm whitespace-pre-wrap"><strong>Notas:</strong> {cita.notas}</div>
+                      <div className="min-w-0 overflow-visible break-words text-white/50 text-sm whitespace-pre-wrap"><strong>Notas:</strong> {cita.notas}</div>
                     )}
                     <hr className="text-white/10" />
                     <div className="text-xs italic text-white/60">
@@ -338,6 +340,7 @@ export default function Cliente() {
                 idCita={citaSeleccionada}
                 total={totalPlan}
                 enganche={enganchePlan}
+                metodoEnganche={metodoEnganchePlan}
                 cuotas={cuotas}
                 onActualizado={() => {
                   // Refrescar cuotas y deuda después de guardar
@@ -389,7 +392,7 @@ export default function Cliente() {
                     </div>
 
                     <div>
-                      <label className="text-xs text-white/60">Tipo</label>
+                      <label className="text-xs text-white/60">Estado</label>
                       <select className="capitalize bg-gray-700 text-white p-2 rounded-md cursor-pointer w-full" onChange={(e) => setEstado(e.target.value)}>
                         <option key={cita.idestado} value={cita.idestado} selected>{cita.estado}</option>
                         {estados.filter(e => e.id !== cita.idestado).map((estado) => (

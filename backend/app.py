@@ -35,6 +35,24 @@ jwt = JWTManager(app)
 
 mysql = MySQL(app)
 
+def table_has_column(table_name, column_name):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS cantidad
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = %s
+              AND COLUMN_NAME = %s
+            """,
+            (table_name, column_name)
+        )
+        row = cursor.fetchone() or {}
+        return int(row.get("cantidad") or 0) > 0
+    finally:
+        cursor.close()
+
 from flask import jsonify, request
 from flask_jwt_extended import create_access_token
 
@@ -962,6 +980,7 @@ def agenda_cambiar_estado():
     mysql.connection.commit()
     cursor.close()
     return jsonify(), 201
+
 
 @app.get("/api/productos")
 def get_productos():
@@ -1955,10 +1974,27 @@ def obtener_pagos_cliente(id_cita):
     cursor = mysql.connection.cursor()
     try:
         # Traer el plan de pagos (registro padre)
-        cursor.execute(
-            "SELECT id AS id_pago, total, COALESCE(enganche, 0) AS enganche FROM pagos WHERE cita = %s LIMIT 1",
-            (id_cita,)
-        )
+        tiene_metodo_enganche = table_has_column("pagos", "enganche_metodo")
+        if tiene_metodo_enganche:
+            cursor.execute(
+                """
+                SELECT pagos.id AS id_pago,
+                       pagos.total,
+                       COALESCE(pagos.enganche, 0) AS enganche,
+                       pagos.enganche_metodo AS idmetodo_enganche,
+                       pagos_metodos.metodo AS metodo_enganche
+                FROM pagos
+                LEFT JOIN pagos_metodos ON pagos_metodos.id = pagos.enganche_metodo
+                WHERE pagos.cita = %s
+                LIMIT 1
+                """,
+                (id_cita,)
+            )
+        else:
+            cursor.execute(
+                "SELECT id AS id_pago, total, COALESCE(enganche, 0) AS enganche FROM pagos WHERE cita = %s LIMIT 1",
+                (id_cita,)
+            )
         plan = cursor.fetchone()
 
         if not plan:
@@ -1988,7 +2024,14 @@ def obtener_pagos_cliente(id_cita):
             (id_pago,)
         )
         cuotas = cursor.fetchall()
-        return jsonify({"cuotas": cuotas, "id_pago": id_pago, "total": total, "enganche": enganche}), 200
+        return jsonify({
+            "cuotas": cuotas,
+            "id_pago": id_pago,
+            "total": total,
+            "enganche": enganche,
+            "idmetodo_enganche": plan.get("idmetodo_enganche"),
+            "metodo_enganche": plan.get("metodo_enganche") or "",
+        }), 200
     except Exception as e:
         print("Error interno:", e)
         return jsonify({"error": str(e)}), 500
@@ -2066,22 +2109,30 @@ def crear_plan_de_pagos():
     id_cita    = data.get("idCita")
     monto_total = data.get("montoTotal")
     enganche    = data.get("enganche", 0)
+    id_metodo_enganche = data.get("idMetodoEnganche") or data.get("engancheMetodo")
     cuotas      = data.get("cuotas", [])
 
     if not id_cliente or not id_cita or monto_total is None or not cuotas:
         return jsonify({"error": "Faltan datos obligatorios"}), 400
 
     enganche = float(enganche or 0)
-    if enganche <= 0:
-        return jsonify({"error": "El enganche debe ser mayor a 0"}), 400
+    if enganche < 0:
+        return jsonify({"error": "El enganche no puede ser negativo"}), 400
+    id_metodo_enganche = int(id_metodo_enganche) if id_metodo_enganche and enganche > 0 else None
 
     cursor = mysql.connection.cursor()
     try:
         # 1) Crear el registro de pago padre
-        cursor.execute(
-            "INSERT INTO pagos (cliente, cita, total, enganche) VALUES (%s, %s, %s, %s)",
-            (id_cliente, id_cita, float(monto_total), enganche)
-        )
+        if table_has_column("pagos", "enganche_metodo"):
+            cursor.execute(
+                "INSERT INTO pagos (cliente, cita, total, enganche, enganche_metodo) VALUES (%s, %s, %s, %s, %s)",
+                (id_cliente, id_cita, float(monto_total), enganche, id_metodo_enganche)
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO pagos (cliente, cita, total, enganche) VALUES (%s, %s, %s, %s)",
+                (id_cliente, id_cita, float(monto_total), enganche)
+            )
         id_pago = cursor.lastrowid
 
         # 2) Insertar cada cuota con su propio monto e interés
