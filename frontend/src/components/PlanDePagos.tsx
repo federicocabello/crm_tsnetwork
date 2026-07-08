@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CreditCard, Calendar, Percent, DollarSign, Hash, Plus } from "lucide-react";
+import { CreditCard, Calendar, Percent, DollarSign, Hash, Plus, AlertTriangle } from "lucide-react";
 import FormatearNumero from "../components/FormatearNumero";
 import Loading from "../components/Loading";
 
@@ -7,6 +7,12 @@ type Props = {
   idCliente: string;
   idCita: number;
   onGuardado?: () => void;
+};
+
+type MetodoPago = {
+  id: number;
+  metodo: string;
+  color?: string;
 };
 
 type Cuota = {
@@ -25,6 +31,8 @@ function formatDate(date: Date): string {
 export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
   const [montoTotal, setMontoTotal] = useState<number>(0);
   const [enganche, setEnganche] = useState<number>(0);
+  const [idMetodoEnganche, setIdMetodoEnganche] = useState<number>(0);
+  const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([]);
   const [interesGlobal, setInteresGlobal] = useState<number>(0);
   const [numCuotas, setNumCuotas] = useState<number>(1);
   const [cuotas, setCuotas] = useState<Cuota[]>([]);
@@ -37,6 +45,21 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
     ? Math.round((saldoFinanciado / numCuotas) * 100) / 100
     : 0;
 
+
+  useEffect(() => {
+    const cargarMetodos = async () => {
+      try {
+        const res = await fetch("/api/pagos/metodos");
+        if (!res.ok) return;
+        const data = await res.json();
+        setMetodosPago(data ?? []);
+      } catch (err) {
+        console.error("Error al traer metodos de pago:", err);
+      }
+    };
+
+    cargarMetodos();
+  }, []);
   useEffect(() => {
     if (numCuotas < 1) return;
     const hoy = new Date();
@@ -91,11 +114,11 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
       setErrorGuardar("El monto total debe ser mayor a 0.");
       return;
     }
-    if (!enganche || enganche <= 0) {
-      setErrorGuardar("El enganche debe ser mayor a 0.");
+    if (enganche < 0) {
+      setErrorGuardar("El enganche no puede ser negativo.");
       return;
     }
-    if (enganche >= montoTotal) {
+    if (enganche > 0 && enganche >= montoTotal) {
       setErrorGuardar("El enganche debe ser menor al monto total.");
       return;
     }
@@ -115,6 +138,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
           idCita,
           montoTotal: totalConEnganche,
           enganche,
+          idMetodoEnganche: enganche > 0 ? idMetodoEnganche || null : null,
           cuotas: cuotas.map((c) => ({
             monto: c.monto + (c.monto * c.interes) / 100,
             interes: c.interes,
@@ -140,7 +164,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
   };
 
   return loading ? <Loading /> : (
-    <div className="w-full max-w-2xl mx-auto space-y-4">
+    <div className="w-full space-y-4">
       <div className="flex items-center gap-2 mb-1">
         <CreditCard className="h-5 w-5 text-orange-400" />
         <div className="text-lg font-bold text-white">Plan de Pagos</div>
@@ -149,7 +173,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
       <div className="rounded-2xl border border-white/10 bg-zinc-900 shadow-lg shadow-black/20 p-5 space-y-4">
         <p className="text-xs font-bold tracking-wide text-white/40 uppercase">Configuracion</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
           <div className="space-y-1">
             <label className="text-xs text-white/50 flex items-center gap-1">
               <DollarSign className="h-3 w-3 text-orange-400" />
@@ -190,6 +214,29 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
 
           <div className="space-y-1">
             <label className="text-xs text-white/50 flex items-center gap-1">
+              <CreditCard className="h-3 w-3 text-orange-400" />
+              Metodo enganche
+            </label>
+            <select
+              value={idMetodoEnganche || ""}
+              onChange={(e) => setIdMetodoEnganche(Number(e.target.value))}
+              disabled={enganche <= 0}
+              className={`w-full rounded-xl border px-3 py-2 text-sm text-white outline-none transition-colors ${enganche > 0
+                ? "border-white/10 bg-zinc-950/40 focus:border-orange-500/60"
+                : "cursor-not-allowed border-white/5 bg-white/5 text-white/30"
+                }`}
+            >
+              <option value="">Sin metodo</option>
+              {metodosPago.map((metodo) => (
+                <option key={metodo.id} value={metodo.id}>
+                  {metodo.metodo}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-white/50 flex items-center gap-1">
               <Percent className="h-3 w-3 text-orange-400" />
               Interes por cuota (%)
             </label>
@@ -221,6 +268,11 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
               className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors"
             />
           </div>
+        </div>
+
+        <div className="flex items-start gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-100">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-300" />
+          <span>El enganche se registra al crear el plan y no se puede modificar despues.</span>
         </div>
 
         {montoTotal > 0 && (
@@ -339,7 +391,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
       {cuotas.length === 0 && (
         <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-8 text-center">
           <CreditCard className="h-8 w-8 text-white/20 mx-auto mb-2" />
-          <p className="text-sm text-white/30">Ingresa un monto, enganche y cuotas para comenzar</p>
+          <p className="text-sm text-white/30">Ingresa un monto y cuotas para comenzar</p>
         </div>
       )}
     </div>

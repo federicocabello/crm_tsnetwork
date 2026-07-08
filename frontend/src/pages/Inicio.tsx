@@ -251,7 +251,10 @@ export default function Inicio() {
   const [cuotasAlertas, setCuotasAlertas] = useState<CuotaAlerta[]>([]);
 
   const cuotasVencidas = useMemo(
-    () => cuotasAlertas.filter((cuota) => Number(cuota.dias) < 0),
+    () =>
+      cuotasAlertas
+        .filter((cuota) => Number(cuota.dias) < 0)
+        .sort((a, b) => Number(b.dias) - Number(a.dias)),
     [cuotasAlertas],
   );
   const cuotasHoy = useMemo(

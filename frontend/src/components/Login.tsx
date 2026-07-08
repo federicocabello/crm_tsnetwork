@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { ApiError } from "../lib/api";
@@ -14,6 +14,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const nav = useNavigate();
   const auth = useAuth();
@@ -142,6 +143,12 @@ export default function Login() {
                 <input
                   value={user}
                   onChange={(e) => setUser(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      passwordRef.current?.focus();
+                    }
+                  }}
                   className="mt-1 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/35 outline-none
                              focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/15"
                   placeholder="usuario"
@@ -154,9 +161,16 @@ export default function Login() {
                   Contraseña
                 </label>
                 <input
+                  ref={passwordRef}
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      e.currentTarget.form?.requestSubmit();
+                    }
+                  }}
                   className="mt-1 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/35 outline-none
                              focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/15"
                   placeholder="••••••••"
@@ -165,6 +179,7 @@ export default function Login() {
               </div>
 
               <button
+                type="submit"
                 disabled={loading}
                 className="group relative w-full overflow-hidden rounded-2xl bg-brand-600 px-4 py-3 font-bold text-white shadow-lg shadow-brand-600/20
                            transition hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer hover:border-orange-500/50 hover:ring-2 hover:ring-orange-500/15"
