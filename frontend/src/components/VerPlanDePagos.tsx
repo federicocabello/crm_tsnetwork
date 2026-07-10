@@ -43,6 +43,7 @@ type Props = {
   total: number;
   enganche: number;
   metodoEnganche?: string;
+  idMetodoEnganche?: number;
   cuotas: Cuota[];
   onActualizado?: () => void;   // callback para refrescar Cliente.tsx
 };
@@ -71,6 +72,12 @@ function redondearMonto(valor: number): number {
   return Math.round(valor * 100) / 100;
 }
 
+function recalcularMontoConInteres(montoActual: number, interesAnterior: number, interesNuevo: number): number {
+  const factorAnterior = 1 + Number(interesAnterior || 0) / 100;
+  const base = factorAnterior > 0 ? Number(montoActual || 0) / factorAnterior : Number(montoActual || 0);
+  return redondearMonto(base * (1 + Number(interesNuevo || 0) / 100));
+}
+
 function normalizarCuotas(cuotas: Cuota[]): Cuota[] {
   return cuotas.map((c) => ({
     ...c,
@@ -84,9 +91,10 @@ function normalizarCuotas(cuotas: Cuota[]): Cuota[] {
   }));
 }
 
-export default function VerPlanDePagos({ idPago, idCita, total, enganche, metodoEnganche = "", cuotas: cuotasIniciales, onActualizado }: Props) {
+export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMetodoEnganche = 0, cuotas: cuotasIniciales, onActualizado }: Props) {
   const [cuotas, setCuotas] = useState<Cuota[]>(normalizarCuotas(cuotasIniciales));
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([]);
+  const [idMetodoEngancheSeleccionado, setIdMetodoEngancheSeleccionado] = useState<number>(Number(idMetodoEnganche || 0));
   const [error, setError] = useState("");
   const [avisoCuotaPagada, setAvisoCuotaPagada] = useState("");
   const [expandido, setExpandido] = useState(true);
@@ -97,6 +105,10 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, metodo
   useEffect(() => {
     setCuotas(normalizarCuotas(cuotasIniciales));
   }, [cuotasIniciales]);
+
+  useEffect(() => {
+    setIdMetodoEngancheSeleccionado(Number(idMetodoEnganche || 0));
+  }, [idMetodoEnganche]);
 
   useEffect(() => {
     const cargarMetodos = async () => {
@@ -159,7 +171,20 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, metodo
   ) => {
     setCuotas((prev) => {
       const copia = [...prev];
-      copia[index] = { ...copia[index], [campo]: valor };
+      const cuotaActual = copia[index];
+      if (!cuotaActual) return prev;
+
+      if (campo === "interes") {
+        const interesNuevo = Number(valor || 0);
+        copia[index] = {
+          ...cuotaActual,
+          interes: interesNuevo,
+          monto: recalcularMontoConInteres(cuotaActual.monto, cuotaActual.interes, interesNuevo),
+        };
+        return copia;
+      }
+
+      copia[index] = { ...cuotaActual, [campo]: valor };
       return copia;
     });
   };
@@ -269,6 +294,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, metodo
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           montoTotal: totalConEnganche,
+          idMetodoEnganche: enganchePlan > 0 ? idMetodoEngancheSeleccionado || null : null,
           cuotas: cuotas.map((c) => ({
             idcuota: c.idcuota,
             monto: c.monto,
@@ -349,13 +375,20 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, metodo
                   <CheckCircle className="h-3 w-3 text-green-400" />
                   <span className="text-white/40">Enganche:</span>
                   <span className="text-green-400 font-bold"><FormatearNumero numero={enganchePlan} /></span>
-                  {metodoEnganche ? (
-                    <span className="rounded-lg border border-green-500/20 bg-green-500/10 px-2 py-0.5 font-semibold text-green-200">
-                      {metodoEnganche}
-                    </span>
-                  ) : (
-                    <span className="text-white/35">Metodo no registrado</span>
-                  )}
+                  <select
+                    value={idMetodoEngancheSeleccionado || ""}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => setIdMetodoEngancheSeleccionado(Number(e.target.value || 0))}
+                    className="rounded-lg border border-green-500/20 bg-zinc-950/60 px-2 py-0.5 text-xs font-semibold text-green-100 outline-none focus:border-green-400/60"
+                    title="Cambiar metodo del enganche"
+                  >
+                    <option value="">Metodo no registrado</option>
+                    {metodosPago.map((metodo) => (
+                      <option key={metodo.id} value={metodo.id}>
+                        {metodo.metodo}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-3 py-1.5 text-xs">

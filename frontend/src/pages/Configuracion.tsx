@@ -6,7 +6,6 @@ import Loading from "../components/Loading";
 import ConfiguracionCitas from "./ConfiguracionCitas";
 import ConfiguracionPagos from "./ConfiguracionPagos";
 import UsuarioArchivos from "../components/UsuarioArchivos";
-import ReclutamientoAdmin from "../components/ReclutamientoAdmin";
 import type { EstadoCita } from "../types/configuracion";
 
 export default function Users() {

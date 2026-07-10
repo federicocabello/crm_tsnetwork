@@ -33,7 +33,6 @@ function RoleIcon() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const nav = useNavigate();
-  const canOpenTechnicianProfile = user?.rol === "tecnico";
 
   return (
     <div className="h-screen overflow-hidden bg-zinc-950 text-white">
