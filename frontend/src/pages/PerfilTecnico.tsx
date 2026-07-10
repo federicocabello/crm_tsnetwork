@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { PlayCircle, CheckCircle, FileText, Upload, Download, Trash2, Award, Calendar, BookOpen, Film } from "lucide-react";
+import { PlayCircle, CheckCircle, FileText, Upload, Download, Trash2, Award, Calendar, Film } from "lucide-react";
 
 interface Archivo {
   id: number;
@@ -60,7 +60,7 @@ export default function PerfilTecnico() {
   // Videos vistos e interactivos
   const [videosVistos, setVideosVistos] = useState<string[]>([]);
   const [videoActivo, setVideoActivo] = useState<VideoCapacitacion>(VIDEOS_INDUCION[0]);
-  const [cargandoVideos, setCargandoVideos] = useState(true);
+  const [, setCargandoVideos] = useState(true);
 
   // Archivos del técnico
   const [archivos, setArchivos] = useState<Archivo[]>([]);
