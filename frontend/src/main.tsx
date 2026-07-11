@@ -18,6 +18,7 @@ import RoleRoute from "./auth/RoleRoute";
 import Layout from "./components/Layout";
 import Cliente from "./pages/Cliente";
 import Pagos from "./pages/Pagos";
+import Tareas from "./pages/Tareas";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -103,6 +104,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <RoleRoute allow={["administrador", "superadmin", "moderador", "usuario"]}>
                 <Layout>
                   <Pagos />
+                </Layout>
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="/tareas"
+            element={
+              <RoleRoute allow={["superadmin"]}>
+                <Layout>
+                  <Tareas />
                 </Layout>
               </RoleRoute>
             }
