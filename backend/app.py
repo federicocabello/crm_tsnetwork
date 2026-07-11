@@ -515,6 +515,51 @@ def inicio():
     
     return jsonify({"usuarios": usuarios, "citas": citas, "citas_estados": citas_estados, "dias": dias, "cuotas_alertas": cuotas_alertas}), 200
 
+@app.get("/api/tareas/registros")
+def tareas_registros():
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("""
+            SELECT 
+                citas.id AS idcita,
+                clientes.id AS idcliente,
+                clientes.nombre AS nombre,
+                DATE_FORMAT(citas.dia, '%Y-%m-%d') AS dia,
+                DATE_FORMAT(citas.hora, '%H:%i') AS hora,
+                DATE_FORMAT(citas.hora, '%h:%i %p') AS hora_format,
+                citas.notas AS notas,
+                auth.id AS idagente,
+                auth.fullname AS fullname,
+                citas.tipo AS tipo,
+                citas.estado AS idestado,
+                citas_estados.estado AS estado,
+                citas_estados.color AS color,
+                citas.telefono AS telefono,
+                citas.domicilio AS direccion
+            FROM citas
+            JOIN clientes ON clientes.id = citas.cliente
+            JOIN auth ON auth.id = citas.asignado
+            JOIN citas_estados ON citas_estados.id = citas.estado
+            ORDER BY citas.dia DESC, citas.hora DESC;
+        """)
+        registros = cursor.fetchall()
+
+        cursor.execute("SELECT * FROM citas_estados ORDER BY estado;")
+        estados = cursor.fetchall()
+
+        cursor.execute("SELECT id, fullname FROM auth WHERE habilitado = 1 ORDER BY fullname;")
+        usuarios = cursor.fetchall()
+
+        return jsonify({
+            "registros": registros,
+            "estados": estados,
+            "usuarios": usuarios,
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
 @app.get("/api/citas_preguntas/<int:id_cita>")
 def obtener_preguntas_respuestas(id_cita):
     cursor = mysql.connection.cursor()
@@ -1870,22 +1915,48 @@ def obtener_datos_cliente(id_cliente):
         if not cliente:
             return jsonify({"error": "Cliente no encontrado"}), 404
 
-        cursor.execute("SELECT citas.id AS idcita, DATE_FORMAT(citas.dia, '%%e %%M %%Y') AS dia, DATE_FORMAT(citas.hora, '%%h:%%i %%p') AS hora, tipo, notas, telefono, domicilio, auth.fullname AS asignado, citas_estados.estado AS estado, citas_estados.color AS color, DATE_FORMAT(citas.dia, '%%Y-%%m-%%d') AS dia_format, DATE_FORMAT(citas.hora, '%%h:%%i %%p') AS hora_format, DATE_FORMAT(citas.hora, '%%H:%%i') AS hora_24, citas.estado AS idestado, citas.asignado AS idasignado FROM citas JOIN auth ON auth.id = citas.asignado JOIN citas_estados ON citas_estados.id = citas.estado WHERE citas.cliente = %s ORDER BY citas.dia DESC, hora DESC", (id_cliente,))
+        cursor.execute("""
+            SELECT
+                citas.id AS idcita,
+                DATE_FORMAT(citas.dia, '%%e %%M %%Y') AS dia,
+                DATE_FORMAT(citas.hora, '%%h:%%i %%p') AS hora,
+                tipo,
+                notas,
+                telefono,
+                domicilio,
+                auth.fullname AS asignado,
+                citas_estados.estado AS estado,
+                citas_estados.color AS color,
+                DATE_FORMAT(citas.dia, '%%Y-%%m-%%d') AS dia_format,
+                DATE_FORMAT(citas.hora, '%%h:%%i %%p') AS hora_format,
+                DATE_FORMAT(citas.hora, '%%H:%%i') AS hora_24,
+                citas.estado AS idestado,
+                citas.asignado AS idasignado,
+                COALESCE(deuda_cita.total, 0) AS deuda_cita
+            FROM citas
+            JOIN auth ON auth.id = citas.asignado
+            JOIN citas_estados ON citas_estados.id = citas.estado
+            LEFT JOIN (
+                SELECT p.cita, SUM(pc.monto) AS total
+                FROM pagos p
+                JOIN pagos_cuotas pc ON pc.pago = p.id
+                WHERE pc.pagado = 0
+                GROUP BY p.cita
+            ) deuda_cita ON deuda_cita.cita = citas.id
+            WHERE citas.cliente = %s
+            ORDER BY citas.dia DESC, hora DESC
+        """, (id_cliente,))
         citas = cursor.fetchall()
         cursor.execute("SELECT id, fullname FROM auth WHERE habilitado = 1 ORDER BY fullname;")
         users = cursor.fetchall()
         cursor.execute("SELECT id, estado FROM citas_estados ORDER BY estado;")
         estados = cursor.fetchall()
         cursor.execute("""
-            SELECT COALESCE(SUM(p.total - COALESCE(p.enganche, 0) - COALESCE(cuotas_pagadas.total_pagado, 0)), 0) AS deuda_total
+            SELECT COALESCE(SUM(pc.monto), 0) AS deuda_total
             FROM pagos p
-            LEFT JOIN (
-                SELECT pago, SUM(monto) AS total_pagado
-                FROM pagos_cuotas
-                WHERE pagado = 1
-                GROUP BY pago
-            ) cuotas_pagadas ON cuotas_pagadas.pago = p.id
-            WHERE p.cliente = %s;
+            JOIN pagos_cuotas pc ON pc.pago = p.id
+            WHERE p.cliente = %s
+              AND pc.pagado = 0;
         """, (id_cliente,))
         deuda_total = cursor.fetchone()
         deuda_total = float(deuda_total["deuda_total"]) if deuda_total else 0.0
@@ -2045,6 +2116,7 @@ def actualizar_plan_de_pagos(id_pago):
     data = request.get_json(silent=True) or {}
     monto_total = data.get("montoTotal")
     enganche    = data.get("enganche", 0)
+    id_metodo_enganche = data.get("idMetodoEnganche") or data.get("engancheMetodo")
     cuotas      = data.get("cuotas", [])
 
     if monto_total is None or not cuotas:
@@ -2056,11 +2128,18 @@ def actualizar_plan_de_pagos(id_pago):
         if not cursor.fetchone():
             return jsonify({"error": "Plan de pagos no encontrado"}), 404
 
-        # 1) Actualizar el total del plan padre.
-        cursor.execute(
-            "UPDATE pagos SET total = %s WHERE id = %s",
-            (float(monto_total), id_pago)
-        )
+        # 1) Actualizar el total del plan padre. El enganche no se modifica; solo su metodo si existe la columna.
+        if table_has_column("pagos", "enganche_metodo"):
+            id_metodo_enganche = int(id_metodo_enganche) if id_metodo_enganche else None
+            cursor.execute(
+                "UPDATE pagos SET total = %s, enganche_metodo = %s WHERE id = %s",
+                (float(monto_total), id_metodo_enganche, id_pago)
+            )
+        else:
+            cursor.execute(
+                "UPDATE pagos SET total = %s WHERE id = %s",
+                (float(monto_total), id_pago)
+            )
 
         # 2) Reemplazar las cuotas: borrar todas y reescribir desde el payload.
         cursor.execute("DELETE FROM pagos_cuotas WHERE pago = %s", (id_pago,))
@@ -2179,14 +2258,33 @@ def get_pagos_resumen():
         
     cursor = mysql.connection.cursor()
     try:
-        # Cuotas pagadas en el mes
+        # Cuotas pagadas en el mes. El interes es porcentaje informativo; el monto ya es el valor final de la cuota.
         query_pagadas = f"""
-            SELECT COUNT(*) as cantidad, SUM(monto + interes) as total
+            SELECT COUNT(*) as cantidad, COALESCE(SUM(monto), 0) as total
             FROM pagos_cuotas
             WHERE pagado = 1 AND DATE_FORMAT({tipo_filtro}, %s) = %s
         """
         cursor.execute(query_pagadas, ('%Y-%m', mes))
-        pagadas_mes = cursor.fetchone()
+        pagadas_mes = cursor.fetchone() or {"cantidad": 0, "total": 0}
+
+        # Enganches ingresados. La tabla pagos no tiene fecha propia, asi que se toma la fecha de la cita asociada.
+        cursor.execute("""
+            SELECT COUNT(*) as cantidad, COALESCE(SUM(p.enganche), 0) as total
+            FROM pagos p
+            JOIN citas ci ON ci.id = p.cita
+            WHERE COALESCE(p.enganche, 0) > 0
+              AND DATE_FORMAT(ci.dia, %s) = %s
+        """, ('%Y-%m', mes))
+        enganches_mes = cursor.fetchone() or {"cantidad": 0, "total": 0}
+
+        pagadas_mes = {
+            "cantidad": int(pagadas_mes.get("cantidad") or 0) + int(enganches_mes.get("cantidad") or 0),
+            "total": float(pagadas_mes.get("total") or 0) + float(enganches_mes.get("total") or 0),
+            "cuotas": int(pagadas_mes.get("cantidad") or 0),
+            "enganches": int(enganches_mes.get("cantidad") or 0),
+            "total_cuotas": float(pagadas_mes.get("total") or 0),
+            "total_enganches": float(enganches_mes.get("total") or 0),
+        }
 
         # Cuotas pendientes mes que viene
         y, m = map(int, mes.split('-'))
@@ -2197,7 +2295,7 @@ def get_pagos_resumen():
         next_month = f"{y:04d}-{m:02d}"
 
         cursor.execute("""
-            SELECT COUNT(*) as cantidad, SUM(monto + interes) as total
+            SELECT COUNT(*) as cantidad, SUM(monto) as total
             FROM pagos_cuotas
             WHERE pagado = 0 AND DATE_FORMAT(vencimiento, %s) = %s
         """, ('%Y-%m', next_month))
@@ -2205,7 +2303,7 @@ def get_pagos_resumen():
 
         # Deuda por cliente
         cursor.execute("""
-            SELECT c.id, c.nombre, SUM(pc.monto + pc.interes) as deuda_total
+            SELECT c.id, c.nombre, SUM(pc.monto) as deuda_total
             FROM clientes c
             JOIN pagos p ON p.cliente = c.id
             JOIN pagos_cuotas pc ON pc.pago = p.id

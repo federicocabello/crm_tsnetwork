@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 type PagoResumen = {
-  pagadas_mes: { cantidad: number; total: number };
+  pagadas_mes: { cantidad: number; total: number; cuotas?: number; enganches?: number; total_cuotas?: number; total_enganches?: number };
   pendientes_mes_actual: { cantidad: number; total: number };
   pendientes_mes_seleccionado: { cantidad: number; total: number };
   pendientes_mes_que_viene: { cantidad: number; total: number };
@@ -176,7 +176,7 @@ export default function Pagos() {
     return cuotasPendientes.reduce(
       (acc, cuota) => ({
         cantidad: acc.cantidad + 1,
-        total: acc.total + Number(cuota.monto) + Number(cuota.interes),
+        total: acc.total + Number(cuota.monto),
       }),
       { cantidad: 0, total: 0 },
     );
@@ -384,7 +384,7 @@ export default function Pagos() {
                     </div>
                     <div className="text-right shrink-0 ml-2">
                       <div className="font-bold text-orange-400 text-lg">
-                        {formatCurrency(Number(p.monto) + Number(p.interes))}
+                        {formatCurrency(Number(p.monto))}
                       </div>
                     </div>
                   </div>

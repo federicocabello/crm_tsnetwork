@@ -28,6 +28,7 @@ type Cita = {
   hora_24: string;
   idestado: string;
   idasignado: string;
+  deuda_cita?: number;
 };
 
 
@@ -67,6 +68,7 @@ export default function Cliente() {
   const [totalPlan, setTotalPlan] = useState<number>(0);
   const [enganchePlan, setEnganchePlan] = useState<number>(0);
   const [metodoEnganchePlan, setMetodoEnganchePlan] = useState("");
+  const [idMetodoEnganchePlan, setIdMetodoEnganchePlan] = useState<number>(0);
 
   const setearCitaSeleccionada = async (cita: Cita) => {
     setCitaSeleccionada(cita.idcita);
@@ -102,6 +104,7 @@ export default function Cliente() {
       setTotalPlan(data.total ?? 0);
       setEnganchePlan(Number(data.enganche ?? 0));
       setMetodoEnganchePlan(data.metodo_enganche ?? "");
+      setIdMetodoEnganchePlan(Number(data.idmetodo_enganche ?? 0));
 
     } catch (error) {
       alert("Error de conexión con el backend.");
@@ -256,18 +259,18 @@ export default function Cliente() {
             <div className="text-white/60">Este cliente no tiene citas registradas.</div>
           ) : (
             <div
-              className={`grid auto-rows-auto items-start gap-4 overflow-y-auto max-h-[min(560px,calc(100vh-220px))] pr-1 ${citaSeleccionada > 0
+              className={`grid auto-rows-[260px] items-stretch gap-4 overflow-y-auto max-h-[min(560px,calc(100vh-220px))] pr-1 ${citaSeleccionada > 0
                 ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
                 : "grid-cols-5"
                 }`}
             >
               {citas.map((cita) => (
-                <div key={cita.idcita} className={`h-fit min-h-max overflow-visible bg-zinc-900 border rounded-xl p-4 shadow transition-all cursor-pointer
+                <div key={cita.idcita} className={`h-[260px] overflow-hidden bg-zinc-900 border rounded-xl p-4 shadow transition-all cursor-pointer
                     ${cita.idcita === citaSeleccionada
                     ? "border-orange-500 shadow-orange-500 hover:shadow-orange-500"
                     : "border-white/10 hover:border-orange-500 hover:shadow-xs"
                   }`} onClick={() => setearCitaSeleccionada(cita)}>
-                  <div className="flex min-w-0 flex-col gap-2">
+                  <div className="flex h-full min-w-0 flex-col gap-2">
                     <div className="text-white font-bold flex items-center gap-2 justify-between">
                       <div className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-200 text-center"><CalendarFold className="h-4 w-4" />{cita.dia}</div>
                       <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-200 text-center"><Clock className="h-4 w-4" />{cita.hora}</div>
@@ -294,17 +297,40 @@ export default function Cliente() {
                     </div>
 
                     {cita.domicilio.trim() && (
-                      <div className="min-w-0 text-white text-sm flex gap-1 items-start justify-center font-bold italic break-words"><House className="h-4 w-4 shrink-0" />
+                      <div className="min-w-0 text-white text-sm flex gap-1 items-start justify-center font-bold italic break-words line-clamp-2"><House className="h-4 w-4 shrink-0" />
                         {cita.domicilio}
                       </div>
                     )}
 
                     {cita.notas.trim() && (
-                      <div className="min-w-0 overflow-visible break-words text-white/50 text-sm whitespace-pre-wrap"><strong>Notas:</strong> {cita.notas}</div>
+                      <div className="min-w-0 text-white/50 text-sm">
+                        <p className="line-clamp-2 break-words whitespace-pre-wrap"><strong>Notas:</strong> {cita.notas}</p>
+                        {cita.notas.length > 90 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setearCitaSeleccionada(cita);
+                            }}
+                            className="mt-1 text-xs font-bold text-orange-300 hover:text-orange-200"
+                          >
+                            Ver mas...
+                          </button>
+                        )}
+                      </div>
                     )}
-                    <hr className="text-white/10" />
-                    <div className="text-xs italic text-white/60">
-                      Asignado a <strong>{cita.asignado}</strong>
+                    <div className="mt-auto">
+                      <hr className="text-white/10" />
+                      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-white/60">
+                        <span className="min-w-0 truncate italic">
+                          Asignado a <strong>{cita.asignado}</strong>
+                        </span>
+                        {Number(cita.deuda_cita || 0) > 0 && (
+                          <span className="shrink-0 rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2 py-0.5 font-bold text-yellow-200">
+                            Debe <FormatearNumero numero={Number(cita.deuda_cita || 0)} />
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -341,6 +367,7 @@ export default function Cliente() {
                 total={totalPlan}
                 enganche={enganchePlan}
                 metodoEnganche={metodoEnganchePlan}
+                idMetodoEnganche={idMetodoEnganchePlan}
                 cuotas={cuotas}
                 onActualizado={() => {
                   // Refrescar cuotas y deuda después de guardar
