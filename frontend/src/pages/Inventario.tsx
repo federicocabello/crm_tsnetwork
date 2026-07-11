@@ -174,7 +174,6 @@ export default function Inventario() {
               {/* Row for adding new product */}
               {addingProduct && (
                 <tr className="border-b border-white/10 bg-white/5">
-                  <td className="px-4 py-3 text-white/30">-</td>
                   <td className="px-4 py-3">
                     <input
                       type="text"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Loading from "../components/Loading";
+import PaidDetails from "../components/Modals/PaidDetails";
 import {
   CircleDollarSign,
   CalendarDays,
@@ -16,6 +17,16 @@ type PagoResumen = {
   pendientes_mes_seleccionado: { cantidad: number; total: number };
   pendientes_mes_que_viene: { cantidad: number; total: number };
   deuda_por_cliente: { id: number; nombre: string; deuda_total: number }[];
+  enganche_mes: { cantidad: number; total: number };
+  enganches_del_mes: {
+    pago_id: number;
+    cliente_id: number;
+    cliente_nombre: string;
+    enganche: number;
+    metodo_nombre: string | null;
+    metodo_color: string | null;
+    primera_cuota: string | null;
+  }[];
   proximos_vencimientos: {
     id: number;
     cliente_id: number;
@@ -61,6 +72,7 @@ export default function Pagos() {
   };
 
   const [mes, setMes] = useState<string>(getMesActual);
+  const [showPaidDetails, setShowPaidDetails] = useState(false);
 
   // Buscador de clientes
   const [queryCliente, setQueryCliente] = useState("");
@@ -243,7 +255,8 @@ export default function Pagos() {
 
       {/* Cards de resumen */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-zinc-900 border border-white/10 p-5 rounded-2xl shadow-xl flex flex-col gap-2 relative overflow-hidden group">
+        {/* Card for Pagadas este mes with click handler */}
+        <div className="bg-zinc-900 border border-white/10 p-5 rounded-2xl shadow-xl flex flex-col gap-2 relative overflow-hidden group cursor-pointer" onClick={() => setShowPaidDetails(true)}>
           <div className="absolute -right-4 -top-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <CircleDollarSign className="w-32 h-32" />
           </div>
@@ -253,8 +266,13 @@ export default function Pagos() {
           <div className="text-3xl font-extrabold text-green-400">
             {formatCurrency(data?.pagadas_mes?.total)}
           </div>
-          <div className="text-xs text-white/40">
-            {data?.pagadas_mes?.cantidad || 0} cuotas
+          <div className="text-xs text-white/40 flex items-center gap-2">
+            <span>{data?.pagadas_mes?.cantidad || 0} cuotas</span>
+            {Number(data?.enganche_mes?.total) > 0 && (
+              <span className="text-blue-400/70">
+                + enganche {formatCurrency(data?.enganche_mes?.total)}
+              </span>
+            )}
           </div>
         </div>
 
@@ -308,6 +326,15 @@ export default function Pagos() {
           </div>
         </div>
       </div>
+
+      {showPaidDetails && (
+        <PaidDetails
+          data={data}
+          formatCurrency={formatCurrency}
+          formatDate={formatDate}
+          onClose={() => setShowPaidDetails(false)}
+        />
+      )}
 
       {/* Tablas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
