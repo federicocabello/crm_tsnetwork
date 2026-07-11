@@ -1397,9 +1397,10 @@ def get_cotizacion_detallada(idCotizacion):
     try:
         cursor.execute(
             """
-            SELECT id, cita, firma_instalacion, firma_foto_instalacion
-            FROM hojas
-            WHERE id = %s
+            SELECT h.id, h.cita, h.firma_instalacion, h.firma_foto_instalacion, c.tipo as cita_tipo
+            FROM hojas h
+            JOIN citas c ON h.cita = c.id
+            WHERE h.id = %s
             """,
             (idCotizacion,)
         )
@@ -1481,6 +1482,7 @@ def get_cotizacion_detallada(idCotizacion):
             "firma_instalacion": hoja_info.get("firma_instalacion"),
             "firma_foto_instalacion": hoja_info.get("firma_foto_instalacion"),
             "inspeccion_items": inspeccion_items,
+            "cita_tipo": hoja_info.get("cita_tipo"),
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -2475,6 +2477,10 @@ def get_inspeccion(id_cita):
             foto_info.get("firma_foto_instalacion") if foto_info else None
         )
 
+        cursor.execute("SELECT tipo FROM citas WHERE id = %s", (id_cita,))
+        cita_row = cursor.fetchone()
+        cita_tipo = cita_row.get("tipo") if cita_row else None
+
         cursor.execute("SELECT id, dibujo, firma FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
         inspeccion = cursor.fetchone()
         
@@ -2485,6 +2491,7 @@ def get_inspeccion(id_cita):
                 "dibujo": None,
                 "firma": None,
                 "firma_foto_instalacion": firma_foto_instalacion,
+                "cita_tipo": cita_tipo,
             }), 200
             
         inspeccion_id = inspeccion["id"]
