@@ -25,7 +25,7 @@ type PagoResumen = {
     enganche: number;
     metodo_nombre: string | null;
     metodo_color: string | null;
-    primera_cuota: string | null;
+    fecha_enganche: string | null;
   }[];
   proximos_vencimientos: {
     id: number;
@@ -39,6 +39,18 @@ type PagoResumen = {
     metodo_color: string;
   }[];
   cuotas_del_mes: {
+    id: number;
+    cliente_id: number;
+    cliente_nombre: string;
+    monto: number;
+    interes: number;
+    vencimiento: string;
+    fechapago: string | null;
+    pagado: number;
+    metodo_nombre: string;
+    metodo_color: string;
+  }[];
+  cuotas_pagadas_del_mes: {
     id: number;
     cliente_id: number;
     cliente_nombre: string;
@@ -266,13 +278,9 @@ export default function Pagos() {
           <div className="text-3xl font-extrabold text-green-400">
             {formatCurrency(data?.pagadas_mes?.total)}
           </div>
-          <div className="text-xs text-white/40 flex items-center gap-2">
-            <span>{data?.pagadas_mes?.cantidad || 0} cuotas</span>
-            {Number(data?.enganche_mes?.total) > 0 && (
-              <span className="text-blue-400/70">
-                + enganche {formatCurrency(data?.enganche_mes?.total)}
-              </span>
-            )}
+          <div className="text-xs text-white/40 flex items-center gap-2 flex-wrap">
+            <span>{data?.pagadas_mes?.cuotas || 0} cuotas</span>
+            <span>{data?.pagadas_mes?.enganches || 0} enganches</span>
           </div>
         </div>
 
