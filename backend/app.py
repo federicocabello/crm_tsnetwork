@@ -2255,34 +2255,37 @@ def get_pagos_resumen():
     
     if not mes:
         mes = datetime.now().strftime("%Y-%m")
+    if tipo_filtro not in ("fechapago", "vencimiento"):
+        tipo_filtro = "fechapago"
         
     cursor = mysql.connection.cursor()
     try:
-        # Cuotas pagadas en el mes. El interes es porcentaje informativo; el monto ya es el valor final de la cuota.
-        query_pagadas = f"""
+        # Cuotas pagadas en el mes. Siempre se filtran por fecha real de pago.
+        cursor.execute("""
             SELECT COUNT(*) as cantidad, COALESCE(SUM(monto), 0) as total
             FROM pagos_cuotas
-            WHERE pagado = 1 AND DATE_FORMAT({tipo_filtro}, %s) = %s
-        """
-        cursor.execute(query_pagadas, ('%Y-%m', mes))
-        pagadas_mes = cursor.fetchone() or {"cantidad": 0, "total": 0}
+            WHERE pagado = 1
+              AND fechapago IS NOT NULL
+              AND DATE_FORMAT(fechapago, %s) = %s
+        """, ('%Y-%m', mes))
+        cuotas_pagadas_mes = cursor.fetchone() or {"cantidad": 0, "total": 0}
 
-        # Enganches ingresados. La tabla pagos no tiene fecha propia, asi que se toma la fecha de la cita asociada.
+        # Enganches ingresados en el mes. La fecha real del enganche es pagos.fecha.
         cursor.execute("""
             SELECT COUNT(*) as cantidad, COALESCE(SUM(p.enganche), 0) as total
             FROM pagos p
-            JOIN citas ci ON ci.id = p.cita
             WHERE COALESCE(p.enganche, 0) > 0
-              AND DATE_FORMAT(ci.dia, %s) = %s
+              AND p.fecha IS NOT NULL
+              AND DATE_FORMAT(p.fecha, %s) = %s
         """, ('%Y-%m', mes))
         enganches_mes = cursor.fetchone() or {"cantidad": 0, "total": 0}
 
         pagadas_mes = {
-            "cantidad": int(pagadas_mes.get("cantidad") or 0) + int(enganches_mes.get("cantidad") or 0),
-            "total": float(pagadas_mes.get("total") or 0) + float(enganches_mes.get("total") or 0),
-            "cuotas": int(pagadas_mes.get("cantidad") or 0),
+            "cantidad": int(cuotas_pagadas_mes.get("cantidad") or 0) + int(enganches_mes.get("cantidad") or 0),
+            "total": float(cuotas_pagadas_mes.get("total") or 0) + float(enganches_mes.get("total") or 0),
+            "cuotas": int(cuotas_pagadas_mes.get("cantidad") or 0),
             "enganches": int(enganches_mes.get("cantidad") or 0),
-            "total_cuotas": float(pagadas_mes.get("total") or 0),
+            "total_cuotas": float(cuotas_pagadas_mes.get("total") or 0),
             "total_enganches": float(enganches_mes.get("total") or 0),
         }
 
@@ -2348,14 +2351,32 @@ def get_pagos_resumen():
         """
         cursor.execute(query_cuotas, ('%Y-%m-%d', '%Y-%m-%d', '%Y-%m', mes))
         cuotas_del_mes = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT pc.id, c.id as cliente_id, c.nombre as cliente_nombre,
+                   pc.monto, pc.interes,
+                   DATE_FORMAT(pc.vencimiento, %s) as vencimiento,
+                   DATE_FORMAT(pc.fechapago, %s) as fechapago,
+                   pc.pagado,
+                   pm.metodo as metodo_nombre, pm.color as metodo_color
+            FROM pagos_cuotas pc
+            JOIN pagos p ON pc.pago = p.id
+            JOIN clientes c ON p.cliente = c.id
+            LEFT JOIN pagos_metodos pm ON pc.metodo = pm.id
+            WHERE pc.pagado = 1
+              AND pc.fechapago IS NOT NULL
+              AND DATE_FORMAT(pc.fechapago, %s) = %s
+            ORDER BY pc.fechapago DESC, c.nombre ASC
+        """, ('%Y-%m-%d', '%Y-%m-%d', '%Y-%m', mes))
+        cuotas_pagadas_del_mes = cursor.fetchall()
         # Enganche del mes: planes de pago cuya fecha de enganche cae en el mes seleccionado
         cursor.execute("""
-            SELECT COUNT(*) as cantidad, SUM(p.enganche) as total
+            SELECT COUNT(*) as cantidad, COALESCE(SUM(p.enganche), 0) as total
             FROM pagos p
             WHERE p.enganche > 0
               AND DATE_FORMAT(p.fecha, '%%Y-%%m') = %s
         """, (mes,))
-        enganche_mes = cursor.fetchone()
+        enganche_mes = cursor.fetchone() or {"cantidad": 0, "total": 0}
         
         
         # Detalle de enganches del mes por cliente
@@ -2383,6 +2404,7 @@ def get_pagos_resumen():
             "deuda_por_cliente": deuda_por_cliente,
             "proximos_vencimientos": proximos_vencimientos,
             "cuotas_del_mes": cuotas_del_mes,
+            "cuotas_pagadas_del_mes": cuotas_pagadas_del_mes,
             "enganche_mes": enganche_mes,
             "enganches_del_mes": enganches_del_mes,
         }), 200

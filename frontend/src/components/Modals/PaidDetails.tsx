@@ -1,5 +1,5 @@
 type PaidDetailsData = {
-  pagadas_mes?: { total: number | string | null | undefined };
+  pagadas_mes?: { total: number | string | null | undefined; total_cuotas?: number | string | null | undefined };
   enganche_mes?: { total: number | string | null | undefined };
   enganches_del_mes?: {
     pago_id: number;
@@ -7,9 +7,17 @@ type PaidDetailsData = {
     enganche: number | string | null | undefined;
     metodo_nombre: string | null;
     metodo_color: string | null;
-    primera_cuota: string | null;
+    fecha_enganche: string | null;
   }[];
   cuotas_del_mes?: {
+    id: number;
+    cliente_nombre: string;
+    monto: number | string | null | undefined;
+    interes: number | string | null | undefined;
+    fechapago: string | null;
+    pagado: number | string;
+  }[];
+  cuotas_pagadas_del_mes?: {
     id: number;
     cliente_nombre: string;
     monto: number | string | null | undefined;
@@ -32,11 +40,10 @@ export default function PaidDetails({
   formatDate,
   onClose,
 }: PaidDetailsProps) {
-    console.log(data)
   const paidDownPayments =
-    data?.enganches_del_mes?.filter((enganche) => Number(enganche.enganche) > 1) ?? [];
+    data?.enganches_del_mes?.filter((enganche) => Number(enganche.enganche) > 0) ?? [];
   const paidInstallments =
-    data?.cuotas_del_mes?.filter((cuota) => Number(cuota.pagado) > 0) ?? [];
+    data?.cuotas_pagadas_del_mes?.filter((cuota) => Number(cuota.pagado) > 0) ?? [];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
@@ -66,7 +73,7 @@ export default function PaidDetails({
                     <th className="p-2">Cliente</th>
                     <th className="p-2">Enganche</th>
                     <th className="p-2">Método</th>
-                    <th className="p-2">Primera cuota</th>
+                    <th className="p-2">Fecha enganche</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -97,7 +104,7 @@ export default function PaidDetails({
                         )}
                       </td>
                       <td className="p-2 text-white/60 text-xs">
-                        {formatDate(enganche.primera_cuota)}
+                        {formatDate(enganche.fecha_enganche)}
                       </td>
                     </tr>
                   ))}
@@ -113,7 +120,7 @@ export default function PaidDetails({
                 Cuotas Pagadas
               </h4>
               <span className="ml-auto text-green-400 font-bold text-sm">
-                {formatCurrency(data?.pagadas_mes?.total)}
+                {formatCurrency(data?.pagadas_mes?.total_cuotas ?? data?.pagadas_mes?.total)}
               </span>
             </div>
             <table className="w-full text-sm table-auto">
@@ -137,7 +144,7 @@ export default function PaidDetails({
                       {formatCurrency(cuota.monto)}
                     </td>
                     <td className="p-2 text-white/80">
-                      {formatCurrency(cuota.interes)}
+                      {Number(cuota.interes || 0).toLocaleString("es-AR")} %
                     </td>
                     <td className="p-2 text-white/80">
                       {formatDate(cuota.fechapago)}
