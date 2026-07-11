@@ -259,46 +259,57 @@ export default function Cliente() {
             <div className="text-white/60">Este cliente no tiene citas registradas.</div>
           ) : (
             <div
-              className={`grid auto-rows-[260px] items-stretch gap-4 overflow-y-auto max-h-[min(560px,calc(100vh-220px))] pr-1 ${citaSeleccionada > 0
-                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                : "grid-cols-5"
-                }`}
+              className="flex max-h-[min(680px,calc(100vh-220px))] flex-col gap-3 overflow-y-auto pr-1"
             >
               {citas.map((cita) => (
-                <div key={cita.idcita} className={`h-[260px] overflow-hidden bg-zinc-900 border rounded-xl p-4 shadow transition-all cursor-pointer
+                <div key={cita.idcita} className={`bg-zinc-900 border rounded-xl p-4 shadow transition-all cursor-pointer
                     ${cita.idcita === citaSeleccionada
                     ? "border-orange-500 shadow-orange-500 hover:shadow-orange-500"
                     : "border-white/10 hover:border-orange-500 hover:shadow-xs"
                   }`} onClick={() => setearCitaSeleccionada(cita)}>
-                  <div className="flex h-full min-w-0 flex-col gap-2">
-                    <div className="text-white font-bold flex items-center gap-2 justify-between">
-                      <div className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-200 text-center"><CalendarFold className="h-4 w-4" />{cita.dia}</div>
-                      <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-200 text-center"><Clock className="h-4 w-4" />{cita.hora}</div>
-                    </div>
+                  <div className="flex min-w-0 flex-col gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-white font-bold">
+                      <div className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-200 text-center">
+                        <CalendarFold className="h-4 w-4" />{cita.dia}
+                      </div>
+                      <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-200 text-center">
+                        <Clock className="h-4 w-4" />{cita.hora}
+                      </div>
 
-                    {(cita.tipo == "camarasdesdecero" || cita.tipo == "camaras-tiene-nuevo-instalacion" || cita.tipo == "camaras-tiene-existente-instalacion") && (
-                      <div>
-                        <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1 w-full">
+                      {(cita.tipo == "camarasdesdecero" || cita.tipo == "camaras-tiene-nuevo-instalacion" || cita.tipo == "camaras-tiene-existente-instalacion") && (
+                        <div className="rounded-full text-xs font-bold py-1 px-2 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
                           <Cctv className="h-4 w-4" />
                           <span>INSTALACION DE CAMARAS</span>
                         </div>
-                        {(cita.tipo == "camaras-tiene-nuevo-instalacion" || cita.tipo == "camaras-tiene-existente-instalacion") && (<div className="text-xs text-yellow-500 font-bold italic flex items-center gap-1 justify-center mt-2"><TriangleAlert className="h-4 w-4" />Ya tiene camaras instaladas</div>)}
-                      </div>
-                    )}
+                      )}
 
-                    {(cita.tipo == "camaras-tiene-nuevo-soporte" || cita.tipo == "camaras-tiene-existente-soporte") && (
-                      <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1 w-full">
-                        <Wrench className="h-4 w-4" />
-                        <span>SOPORTE</span>
+                      {(cita.tipo == "camaras-tiene-nuevo-soporte" || cita.tipo == "camaras-tiene-existente-soporte") && (
+                        <div className="rounded-full text-xs font-bold py-1 px-2 cursor-pointer text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
+                          <Wrench className="h-4 w-4" />
+                          <span>SOPORTE</span>
+                        </div>
+                      )}
+
+                      <div className="rounded-full text-xs font-bold py-1 px-2 cursor-pointer text-center border-2 flex justify-center items-center gap-1" style={{ backgroundColor: cita.color, borderColor: darkenColor(cita.color, 0.5), }}>
+                        {cita.estado}
                       </div>
-                    )}
-                    <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 flex justify-center items-center gap-1 w-full" style={{ backgroundColor: cita.color, borderColor: darkenColor(cita.color, 0.5), }}>
-                      {cita.estado}
+
+
+                      {Number(cita.deuda_cita || 0) > 0 && (
+                        <div className="rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2 py-1 text-xs font-bold text-yellow-200">
+                          Debe <FormatearNumero numero={Number(cita.deuda_cita || 0)} />
+                        </div>
+                      )}
+                      {(cita.tipo == "camaras-tiene-nuevo-instalacion" || cita.tipo == "camaras-tiene-existente-instalacion") && (
+                        <div className="text-xs text-yellow-500 font-bold italic flex items-center gap-1">
+                          <TriangleAlert className="h-4 w-4" />Ya tiene camaras instaladas
+                        </div>
+                      )}
                     </div>
-
                     {cita.domicilio.trim() && (
-                      <div className="min-w-0 text-white text-sm flex gap-1 items-start justify-center font-bold italic break-words line-clamp-2"><House className="h-4 w-4 shrink-0" />
-                        {cita.domicilio}
+                      <div className="min-w-0 text-white text-sm flex gap-1 items-start font-bold italic">
+                        <House className="h-4 w-4 shrink-0" />
+                        <span className="min-w-0 flex-1 break-words leading-snug">{cita.domicilio}</span>
                       </div>
                     )}
 
@@ -325,11 +336,6 @@ export default function Cliente() {
                         <span className="min-w-0 truncate italic">
                           Asignado a <strong>{cita.asignado}</strong>
                         </span>
-                        {Number(cita.deuda_cita || 0) > 0 && (
-                          <span className="shrink-0 rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2 py-0.5 font-bold text-yellow-200">
-                            Debe <FormatearNumero numero={Number(cita.deuda_cita || 0)} />
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
