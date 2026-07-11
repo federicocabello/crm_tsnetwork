@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CreditCard, Calendar, Percent, DollarSign, Hash, Plus, AlertTriangle } from "lucide-react";
+import { CreditCard, Calendar, Percent, DollarSign, Hash, Plus, AlertTriangle, Repeat } from "lucide-react";
 import FormatearNumero from "../components/FormatearNumero";
 import Loading from "../components/Loading";
 
@@ -15,11 +15,18 @@ type MetodoPago = {
   color?: string;
 };
 
+type FrecuenciaCuotas = "mensual" | "semanal";
+
 type Cuota = {
   monto: number;
   interes: number;
   fecha_vencimiento: string;
 };
+
+function parseDateKey(dateKey: string): Date {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
+}
 
 function formatDate(date: Date): string {
   const y = date.getFullYear();
@@ -35,6 +42,8 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([]);
   const [interesGlobal, setInteresGlobal] = useState<number>(0);
   const [numCuotas, setNumCuotas] = useState<number>(1);
+  const [frecuenciaCuotas, setFrecuenciaCuotas] = useState<FrecuenciaCuotas>("mensual");
+  const [primerVencimiento, setPrimerVencimiento] = useState<string>(() => formatDate(new Date()));
   const [cuotas, setCuotas] = useState<Cuota[]>([]);
   const [guardado, setGuardado] = useState(false);
   const [errorGuardar, setErrorGuardar] = useState("");
@@ -61,11 +70,15 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
     cargarMetodos();
   }, []);
   useEffect(() => {
-    if (numCuotas < 1) return;
-    const hoy = new Date();
+    if (numCuotas < 1 || !primerVencimiento) return;
+    const fechaBase = parseDateKey(primerVencimiento);
     const nuevasCuotas: Cuota[] = Array.from({ length: numCuotas }, (_, i) => {
-      const fecha = new Date(hoy);
-      fecha.setMonth(hoy.getMonth() + i);
+      const fecha = new Date(fechaBase);
+      if (frecuenciaCuotas === "semanal") {
+        fecha.setDate(fechaBase.getDate() + i * 7);
+      } else {
+        fecha.setMonth(fechaBase.getMonth() + i);
+      }
       return {
         monto: montoPorCuota,
         interes: interesGlobal,
@@ -73,7 +86,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
       };
     });
     setCuotas(nuevasCuotas);
-  }, [numCuotas, saldoFinanciado, interesGlobal]);
+  }, [numCuotas, saldoFinanciado, interesGlobal, primerVencimiento, frecuenciaCuotas]);
 
   const handleMontoChange = (index: number, value: number) => {
     setCuotas((prev) => {
@@ -173,7 +186,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
       <div className="rounded-2xl border border-white/10 bg-zinc-900 shadow-lg shadow-black/20 p-5 space-y-4">
         <p className="text-xs font-bold tracking-wide text-white/40 uppercase">Configuracion</p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-1">
             <label className="text-xs text-white/50 flex items-center gap-1">
               <DollarSign className="h-3 w-3 text-orange-400" />
@@ -266,6 +279,34 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
               value={numCuotas}
               onChange={(e) => setNumCuotas(Math.max(1, Number(e.target.value)))}
               className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-white/50 flex items-center gap-1">
+              <Repeat className="h-3 w-3 text-orange-400" />
+              Frecuencia
+            </label>
+            <select
+              value={frecuenciaCuotas}
+              onChange={(e) => setFrecuenciaCuotas(e.target.value as FrecuenciaCuotas)}
+              className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors"
+            >
+              <option value="mensual">Mensuales</option>
+              <option value="semanal">Semanales</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-white/50 flex items-center gap-1">
+              <Calendar className="h-3 w-3 text-orange-400" />
+              Primer vencimiento
+            </label>
+            <input
+              type="date"
+              value={primerVencimiento}
+              onChange={(e) => setPrimerVencimiento(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors [color-scheme:dark]"
             />
           </div>
         </div>
