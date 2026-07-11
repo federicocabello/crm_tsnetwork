@@ -1,3 +1,5 @@
+import mimetypes
+import mimetypes
 from flask import Flask, jsonify, send_from_directory
 from flask_mysqldb import MySQL
 from dotenv import load_dotenv
@@ -2182,7 +2184,6 @@ def actualizar_plan_de_pagos(id_pago):
 @app.post("/api/plan-de-pagos")
 def crear_plan_de_pagos():
     data = request.get_json(silent=True) or {}
-    print(data)
 
     id_cliente = data.get("idCliente")
     id_cita    = data.get("idCita")
@@ -2190,7 +2191,6 @@ def crear_plan_de_pagos():
     enganche    = data.get("enganche", 0)
     id_metodo_enganche = data.get("idMetodoEnganche") or data.get("engancheMetodo")
     cuotas      = data.get("cuotas", [])
-
     if not id_cliente or not id_cita or monto_total is None or not cuotas:
         return jsonify({"error": "Faltan datos obligatorios"}), 400
 
@@ -2204,12 +2204,12 @@ def crear_plan_de_pagos():
         # 1) Crear el registro de pago padre
         if table_has_column("pagos", "enganche_metodo"):
             cursor.execute(
-                "INSERT INTO pagos (cliente, cita, total, enganche, enganche_metodo) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO pagos (cliente, cita, total, enganche, enganche_metodo) VALUES (%s, %s, %s, %s, %s",
                 (id_cliente, id_cita, float(monto_total), enganche, id_metodo_enganche)
             )
         else:
             cursor.execute(
-                "INSERT INTO pagos (cliente, cita, total, enganche) VALUES (%s, %s, %s, %s)",
+                "INSERT INTO pagos (cliente, cita, total, enganche) VALUES (%s, %s, %s, %s",
                 (id_cliente, id_cita, float(monto_total), enganche)
             )
         id_pago = cursor.lastrowid
@@ -2218,7 +2218,10 @@ def crear_plan_de_pagos():
         for cuota in cuotas:
             monto     = float(cuota.get("monto", 0))
             interes   = float(cuota.get("interes", 0))
-            vencimiento = cuota.get("vencimiento")
+            vencimiento = cuota.get("vencimiento") or cuota.get("fecha_vencimiento")
+            if not vencimiento:
+                raise ValueError("Todas las cuotas deben tener fecha de vencimiento")
+            vencimiento = datetime.strptime(vencimiento, "%Y-%m-%d").date()
             metodo    = int(cuota.get("idmetodo") or cuota.get("metodo") or 1)
             nota      = (cuota.get("nota") or "").strip()
             comprobante = (cuota.get("comprobante") or "").strip()
@@ -2233,6 +2236,10 @@ def crear_plan_de_pagos():
 
         mysql.connection.commit()
         return jsonify({"msg": "Plan de pagos guardado correctamente", "id_pago": id_pago}), 201
+
+    except ValueError as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 400
 
     except Exception as e:
         mysql.connection.rollback()
@@ -2341,13 +2348,43 @@ def get_pagos_resumen():
         """
         cursor.execute(query_cuotas, ('%Y-%m-%d', '%Y-%m-%d', '%Y-%m', mes))
         cuotas_del_mes = cursor.fetchall()
+        # Enganche del mes: planes de pago cuya fecha de enganche cae en el mes seleccionado
+        cursor.execute("""
+            SELECT COUNT(*) as cantidad, SUM(p.enganche) as total
+            FROM pagos p
+            WHERE p.enganche > 0
+              AND DATE_FORMAT(p.fecha, '%%Y-%%m') = %s
+        """, (mes,))
+        enganche_mes = cursor.fetchone()
+        
+        
+        # Detalle de enganches del mes por cliente
+        cursor.execute("""
+            SELECT 
+                p.id as pago_id,
+                c.id as cliente_id,
+                c.nombre as cliente_nombre,
+                p.enganche,
+                pm.metodo as metodo_nombre,
+                pm.color as metodo_color,
+                DATE_FORMAT(p.fecha, '%%Y-%%m-%%d') as fecha_enganche
+            FROM pagos p
+            JOIN clientes c ON c.id = p.cliente
+            LEFT JOIN pagos_metodos pm ON pm.id = p.enganche_metodo
+            WHERE p.enganche > 0
+              AND DATE_FORMAT(p.fecha, '%%Y-%%m') = %s
+            ORDER BY c.nombre ASC
+        """, (mes,))
+        enganches_del_mes = cursor.fetchall()
 
         return jsonify({
             "pagadas_mes": pagadas_mes,
             "pendientes_mes_que_viene": pendientes_mes_que_viene,
             "deuda_por_cliente": deuda_por_cliente,
             "proximos_vencimientos": proximos_vencimientos,
-            "cuotas_del_mes": cuotas_del_mes
+            "cuotas_del_mes": cuotas_del_mes,
+            "enganche_mes": enganche_mes,
+            "enganches_del_mes": enganches_del_mes,
         }), 200
     except Exception as e:
         print("Error en get_pagos_resumen:", e)
