@@ -77,6 +77,7 @@ export default function HojaInstalacion({
   const [showFotoModal, setShowFotoModal] = useState(false);
   const [cargadoDeInspeccion, setCargadoDeInspeccion] = useState(false);
   const [planPago, setPlanPago] = useState<PlanPagoInstalacion | null>(null);
+  const [citaTipo, setCitaTipo] = useState<string>("");
 
   const bloqueada = Boolean(firmaUrl);
 
@@ -109,6 +110,10 @@ export default function HojaInstalacion({
             setFirmaFotoUrl(API_URL + dataCotizacion.firma_foto_instalacion);
           } else {
             setFirmaFotoUrl(null);
+          }
+          
+          if (dataCotizacion.cita_tipo) {
+            setCitaTipo(dataCotizacion.cita_tipo);
           }
 
           if (productosInstalacion.length > 0) {
@@ -475,6 +480,37 @@ export default function HojaInstalacion({
       return;
     }
 
+    const isInstalacion = ["camarasdesdecero", "camaras-tiene-nuevo-instalacion", "camaras-tiene-existente-instalacion"].includes(citaTipo);
+    const isSoporte = ["camaras-tiene-existente-soporte", "camaras-tiene-nuevo-soporte"].includes(citaTipo);
+
+    const checkboxInstalacion = isInstalacion ? "✔️" : "";
+    const checkboxSoporte = isSoporte ? "✔️" : "";
+
+    const typeTable = `
+      <section class="section" style="margin-top: 20px; margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #111827; background-color: #ffffff;">
+          <tbody>
+            <tr>
+              <td style="border: 1px solid #111827; padding: 8px 12px; font-weight: bold; width: 85%; font-size: 13px; text-transform: uppercase;">MANTENIMIENTO PREVENTIVO</td>
+              <td style="border: 1px solid #111827; padding: 8px 12px; text-align: center; width: 15%;"></td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #111827; padding: 8px 12px; font-weight: bold; font-size: 13px; text-transform: uppercase;">INSTALACI&Oacute;N</td>
+              <td style="border: 1px solid #111827; padding: 8px 12px; text-align: center; font-weight: bold; font-size: 16px;">${checkboxInstalacion}</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #111827; padding: 8px 12px; font-weight: bold; font-size: 13px; text-transform: uppercase;">SOPORTE</td>
+              <td style="border: 1px solid #111827; padding: 8px 12px; text-align: center; font-weight: bold; font-size: 16px;">${checkboxSoporte}</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #111827; padding: 8px 12px; font-weight: bold; font-size: 13px; text-transform: uppercase;">INSPECCI&Oacute;N</td>
+              <td style="border: 1px solid #111827; padding: 8px 12px; text-align: center;"></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    `;
+
     const html = `
       <html>
         <head>
@@ -665,6 +701,8 @@ export default function HojaInstalacion({
                 <strong>${escapePdfHtml(clientePdf.telefono)}</strong>
               </div>
             </section>
+
+            ${typeTable}
 
             <section class="section">
               <h2>Equipos Instalados</h2>
