@@ -1104,7 +1104,9 @@ export default function Inicio() {
                         {/* Hoja de Inspección - única acción permitida */}
                         {(it.tipo == "camarasdesdecero" ||
                           it.tipo == "camaras-tiene-nuevo-instalacion" ||
-                          it.tipo == "camaras-tiene-existente-instalacion") &&
+                          it.tipo == "camaras-tiene-existente-instalacion" ||
+                          it.tipo == "camaras-tiene-nuevo-soporte" ||
+                          it.tipo == "camaras-tiene-existente-soporte") &&
                           (it.tiene_inspeccion ? (
                             <div className="text-sm flex items-center gap-1">
                               •<File className="h-4 w-4 text-blue-500" />
@@ -1327,6 +1329,36 @@ export default function Inicio() {
                             <div className="min-w-0 text-sm flex items-center gap-1 break-words">
                               • <Home className="h-4 w-4" /> {it.direccion}
                             </div>
+                          )}
+
+                          {/* Soporte con hoja de inspeccion */}
+                          {(it.tipo == "camaras-tiene-nuevo-soporte" ||
+                            it.tipo == "camaras-tiene-existente-soporte") && (
+                            <>
+                              {it.tiene_inspeccion ? (
+                                <div className="text-sm flex items-center gap-1">
+                                  <File className="h-4 w-4 text-blue-500" />
+                                  <span
+                                    className="text-blue-500 font-bold hover:underline cursor-pointer"
+                                    onClick={() => {
+                                      abrirHojaInspeccion(it);
+                                    }}>
+                                    Ver hoja inspección
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="text-sm flex items-center gap-1">
+                                  <FileInput className="h-4 w-4 text-blue-400" />
+                                  <span
+                                    className="hover:underline cursor-pointer text-blue-400 font-bold"
+                                    onClick={() => {
+                                      abrirHojaInspeccion(it);
+                                    }}>
+                                    Crear hoja inspección
+                                  </span>
+                                </div>
+                              )}
+                            </>
                           )}
 
                           {(it.tipo == "camarasdesdecero" ||
