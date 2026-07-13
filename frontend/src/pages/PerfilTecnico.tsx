@@ -85,7 +85,12 @@ export default function PerfilTecnico() {
       });
       if (res.ok) {
         const data = await res.json();
-        setVideosVistos(data);
+        const videos = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.videos_vistos)
+            ? data.videos_vistos
+            : [];
+        setVideosVistos(videos);
       }
     } catch (err) {
       console.error("Error al obtener videos vistos:", err);
@@ -125,7 +130,7 @@ export default function PerfilTecnico() {
       });
 
       if (res.ok) {
-        setVideosVistos(prev => [...prev, videoId]);
+        setVideosVistos(prev => Array.isArray(prev) ? [...prev, videoId] : [videoId]);
       }
     } catch (err) {
       console.error("Error al marcar video visto:", err);
