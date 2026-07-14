@@ -23,7 +23,7 @@ const VIDEOS_INDUCION: VideoCapacitacion[] = [
     id: "torres",
     titulo: "1. Que hay en las torres",
     descripcion: "-",
-    url: "https://www.youtube.com/watch?v=23jFXHVnV04&t=1s",
+    url: "https://www.youtube.com/embed/23jFXHVnV04&t=1s",
     duracion: "15 min",
     categoria: "Torres"
   },
@@ -31,7 +31,7 @@ const VIDEOS_INDUCION: VideoCapacitacion[] = [
      id: "explicacion-de-red",
      titulo: "2. Explicacion de la Red",
      descripcion: "-",
-     url: "https://www.youtube.com/watch?v=TOsfSHAcsYs",
+     url: "https://www.youtube.com/embed/TOsfSHAcsYs",
      duracion: "13 min",
      categoria: "Torres"
    },
@@ -39,7 +39,7 @@ const VIDEOS_INDUCION: VideoCapacitacion[] = [
      id: "conexion-a-torre",
      titulo: "3. Conexion a torre",
      descripcion: "-",
-     url: "https://www.youtube.com/watch?v=lh01oANfI-I",
+     url: "https://www.youtube.com/embed/lh01oANfI-I",
      duracion: "4 min",
      categoria: "Torres"
    },
@@ -47,7 +47,7 @@ const VIDEOS_INDUCION: VideoCapacitacion[] = [
     id: "enlace",
     titulo: "4. Enlace",
     descripcion: "-",
-    url: "https://www.youtube.com/watch?v=Bkwixo31KyE",
+    url: "https://www.youtube.com/embed/Bkwixo31KyE",
     duracion: "15 min",
     categoria: "Torres"
   }
