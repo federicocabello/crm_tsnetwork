@@ -20,36 +20,36 @@ interface VideoCapacitacion {
 
 const VIDEOS_INDUCION: VideoCapacitacion[] = [
   {
-    id: "bienvenida",
-    titulo: "1. Bienvenidos a TS Network",
-    descripcion: "Introducción a nuestra cultura empresarial, valores, estándares de calidad y ética profesional como técnico oficial de TS Network.",
-    url: "https://www.youtube.com/embed/S7MN_y6d4tI",
-    duracion: "8 min",
-    categoria: "Cultura"
-  },
-  {
-    id: "cableado_cctv",
-    titulo: "2. Estándares de Cableado Estructurado y CCTV",
-    descripcion: "Aprende el ponchado de cables UTP bajo normas T568B, canalización con tubería conduit y mejores prácticas para el montaje de cámaras de seguridad.",
-    url: "https://www.youtube.com/embed/3U8f_CgR3qY",
+    id: "torres",
+    titulo: "1. Que hay en las torres",
+    descripcion: "-",
+    url: "https://www.youtube.com/watch?v=23jFXHVnV04&t=1s",
     duracion: "15 min",
-    categoria: "Instalación"
+    categoria: "Torres"
   },
+   {
+     id: "explicacion-de-red",
+     titulo: "2. Explicacion de la Red",
+     descripcion: "-",
+     url: "https://www.youtube.com/watch?v=TOsfSHAcsYs",
+     duracion: "13 min",
+     categoria: "Torres"
+   },
+   {
+     id: "conexion-a-torre",
+     titulo: "3. Conexion a torre",
+     descripcion: "-",
+     url: "https://www.youtube.com/watch?v=lh01oANfI-I",
+     duracion: "4 min",
+     categoria: "Torres"
+   },
   {
-    id: "configuracion_nvr",
-    titulo: "3. Configuración de Grabadores (NVR/DVR) y Redes",
-    descripcion: "Configuración paso a paso de direccionamiento IP local, esquemas de subredes, inicialización de NVR, detección de movimiento y activación de P2P.",
-    url: "https://www.youtube.com/embed/8-F02fR9zP4",
-    duracion: "22 min",
-    categoria: "Configuración"
-  },
-  {
-    id: "atencion_cliente",
-    titulo: "4. Protocolo de Atención al Cliente e Inspección",
-    descripcion: "Cómo interactuar con el cliente de forma profesional, explicar el funcionamiento del sistema instalado y rellenar correctamente las hojas de inspección.",
-    url: "https://www.youtube.com/embed/2_sUeNntpLw",
-    duracion: "10 min",
-    categoria: "Protocolo"
+    id: "enlace",
+    titulo: "4. Enlace",
+    descripcion: "-",
+    url: "https://www.youtube.com/watch?v=Bkwixo31KyE",
+    duracion: "15 min",
+    categoria: "Torres"
   }
 ];
 
