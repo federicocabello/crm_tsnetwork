@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Usuarios } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
+import { getToken } from "../lib/api";
 import { Link } from "react-router-dom";
 import {
   FilePlusCorner,
@@ -160,6 +161,8 @@ function formatShortDate(dateKey: string) {
   });
 }
 
+const TOTAL_VIDEOS_INDUCCION = 4;
+
 export default function Inicio() {
   const { user } = useAuth();
   const API_URL = import.meta.env.VITE_API_BASE_URL;
@@ -250,6 +253,7 @@ export default function Inicio() {
   const [loading2, setLoading2] = useState(false);
   const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
   const [cuotasAlertas, setCuotasAlertas] = useState<CuotaAlerta[]>([]);
+  const [induccionCompleta, setInduccionCompleta] = useState(false);
 
   const cuotasVencidas = useMemo(
     () =>
@@ -355,6 +359,37 @@ export default function Inicio() {
 
     setOpenModalConfirm(false);
   }
+
+  useEffect(() => {
+    if (user?.rol === "tecnico") {
+      const cargarVideosVistos = async () => {
+        try {
+          const token = getToken();
+          const res = await fetch((API_URL || "") + "/api/tecnico/videos-vistos", {
+            headers: {
+              "Authorization": "Bearer " + token
+            }
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            const videos = Array.isArray(data)
+              ? data
+              : Array.isArray(data?.videos_vistos)
+                ? data.videos_vistos
+                : [];
+            setInduccionCompleta(videos.length >= TOTAL_VIDEOS_INDUCCION);
+          }
+        } catch (err) {
+          console.error("Error al obtener videos vistos:", err);
+        }
+      };
+
+      cargarVideosVistos();
+    } else {
+      setInduccionCompleta(false);
+    }
+  }, [API_URL, user?.id, user?.rol]);
 
   function handleCancelModal() {
     setOpenModalConfirm(false);
@@ -620,7 +655,7 @@ export default function Inicio() {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-3 overflow-y-auto">
-      {user?.rol === "tecnico" && (
+      {user?.rol === "tecnico" && induccionCompleta === false && (
         <div className="mr-4 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm text-orange-50 shadow-lg shadow-black/20">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
