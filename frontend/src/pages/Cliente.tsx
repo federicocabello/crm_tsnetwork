@@ -1,7 +1,7 @@
 import { useParams } from "react-router-dom";
 //import { useAuth } from "../auth/AuthContext";
 import { useEffect, useState } from "react";
-import { Mail, User, CalendarFold, Cctv, Wrench, TriangleAlert, List, Clock, House, ClipboardPlus } from "lucide-react";
+import { Mail, User, CalendarFold, Cctv, Wrench, TriangleAlert, List, Clock, House, ClipboardPlus, Globe, Drill } from "lucide-react";
 import { darkenColor } from "../utils/colores";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -29,6 +29,7 @@ type Cita = {
   idestado: string;
   idasignado: string;
   deuda_cita?: number;
+  pagado_cita?: number;
 };
 
 
@@ -69,6 +70,17 @@ export default function Cliente() {
   const [enganchePlan, setEnganchePlan] = useState<number>(0);
   const [metodoEnganchePlan, setMetodoEnganchePlan] = useState("");
   const [idMetodoEnganchePlan, setIdMetodoEnganchePlan] = useState<number>(0);
+
+  const esInternet = (tipo: string) => (tipo || "").toLowerCase().includes("internet");
+  const esCamaras = (tipo: string) => {
+    const value = (tipo || "").toLowerCase();
+    return value.includes("camara") || value.includes("desdecero");
+  };
+  const esSoporte = (tipo: string) => (tipo || "").toLowerCase().includes("soporte");
+  const esInstalacion = (tipo: string) => {
+    const value = (tipo || "").toLowerCase();
+    return value.includes("instalacion") || value.includes("instalación") || value.includes("desdecero");
+  };
 
   const setearCitaSeleccionada = async (cita: Cita) => {
     setCitaSeleccionada(cita.idcita);
@@ -276,20 +288,33 @@ export default function Cliente() {
                         <Clock className="h-4 w-4" />{cita.hora}
                       </div>
 
-                      {(cita.tipo == "camarasdesdecero" || cita.tipo == "camaras-tiene-nuevo-instalacion" || cita.tipo == "camaras-tiene-existente-instalacion") && (
-                        <div className="rounded-full text-xs font-bold py-1 px-2 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
-                          <Cctv className="h-4 w-4" />
-                          <span>INSTALACION DE CAMARAS</span>
+                      {esInternet(cita.tipo) && (
+                        <div className="rounded-full text-xs font-bold py-1 px-2 text-center border-2 border-orange-700 bg-orange-500 flex justify-center items-center gap-1">
+                          <Globe className="h-4 w-4" />
+                          <span>INTERNET</span>
                         </div>
                       )}
 
-                      {(cita.tipo == "camaras-tiene-nuevo-soporte" || cita.tipo == "camaras-tiene-existente-soporte") && (
-                        <div className="rounded-full text-xs font-bold py-1 px-2 cursor-pointer text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
+                      {esCamaras(cita.tipo) && (
+                        <div className="rounded-full text-xs font-bold py-1 px-2 text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
+                          <Cctv className="h-4 w-4" />
+                          <span>CAMARAS</span>
+                        </div>
+                      )}
+
+                      {esInstalacion(cita.tipo) && (
+                        <div className="rounded-full text-xs font-bold py-1 px-2 text-center border-2 border-indigo-700 bg-indigo-500 flex justify-center items-center gap-1">
+                          <Drill className="h-4 w-4" />
+                          <span>INSTALACION</span>
+                        </div>
+                      )}
+
+                      {esSoporte(cita.tipo) && (
+                        <div className="rounded-full text-xs font-bold py-1 px-2 text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
                           <Wrench className="h-4 w-4" />
                           <span>SOPORTE</span>
                         </div>
                       )}
-
                       <div className="rounded-full text-xs font-bold py-1 px-2 cursor-pointer text-center border-2 flex justify-center items-center gap-1" style={{ backgroundColor: cita.color, borderColor: darkenColor(cita.color, 0.5), }}>
                         {cita.estado}
                       </div>
@@ -298,6 +323,11 @@ export default function Cliente() {
                       {Number(cita.deuda_cita || 0) > 0 && (
                         <div className="rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2 py-1 text-xs font-bold text-yellow-200">
                           Debe <FormatearNumero numero={Number(cita.deuda_cita || 0)} />
+                        </div>
+                      )}
+                      {Number(cita.pagado_cita || 0) > 0 && (
+                        <div className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-1 text-xs font-bold text-emerald-200">
+                          PAGADO <FormatearNumero numero={Number(cita.pagado_cita || 0)} />
                         </div>
                       )}
                       {(cita.tipo == "camaras-tiene-nuevo-instalacion" || cita.tipo == "camaras-tiene-existente-instalacion") && (
@@ -349,7 +379,7 @@ export default function Cliente() {
 
       {citaSeleccionada > 0 && (
         <div className="w-full max-h-[calc(100vh-6rem)] overflow-y-auto pr-1 space-y-4">
-          {cuotas.length === 0 ? (
+          {idPago === null ? (
             !mostrarPlanPagos ? (
               <div className="bg-cyan-600 border-2 border-cyan-700 rounded-xl p-2 transition-all w-48 mb-4 flex items-center justify-center gap-1 cursor-pointer hover:bg-cyan-700 hover:border-cyan-800" onClick={() => setMostrarPlanPagos(true)}>
                 <ClipboardPlus className="h-4 w-4" />
@@ -366,7 +396,6 @@ export default function Cliente() {
               </div>
             )
           ) : (
-            idPago !== null && (
               <VerPlanDePagos
                 idPago={idPago}
                 idCita={citaSeleccionada}
@@ -382,7 +411,6 @@ export default function Cliente() {
                   cargarInicioCliente();
                 }}
               />
-            )
           )}
 
           <div className="bg-zinc-900 border border-white/10 rounded-xl p-4 transition-all w-full">

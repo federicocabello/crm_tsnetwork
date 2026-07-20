@@ -44,10 +44,10 @@ const NAV: NavItem[] = [
     roles: ["administrador", "superadmin", "moderador", "usuario"],
   },
   {
-    label: "Tareas",
-    path: "/tareas",
+    label: "Registros",
+    path: "/registros",
     icon: ListTodo,
-    roles: ["superadmin"],
+    roles: ["invitado", "usuario", "moderador", "administrador", "superadmin", "tecnico"],
   },
   {
     label: "Configuración",

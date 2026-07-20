@@ -825,11 +825,13 @@ def nuevo_registro_guardar():
     datos = data.get("datos")
     telefono = re.sub(r'\D', '', datos["telefono"])
     current_user = data.get("user")["id"]
+    tipo_cita = "internet" if data.get("tipoRegistro") == "internet" else "camarasdesdecero"
+    estado_cita = data.get("estadoCita") if data.get("tipoRegistro") == "internet" and data.get("estadoCita") else 1
     cursor = mysql.connection.cursor()
     
     cursor.execute("INSERT INTO clientes (nombre, email, fecha, agente) VALUES (%s, %s, now(), %s)", (datos["nombre"].strip().upper(), datos["email"].strip().lower(), current_user))
     id_cliente = cursor.lastrowid
-    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas, telefono, domicilio) VALUES (%s, %s, %s, %s, %s, 1, %s, %s, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, "camarasdesdecero", datos["asignado"], data.get("notas").strip(), telefono, datos["direccion"].strip().upper()))
+    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas, telefono, domicilio) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipo_cita, estado_cita, datos["asignado"], data.get("notas").strip(), telefono, datos["direccion"].strip().upper()))
     id_cita = cursor.lastrowid
     
     preguntas = data.get("preguntas")
@@ -940,8 +942,9 @@ def nuevo_registro_camaras_tiene_existente():
     
     telefono = re.sub(r'\D', '', data.get("clienteSeleccionado")["telefono"])
     
-    tipo = 'camaras-tiene-existente-'+data.get("opcionTipoInstalacion")
-    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas, telefono, domicilio) VALUES (%s, %s, %s, %s, %s, 1, %s, %s, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipo, datos["asignado"], data.get("notas").strip(), telefono, data.get("clienteSeleccionado")["domicilio"].strip().upper()))
+    tipo = "internet" if data.get("tipoRegistro") == "internet" else 'camaras-tiene-existente-'+data.get("opcionTipoInstalacion")
+    estado_cita = data.get("estadoCita") if data.get("tipoRegistro") == "internet" and data.get("estadoCita") else 1
+    cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas, telefono, domicilio) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipo, estado_cita, datos["asignado"], data.get("notas").strip(), telefono, data.get("clienteSeleccionado")["domicilio"].strip().upper()))
     id_cita = cursor.lastrowid
     
     if tipo == "camaras-tiene-existente-instalacion":
@@ -1934,7 +1937,8 @@ def obtener_datos_cliente(id_cliente):
                 DATE_FORMAT(citas.hora, '%%H:%%i') AS hora_24,
                 citas.estado AS idestado,
                 citas.asignado AS idasignado,
-                COALESCE(deuda_cita.total, 0) AS deuda_cita
+                COALESCE(deuda_cita.total, 0) AS deuda_cita,
+                COALESCE(pagado_cita.total, 0) AS pagado_cita
             FROM citas
             JOIN auth ON auth.id = citas.asignado
             JOIN citas_estados ON citas_estados.id = citas.estado
@@ -1945,6 +1949,20 @@ def obtener_datos_cliente(id_cliente):
                 WHERE pc.pagado = 0
                 GROUP BY p.cita
             ) deuda_cita ON deuda_cita.cita = citas.id
+            LEFT JOIN (
+                SELECT
+                    p.cita,
+                    SUM(COALESCE(p.enganche, 0))
+                    + SUM(COALESCE(cuotas_pagadas.total, 0)) AS total
+                FROM pagos p
+                LEFT JOIN (
+                    SELECT pago, SUM(monto) AS total
+                    FROM pagos_cuotas
+                    WHERE pagado = 1
+                    GROUP BY pago
+                ) cuotas_pagadas ON cuotas_pagadas.pago = p.id
+                GROUP BY p.cita
+            ) pagado_cita ON pagado_cita.cita = citas.id
             WHERE citas.cliente = %s
             ORDER BY citas.dia DESC, hora DESC
         """, (id_cliente,))
@@ -2121,8 +2139,13 @@ def actualizar_plan_de_pagos(id_pago):
     id_metodo_enganche = data.get("idMetodoEnganche") or data.get("engancheMetodo")
     cuotas      = data.get("cuotas", [])
 
-    if monto_total is None or not cuotas:
+    if monto_total is None:
         return jsonify({"error": "Faltan datos obligatorios"}), 400
+
+    monto_total = float(monto_total)
+    enganche = float(enganche or 0)
+    if not cuotas and abs(enganche - monto_total) >= 0.01:
+        return jsonify({"error": "Solo se permiten 0 cuotas cuando el enganche cubre la totalidad del pago"}), 400
 
     cursor = mysql.connection.cursor()
     try:
@@ -2193,12 +2216,17 @@ def crear_plan_de_pagos():
     enganche    = data.get("enganche", 0)
     id_metodo_enganche = data.get("idMetodoEnganche") or data.get("engancheMetodo")
     cuotas      = data.get("cuotas", [])
-    if not id_cliente or not id_cita or monto_total is None or not cuotas:
+    if not id_cliente or not id_cita or monto_total is None:
         return jsonify({"error": "Faltan datos obligatorios"}), 400
 
+    monto_total = float(monto_total)
     enganche = float(enganche or 0)
     if enganche < 0:
         return jsonify({"error": "El enganche no puede ser negativo"}), 400
+    if enganche > monto_total:
+        return jsonify({"error": "El enganche no puede ser mayor al monto total"}), 400
+    if not cuotas and abs(enganche - monto_total) >= 0.01:
+        return jsonify({"error": "Solo se permiten 0 cuotas cuando el enganche cubre la totalidad del pago"}), 400
     id_metodo_enganche = int(id_metodo_enganche) if id_metodo_enganche and enganche > 0 else None
 
     cursor = mysql.connection.cursor()
@@ -2206,13 +2234,13 @@ def crear_plan_de_pagos():
         # 1) Crear el registro de pago padre
         if table_has_column("pagos", "enganche_metodo"):
             cursor.execute(
-                "INSERT INTO pagos (cliente, cita, total, enganche, enganche_metodo) VALUES (%s, %s, %s, %s, %s",
-                (id_cliente, id_cita, float(monto_total), enganche, id_metodo_enganche)
+                "INSERT INTO pagos (cliente, cita, total, enganche, enganche_metodo) VALUES (%s, %s, %s, %s, %s)",
+                (id_cliente, id_cita, monto_total, enganche, id_metodo_enganche)
             )
         else:
             cursor.execute(
-                "INSERT INTO pagos (cliente, cita, total, enganche) VALUES (%s, %s, %s, %s",
-                (id_cliente, id_cita, float(monto_total), enganche)
+                "INSERT INTO pagos (cliente, cita, total, enganche) VALUES (%s, %s, %s, %s)",
+                (id_cliente, id_cita, monto_total, enganche)
             )
         id_pago = cursor.lastrowid
 

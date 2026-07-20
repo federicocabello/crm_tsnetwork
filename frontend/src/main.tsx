@@ -18,7 +18,7 @@ import RoleRoute from "./auth/RoleRoute";
 import Layout from "./components/Layout";
 import Cliente from "./pages/Cliente";
 import Pagos from "./pages/Pagos";
-import Tareas from "./pages/Tareas";
+import Registros from "./pages/Registros";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -110,15 +110,16 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           />
 
           <Route
-            path="/tareas"
+            path="/registros"
             element={
-              <RoleRoute allow={["superadmin"]}>
+              <ProtectedRoute>
                 <Layout>
-                  <Tareas />
+                  <Registros />
                 </Layout>
-              </RoleRoute>
+              </ProtectedRoute>
             }
           />
+          <Route path="/tareas" element={<Navigate to="/registros" replace />} />
           {/* Default */}
           <Route path="/" element={<Navigate to="/inicio" replace />} />
           <Route path="*" element={<Navigate to="/inicio" replace />} />
