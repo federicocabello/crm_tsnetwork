@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { PlayCircle, CheckCircle, FileText, Upload, Download, Trash2, Award, Calendar, Film } from "lucide-react";
+import { PlayCircle, CheckCircle, FileText, Upload, Download, Trash2, Award, Calendar, Film, RotateCcw, Home } from "lucide-react";
 
 interface Archivo {
   id: number;
@@ -23,7 +24,7 @@ const VIDEOS_INDUCION: VideoCapacitacion[] = [
     id: "torres",
     titulo: "1. Que hay en las torres",
     descripcion: "-",
-    url: "https://www.youtube.com/embed/23jFXHVnV04?si=N0LK42lkhzgNUDsh",
+    url: "https://www.youtube-nocookie.com/embed/23jFXHVnV04",
     duracion: "15 min",
     categoria: "Torres"
   },
@@ -31,7 +32,7 @@ const VIDEOS_INDUCION: VideoCapacitacion[] = [
      id: "explicacion-de-red",
      titulo: "2. Explicacion de la Red",
      descripcion: "-",
-     url: "https://www.youtube.com/embed/TOsfSHAcsYs?si=BOUXDeF2r7-EbVN8",
+     url: "https://www.youtube-nocookie.com/embed/TOsfSHAcsYs",
      duracion: "13 min",
      categoria: "Torres"
    },
@@ -39,7 +40,7 @@ const VIDEOS_INDUCION: VideoCapacitacion[] = [
      id: "conexion-a-torre",
      titulo: "3. Conexion a torre",
      descripcion: "-",
-     url: "https://www.youtube.com/embed/lh01oANfI-I?si=p-EKAKOLZ3bLaaOP",
+     url: "https://www.youtube-nocookie.com/embed/lh01oANfI-I",
      duracion: "4 min",
      categoria: "Torres"
    },
@@ -47,13 +48,14 @@ const VIDEOS_INDUCION: VideoCapacitacion[] = [
     id: "enlace",
     titulo: "4. Enlace",
     descripcion: "-",
-    url: "https://www.youtube.com/embed/Bkwixo31KyE?si=EfV1mziTktmWa1xj",
+    url: "https://www.youtube-nocookie.com/embed/Bkwixo31KyE",
     duracion: "15 min",
     categoria: "Torres"
   }
 ];
 
 export default function PerfilTecnico() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   
@@ -130,7 +132,21 @@ export default function PerfilTecnico() {
       });
 
       if (res.ok) {
-        setVideosVistos(prev => Array.isArray(prev) ? [...prev, videoId] : [videoId]);
+        setVideosVistos(prev => {
+          const vistosActualizados = Array.isArray(prev) && !prev.includes(videoId)
+            ? [...prev, videoId]
+            : [videoId];
+          const indiceActual = VIDEOS_INDUCION.findIndex(video => video.id === videoId);
+          const siguienteVideo =
+            VIDEOS_INDUCION.slice(indiceActual + 1).find(video => !vistosActualizados.includes(video.id)) ||
+            VIDEOS_INDUCION.find(video => !vistosActualizados.includes(video.id));
+
+          if (siguienteVideo) {
+            setVideoActivo(siguienteVideo);
+          }
+
+          return vistosActualizados;
+        });
       }
     } catch (err) {
       console.error("Error al marcar video visto:", err);
@@ -185,6 +201,11 @@ export default function PerfilTecnico() {
 
   // Calcular progreso
   const porcentajeProgreso = Math.round((videosVistos.length / VIDEOS_INDUCION.length) * 100);
+  const induccionCompleta = videosVistos.length >= VIDEOS_INDUCION.length;
+
+  const volverAlInicioVideos = () => {
+    setVideoActivo(VIDEOS_INDUCION[0]);
+  };
 
   return (
     <div className="h-full flex flex-col gap-4 overflow-y-auto pr-2 text-white">
@@ -360,64 +381,42 @@ export default function PerfilTecnico() {
                 </p>
               </div>
 
-              {/* Botón Marcar Visto */}
-              <button
+              <div className="flex flex-col sm:flex-row gap-2 self-start shrink-0">
+                {/* Botón Marcar Visto */}
+                <button
                 onClick={() => handleMarcarVideoVisto(videoActivo.id)}
                 disabled={videosVistos.includes(videoActivo.id)}
-                className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm shadow-md transition self-start cursor-pointer shrink-0 ${videosVistos.includes(videoActivo.id)
+                className={`inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm shadow-md transition cursor-pointer shrink-0 ${videosVistos.includes(videoActivo.id)
                   ? "bg-green-600/10 text-green-400 border border-green-500/30"
                   : "bg-orange-600 text-white hover:bg-orange-700 shadow-orange-600/10"
                   }`}
               >
                 <CheckCircle className="h-4 w-4 shrink-0" />
                 {videosVistos.includes(videoActivo.id) ? "Video Completado" : "Marcar como Completado"}
-              </button>
-            </div>
-          </div>
+                </button>
 
-          {/* Listado de Videos de Capacitación */}
-          <div className="flex-1 rounded-2xl border border-white/10 bg-zinc-900/40 p-4 backdrop-blur-md flex flex-col min-h-0">
-            <h3 className="text-sm font-bold text-zinc-300 flex items-center gap-2 mb-3 shrink-0">
-              <Film className="h-4 w-4 text-orange-500" />
-              PROGRAMA DE INDUCCIÓN TÉCNICA
-            </h3>
-            
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
-              {VIDEOS_INDUCION.map(vid => {
-                const activo = videoActivo.id === vid.id;
-                const visto = videosVistos.includes(vid.id);
-
-                return (
+                {induccionCompleta && (
                   <button
-                    key={vid.id}
-                    onClick={() => setVideoActivo(vid)}
-                    className={`w-full text-left p-3 rounded-xl border flex items-center justify-between gap-4 transition cursor-pointer ${activo
-                      ? "border-orange-500 bg-orange-500/5 text-white"
-                      : "border-white/5 bg-zinc-950/20 text-zinc-400 hover:border-white/10 hover:text-white"
-                      }`}
+                    onClick={volverAlInicioVideos}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm border border-orange-500/30 bg-orange-500/10 text-orange-300 hover:bg-orange-500/15 transition cursor-pointer shrink-0"
                   >
-                    <div className="flex items-center gap-3 overflow-hidden min-w-0">
-                      <div className={`p-2 rounded-lg shrink-0 ${visto ? 'bg-green-500/15 text-green-400' : activo ? 'bg-orange-500/15 text-orange-400' : 'bg-white/5 text-zinc-500'}`}>
-                        <PlayCircle className="w-5 h-5 shrink-0" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className={`text-xs font-bold truncate ${activo ? 'text-orange-400' : 'text-zinc-200'}`}>{vid.titulo}</h4>
-                        <p className="text-[10px] text-zinc-500 truncate mt-0.5">{vid.descripcion}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded font-mono text-zinc-500">{vid.duracion}</span>
-                      {visto && (
-                        <CheckCircle className="w-4.5 h-4.5 text-green-500 shrink-0" />
-                      )}
-                    </div>
+                    <RotateCcw className="h-4 w-4 shrink-0" />
+                    Volver al inicio
                   </button>
-                );
-              })}
+                )}
+
+                {induccionCompleta && (
+                  <button
+                    onClick={() => navigate("/inicio")}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-bold text-sm bg-white text-zinc-950 hover:bg-orange-100 transition cursor-pointer shrink-0"
+                  >
+                    <Home className="h-4 w-4 shrink-0" />
+                    Ir al inicio
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-
         </div>
 
       </div>
