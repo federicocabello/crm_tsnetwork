@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Usuarios } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   FilePlusCorner,
   Cctv,
@@ -34,7 +34,6 @@ import ModalEditarRegistro from "../components/ModalEditarRegistro";
 import GaleriaCita from "../components/GaleriaCita";
 import EditarDetalles from "../components/EditarDetalles";
 import Loading from "../components/Loading";
-import { useNavigate } from "react-router-dom";
 import ModalConfirm from "../components/ModalConfirm";
 import FormatearNumero from "../components/FormatearNumero";
 
@@ -164,6 +163,7 @@ export default function Inicio() {
   const { user } = useAuth();
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const navigate = useNavigate();
+  const location = useLocation();
 
   const todayKey = useMemo(
     () => getSelectableDateKey(toDateKey(new Date())),
@@ -171,8 +171,30 @@ export default function Inicio() {
   );
 
   const [selectedDay, setSelectedDay] = useState<string>(todayKey);
+  const [citaResaltada, setCitaResaltada] = useState<string | null>(null);
+  const citaResaltadaInicial = useRef(false);
   const [selectedDayNuevaCita, setSelectedDayNuevaCita] =
     useState<string>(todayKey);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const diaParam = params.get("dia");
+    const citaParam = (location.state as { citaResaltada?: string } | null)?.citaResaltada ?? null;
+
+    if (diaParam) {
+      const diaSeleccionable = getSelectableDateKey(diaParam);
+      setSelectedDay(diaSeleccionable);
+      setSelectedDayNuevaCita(diaSeleccionable);
+    }
+
+    if (citaParam && !citaResaltadaInicial.current) {
+      citaResaltadaInicial.current = true;
+      setCitaResaltada(citaParam);
+      window.history.replaceState({ ...window.history.state, usr: null }, "", `${location.pathname}${location.search}`);
+      return;
+    }
+
+    if (!citaResaltadaInicial.current) setCitaResaltada(null);
+  }, [location.pathname, location.search, location.state]);
   const [openModalConfirm, setOpenModalConfirm] = useState(false);
   const [idHojaConfirmar, setIdHojaConfirmar] = useState<number | null>(null);
   const [time, setTime] = useState("09:00");
@@ -293,14 +315,17 @@ export default function Inicio() {
   };
 
   function goPrev() {
+    setCitaResaltada(null);
     setSelectedDay((d) => addDaysSkippingSunday(d, -1));
   }
 
   function goNext() {
+    setCitaResaltada(null);
     setSelectedDay((d) => addDaysSkippingSunday(d, 1));
   }
 
   function goToday() {
+    setCitaResaltada(null);
     setSelectedDay(todayKey);
   }
 
@@ -665,6 +690,7 @@ export default function Inicio() {
                 selected={fromDateKey(selectedDay)}
                 onChange={(date: Date | null) => {
                   if (!date || isSundayDate(date)) return;
+                  setCitaResaltada(null);
                   setSelectedDay(toDateKey(date));
                 }}
                 filterDate={(date: Date) => !isSundayDate(date)}
@@ -870,6 +896,7 @@ export default function Inicio() {
                           }`}
                           onClick={() => {
                             if (esDomingo) return;
+                            setCitaResaltada(null);
                             setSelectedDay(cita.dia_original);
                           }}>
                           <span className="min-w-0 break-words text-base font-bold sm:text-lg">
@@ -1028,7 +1055,7 @@ export default function Inicio() {
                 /* ────────── TARJETA SOLO LECTURA (técnico) ────────── */
                 <div
                   key={it.idcita}
-                  className="rounded-2xl border border-white/10 bg-zinc-950/30 p-3 transition">
+                  className={`rounded-2xl border p-3 transition ${citaResaltada === String(it.idcita) ? "border-orange-300 bg-zinc-950/30 shadow-[0_0_18px_rgba(251,146,60,0.45)] ring-2 ring-orange-300/50 animate-pulse" : "border-white/10 bg-zinc-950/30"}`}>
                   <div>
                     {/* Fila 1: estado (badge solo lectura) + tipo de instalación */}
                     <div className="mb-2 flex flex-col justify-between gap-2 lg:flex-row lg:items-start">
@@ -1064,6 +1091,13 @@ export default function Inicio() {
                                 Ya tiene cámaras instaladas
                               </span>
                             )}
+                          </div>
+                        )}
+
+                        {(it.tipo || "").includes("internet") && (
+                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 text-center border-2 border-orange-700 bg-orange-500 flex justify-center items-center gap-1">
+                            <Globe className="h-4 w-4" />
+                            <span>INTERNET</span>
                           </div>
                         )}
 
@@ -1228,7 +1262,7 @@ export default function Inicio() {
                 /* ────────── TARJETA COMPLETA (otros roles) ────────── */
                 <div
                   key={it.idcita}
-                  className="rounded-2xl border border-white/10 bg-zinc-950/30 p-3 transition">
+                  className={`rounded-2xl border p-3 transition ${citaResaltada === String(it.idcita) ? "border-orange-300 bg-zinc-950/30 shadow-[0_0_18px_rgba(251,146,60,0.45)] ring-2 ring-orange-300/50 animate-pulse" : "border-white/10 bg-zinc-950/30"}`}>
                   <div>
                     <div className="mb-2 flex flex-col justify-between gap-2 lg:flex-row lg:items-start">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -1290,6 +1324,13 @@ export default function Inicio() {
                                 Ya tiene cámaras instaladas
                               </span>
                             )}
+                          </div>
+                        )}
+
+                        {(it.tipo || "").includes("internet") && (
+                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 text-center border-2 border-orange-700 bg-orange-500 flex justify-center items-center gap-1">
+                            <Globe className="h-4 w-4" />
+                            <span>INTERNET</span>
                           </div>
                         )}
 
@@ -1574,18 +1615,18 @@ export default function Inicio() {
                       </div>
                     )}
 
-                    <ModalEditarRegistro
-                      open={modalOpen}
-                      item={selectedItem}
-                      onClose={() => setModalOpen(false)}
-                      onSave={guardarCita}
-                    />
                   </div>
                 </div>
               ),
             )
           )}
         </div>
+        <ModalEditarRegistro
+          open={modalOpen}
+          item={selectedItem}
+          onClose={() => setModalOpen(false)}
+          onSave={guardarCita}
+        />
         {openCotizacion && (
           <Cotizador
             onClose={setOpenCotizacion}

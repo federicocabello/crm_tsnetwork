@@ -25,6 +25,9 @@ export default function NuevoRegistro() {
   const [opcionCamaras, setOpcionCamaras] = useState<
     "tiene" | "desdecero" | "tieneclientenuevo" | "tieneclienteexistente" | null
   >(null);
+  const [opcionInternet, setOpcionInternet] = useState<
+    "clientenuevo" | "clienteexistente" | null
+  >(null);
   const [speechItems, setSpeechItems] = useState<Speech[]>([]);
   const textareasRef = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
@@ -37,8 +40,13 @@ export default function NuevoRegistro() {
   const [isEditing, setIsEditing] = useState(false);
 
   const handleSelection = (option: "camaras" | "internet") => {
-    setSelectedOption((prev) => (prev === option ? null : option));
-    filtrarSpeech(option);
+    setSelectedOption((prev) => {
+      const next = prev === option ? null : option;
+      if (next !== "camaras") setOpcionCamaras(null);
+      if (next !== "internet") setOpcionInternet(null);
+      if (next) filtrarSpeech(next);
+      return next;
+    });
   };
 
   const filtrarSpeech = async (filtro: string) => {
@@ -221,7 +229,7 @@ export default function NuevoRegistro() {
                 selectedOption == "internet"
                   ? "bg-green-500 text-white"
                   : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-              }`} hidden>
+              }`}>
               <Globe className="w-4 h-4" />
               Internet
             </button>
@@ -256,7 +264,7 @@ export default function NuevoRegistro() {
         )}
 
         {(opcionCamaras == "tiene" || opcionCamaras == "tieneclientenuevo" || opcionCamaras == "tieneclienteexistente") && (
-          <div className="flex justify-between items-center gap-2 mb-3">
+          <div className="mt-3 flex justify-between items-center gap-2 mb-3">
             <button className={`p-1! text-xs! w-full ${
                   opcionCamaras == "tieneclientenuevo"
                     ? "bg-green-600 text-white border"
@@ -270,9 +278,32 @@ export default function NuevoRegistro() {
                 }`} onClick={() => setOpcionCamaras("tieneclienteexistente")}>Cliente existente</button>
           </div>
         )}
+        {opcionCamaras == "desdecero" && selectedOption == "camaras" && (
+          <FormularioCamarasDesdeCero key="camaras-desde-cero" tipoRegistro="camaras" />
+        )}
 
-        {opcionCamaras == "desdecero" && (
-          <FormularioCamarasDesdeCero />
+        {selectedOption == "internet" && (
+          <div className="mt-3 flex justify-between items-center gap-2 mb-3">
+            <button className={`p-1! text-xs! w-full ${
+                  opcionInternet == "clientenuevo"
+                    ? "bg-green-600 text-white border"
+                    : "bg-gray-300 text-gray-800 hover:bg-gray-400"
+                }`} onClick={() => setOpcionInternet("clientenuevo")}>Cliente nuevo</button>
+            
+            <button className={`p-1! text-xs! w-full ${
+                  opcionInternet == "clienteexistente"
+                    ? "bg-green-600 text-white border"
+                    : "bg-gray-300 text-gray-800 hover:bg-gray-400"
+                }`} onClick={() => setOpcionInternet("clienteexistente")}>Cliente existente</button>
+          </div>
+        )}
+
+        {selectedOption == "internet" && opcionInternet == "clientenuevo" && (
+          <FormularioCamarasDesdeCero key="internet-nuevo" tipoRegistro="internet" />
+        )}
+
+        {selectedOption == "internet" && opcionInternet == "clienteexistente" && (
+          <FormularioCamarasTieneClienteExistente key="internet-existente" tipoRegistro="internet" />
         )}
 
         {(opcionCamaras == "tieneclientenuevo") && (
@@ -280,7 +311,7 @@ export default function NuevoRegistro() {
         )}
 
         {(opcionCamaras == "tieneclienteexistente") && (
-          <FormularioCamarasTieneClienteExistente />
+          <FormularioCamarasTieneClienteExistente tipoRegistro="camaras" />
         )}
       </div>
 

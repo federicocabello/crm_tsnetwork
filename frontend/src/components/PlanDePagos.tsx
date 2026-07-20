@@ -50,6 +50,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
   const [loading, setLoading] = useState(false);
 
   const saldoFinanciado = Math.max(montoTotal - enganche, 0);
+  const engancheCubreTotal = montoTotal > 0 && Math.abs(enganche - montoTotal) < 0.01;
   const montoPorCuota = numCuotas > 0 && saldoFinanciado > 0
     ? Math.round((saldoFinanciado / numCuotas) * 100) / 100
     : 0;
@@ -70,7 +71,11 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
     cargarMetodos();
   }, []);
   useEffect(() => {
-    if (numCuotas < 1 || !primerVencimiento) return;
+    if (numCuotas < 1) {
+      setCuotas([]);
+      return;
+    }
+    if (!primerVencimiento) return;
     const fechaBase = parseDateKey(primerVencimiento);
     const nuevasCuotas: Cuota[] = Array.from({ length: numCuotas }, (_, i) => {
       const fecha = new Date(fechaBase);
@@ -131,8 +136,16 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
       setErrorGuardar("El enganche no puede ser negativo.");
       return;
     }
-    if (enganche > 0 && enganche >= montoTotal) {
-      setErrorGuardar("El enganche debe ser menor al monto total.");
+    if (enganche > montoTotal) {
+      setErrorGuardar("El enganche no puede ser mayor al monto total.");
+      return;
+    }
+    if (numCuotas === 0 && !engancheCubreTotal) {
+      setErrorGuardar("Solo puedes usar 0 cuotas cuando el enganche cubre la totalidad del pago.");
+      return;
+    }
+    if (engancheCubreTotal && cuotas.length > 0) {
+      setErrorGuardar("Si el enganche cubre el total, el numero de cuotas debe ser 0.");
       return;
     }
     if (cuotas.some((c) => !c.fecha_vencimiento)) {
@@ -274,10 +287,10 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
             </label>
             <input
               type="number"
-              min={1}
+              min={0}
               max={60}
               value={numCuotas}
-              onChange={(e) => setNumCuotas(Math.max(1, Number(e.target.value)))}
+              onChange={(e) => setNumCuotas(Math.max(0, Number(e.target.value)))}
               className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors"
             />
           </div>
@@ -432,7 +445,20 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
       {cuotas.length === 0 && (
         <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-8 text-center">
           <CreditCard className="h-8 w-8 text-white/20 mx-auto mb-2" />
-          <p className="text-sm text-white/30">Ingresa un monto y cuotas para comenzar</p>
+          <p className="text-sm text-white/30">
+            {engancheCubreTotal && numCuotas === 0
+              ? "El pago se registrara completo mediante el enganche."
+              : "Ingresa un monto y cuotas para comenzar"}
+          </p>
+          {engancheCubreTotal && numCuotas === 0 && (
+            <button
+              onClick={handleGuardar}
+              className={'mx-auto mt-4 flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold transition-all ' + (guardado ? "bg-green-500 text-white" : "bg-orange-500 hover:bg-orange-600 text-white")}
+            >
+              <Plus className="h-4 w-4" />
+              {guardado ? "Guardado" : "Guardar pago completo"}
+            </button>
+          )}
         </div>
       )}
     </div>

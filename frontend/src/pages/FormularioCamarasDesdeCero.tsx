@@ -8,12 +8,25 @@ import "react-datepicker/dist/react-datepicker.css";
 import { useNavigate } from "react-router-dom";
 import { agendaDayClassName, dateKeyToDate, formatDateKey, isSelectableAgendaDate, isSundayKey } from "../utils/agendaFechas";
 
-export default function FormularioCamarasDesdeCero() {
+type FormularioCamarasDesdeCeroProps = {
+  tipoRegistro?: "camaras" | "internet";
+};
+
+type EstadoCita = {
+  id: string;
+  estado: string;
+  color?: string;
+};
+
+export default function FormularioCamarasDesdeCero({ tipoRegistro = "camaras" }: FormularioCamarasDesdeCeroProps) {
+  const esInternet = tipoRegistro === "internet";
+  const [estadoInternet, setEstadoInternet] = useState("");
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const { user } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
   const [users, setUsers] = useState<Usuarios[]>([]);
+  const [citasEstados, setCitasEstados] = useState<EstadoCita[]>([]);
 
   interface Presupuesto {
   cantidad: number;
@@ -98,8 +111,21 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
       }
     };
     
+    const cargarEstados = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/configuracion`);
+        if (res.ok) {
+          const data = await res.json();
+          setCitasEstados(data.citas_estados || []);
+        }
+      } catch (error) {
+        console.error("Error al cargar estados de cita:", error);
+      }
+    };
+
     useEffect(() => {
       cargarUsuarios();
+      cargarEstados();
     }, []);
 
     const [horaMostrar, setHoraMostrar] = useState<Date | null>(null);
@@ -147,6 +173,8 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
             notas: notas,
             hora: hora,
             presupuesto: presupuesto,
+            tipoRegistro: tipoRegistro,
+            estadoCita: estadoInternet,
           };
 
           try {
@@ -282,6 +310,8 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
                 onChange={(e) => setNotas(e.target.value)}
               />
             </div>
+      {!esInternet && (
+        <>
       <div>
         <h2 className="text-sm font-extrabold tracking-tight flex items-center gap-1 mb-2">
           <ClipboardList className="w-4 h-4" /><span>Datos de la instalación</span>
@@ -468,6 +498,35 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
         )}
       </div>
 
+        </>
+      )}
+
+      {esInternet && (
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-white/60">Estado de cita</label>
+          <select
+            value={estadoInternet}
+            onChange={(e) => setEstadoInternet(e.target.value)}
+            className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40">
+            <option value="">Seleccionar estado</option>
+            {citasEstados.map((estado) => (
+              <option key={estado.id} value={estado.id}>
+                {estado.estado}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {esInternet && (
+        <button
+          onClick={() => setOpenPresupuesto(true)}
+          className="boton bg-green-600 hover:bg-green-800 cursor-pointer flex gap-1 items-center justify-center">
+          <CircleDollarSign className="h-4 w-4" />
+          Presupuesto
+        </button>
+      )}
+
         <div className="flex items-center justify-around gap-2">
             <div className="w-48">
               <label className="text-xs text-white/60">Fecha de visita</label>
@@ -535,7 +594,7 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
         </select>
       </div>
 
-      {formRegistro.nombre && formRegistro.telefono && formRegistro.fecha && hora && (
+      {formRegistro.nombre && formRegistro.telefono && formRegistro.fecha && hora && (!esInternet || estadoInternet) && (
         <button className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-orange-600 cursor-pointer" disabled={loading} onClick={submitFormularioCamarasDesdeCero}>
           {loading ? "Guardando..." : "Guardar"}
         </button>

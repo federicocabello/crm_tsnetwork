@@ -15,15 +15,28 @@ type Cliente = {
   domicilio: string;
 };
 
+type EstadoCita = {
+  id: string;
+  estado: string;
+  color?: string;
+};
+
+type FormularioCamarasExistenteProps = {
+  tipoRegistro?: "camaras" | "internet";
+};
+
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 
-export default function FormularioCamarasExistente() {
+export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }: FormularioCamarasExistenteProps) {
+  const esInternet = tipoRegistro === "internet";
+  const [estadoInternet, setEstadoInternet] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [resultados, setResultados] = useState<Cliente[]>([]);
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
   const [mostrarMenu, setMostrarMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<Usuarios[]>([]);
+  const [citasEstados, setCitasEstados] = useState<EstadoCita[]>([]);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -49,12 +62,30 @@ export default function FormularioCamarasExistente() {
 
   const contenedorRef = useRef<HTMLDivElement | null>(null);
 
+  const cargarEstados = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/configuracion`);
+      if (res.ok) {
+        const data = await res.json();
+        setCitasEstados(data.citas_estados || []);
+      }
+    } catch (error) {
+      console.error("Error al cargar estados de cita:", error);
+    }
+  };
+
   useEffect(() => {
     const buscarClientes = async () => {
       const texto = busqueda.trim();
 
       if (texto.length < 2) {
         setResultados([]);
+        return;
+      }
+
+      if (clienteSeleccionado && texto === clienteSeleccionado.nombre.trim()) {
+        setResultados([]);
+        setMostrarMenu(false);
         return;
       }
 
@@ -87,7 +118,7 @@ export default function FormularioCamarasExistente() {
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [busqueda]);
+  }, [busqueda, clienteSeleccionado]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -105,6 +136,7 @@ export default function FormularioCamarasExistente() {
 
       const seleccionarCliente = (cliente: Cliente) => {
         setMostrarMenu(false);
+        setResultados([]);
         setClienteSeleccionado(cliente);
         setBusqueda(cliente.nombre);
       };
@@ -165,6 +197,7 @@ export default function FormularioCamarasExistente() {
       
       useEffect(() => {
         cargarUsuarios();
+        cargarEstados();
       }, []);
   
       const [horaMostrar, setHoraMostrar] = useState<Date | null>(null);
@@ -221,6 +254,8 @@ export default function FormularioCamarasExistente() {
           hora: hora,
           opcionTipoInstalacion: opcionTipoInstalacion,
           presupuesto: presupuesto,
+          tipoRegistro: tipoRegistro,
+          estadoCita: estadoInternet,
           clienteSeleccionado: clienteSeleccionado,
           };
           try {
@@ -264,7 +299,7 @@ export default function FormularioCamarasExistente() {
             setClienteSeleccionado(null);
           }}
           onFocus={() => {
-            if (resultados.length > 0) setMostrarMenu(true);
+            if (!clienteSeleccionado && resultados.length > 0) setMostrarMenu(true);
           }}
           placeholder="Escribe nombre o teléfono..."
           className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40"
@@ -334,13 +369,31 @@ export default function FormularioCamarasExistente() {
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
             />
-            {opcionTipoInstalacion == "instalacion" && (
+            {!esInternet && opcionTipoInstalacion == "instalacion" && (
             <div className="text-xs italic transition-all mt-1 text-white/60">ACLARACIÓN: preguntar si utiliza alguna aplicación y <strong className="text-red-500">solicitar credenciales.</strong> Apuntarlo en "Notas".</div>
             )}
         </div>
 
       </div>
 
+                    {esInternet && (
+                      <div className="flex flex-col gap-1 mt-3">
+                        <label className="text-xs text-white/60">Estado de cita</label>
+                        <select
+                          value={estadoInternet}
+                          onChange={(e) => setEstadoInternet(e.target.value)}
+                          className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40">
+                          <option value="">Seleccionar estado</option>
+                          {citasEstados.map((estado) => (
+                            <option key={estado.id} value={estado.id}>
+                              {estado.estado}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {!esInternet && (
                     <div className="flex justify-between items-center gap-2 my-3">
                     <button className={`p-1! text-xs! w-full flex items-center justify-center gap-1 ${
                           opcionTipoInstalacion == "instalacion"
@@ -358,8 +411,9 @@ export default function FormularioCamarasExistente() {
                         <Wrench className="h-4 w-4" />
                         Soporte</button>
                   </div>
+                  )}
         
-                    {opcionTipoInstalacion == "instalacion" && (
+                    {!esInternet && opcionTipoInstalacion == "instalacion" && (
                         <div>
                     
                       <h2 className="text-sm font-extrabold tracking-tight flex items-center gap-1 mb-2">
@@ -518,7 +572,7 @@ export default function FormularioCamarasExistente() {
                       </select>
                     </div>
         
-                      {clienteSeleccionado && formRegistro.fecha && hora && opcionTipoInstalacion && (
+                      {clienteSeleccionado && formRegistro.fecha && hora && ((esInternet && estadoInternet) || (!esInternet && opcionTipoInstalacion)) && (
                         <button className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-orange-600 cursor-pointer mt-3 w-full" disabled={loading} onClick={submitFormularioCamarasTiene}>
                           {loading ? "Guardando..." : "Guardar"}
                         </button>
