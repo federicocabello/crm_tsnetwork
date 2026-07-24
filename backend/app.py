@@ -1034,21 +1034,32 @@ def agenda_cambiar_estado():
 
 @app.get("/api/productos")
 def get_productos():
+    categoria = (request.args.get("categoria") or "todos").strip().lower()
+    if categoria not in {"internet", "camaras", "todos"}:
+        return jsonify({"error": "Categoria invalida"}), 400
+
     cursor = mysql.connection.cursor()
-    cursor.execute("SELECT * FROM productos")
+    if categoria == "todos":
+        cursor.execute("SELECT * FROM productos")
+    else:
+        cursor.execute(
+            "SELECT * FROM productos WHERE LOWER(TRIM(categoria)) IN (%s, 'ambos')",
+            (categoria,),
+        )
     query_productos = cursor.fetchall()
     productos = [
     {
         "id": producto["id"],
         "descrip": producto["descrip"],
         "precio": float(producto["precio"]),
-        "stock": producto["stock"]
+        "stock": producto["stock"],
+        "categoria": (producto.get("categoria") or "ambos").strip().lower(),
     }
     for producto in query_productos
 ]
 
     cursor.close()
-    return jsonify(productos), 201
+    return jsonify(productos), 200
 
 @app.put("/api/productos/<int:id_producto>")
 def actualizar_producto(id_producto):
@@ -1056,16 +1067,20 @@ def actualizar_producto(id_producto):
     descrip = data.get("descrip")
     precio = data.get("precio")
     stock = data.get("stock")
+    categoria = (data.get("categoria") or "ambos").strip().lower()
+
+    if categoria not in {"internet", "camaras", "ambos"}:
+        return jsonify({"error": "Categoria invalida"}), 400
     
     cursor = mysql.connection.cursor()
     try:
         cursor.execute(
             """
             UPDATE productos 
-            SET descrip = %s, precio = %s, stock = %s 
+            SET descrip = %s, precio = %s, stock = %s, categoria = %s
             WHERE id = %s
             """,
-            (descrip, precio, stock, id_producto)
+            (descrip, precio, stock, categoria, id_producto)
         )
         mysql.connection.commit()
         return jsonify({"msg": "Producto actualizado correctamente"}), 200
@@ -1081,18 +1096,21 @@ def crear_producto():
     descrip = data.get("descrip")
     precio = data.get("precio")
     stock = data.get("stock")
+    categoria = (data.get("categoria") or "ambos").strip().lower()
     
     if not descrip or precio is None or stock is None:
         return jsonify({"error": "Faltan datos"}), 400
+    if categoria not in {"internet", "camaras", "ambos"}:
+        return jsonify({"error": "Categoria invalida"}), 400
 
     cursor = mysql.connection.cursor()
     try:
         cursor.execute(
             """
-            INSERT INTO productos (descrip, precio, stock)
-            VALUES (%s, %s, %s)
+            INSERT INTO productos (descrip, precio, stock, categoria)
+            VALUES (%s, %s, %s, %s)
             """,
-            (descrip, precio, stock)
+            (descrip, precio, stock, categoria)
         )
         mysql.connection.commit()
         return jsonify({"msg": "Producto creado correctamente"}), 201
@@ -1159,7 +1177,12 @@ def get_cotizacion(idCotizacion):
     total = cursor.fetchone()["total"] or 0
 
     cursor.execute(
-        "SELECT firma_instalacion, firma_foto_instalacion FROM hojas WHERE id = %s",
+        """
+        SELECT h.firma_instalacion, h.firma_foto_instalacion, c.tipo AS cita_tipo
+        FROM hojas h
+        JOIN citas c ON c.id = h.cita
+        WHERE h.id = %s
+        """,
         (idCotizacion,),
     )
     hoja_info = cursor.fetchone()
@@ -1173,6 +1196,7 @@ def get_cotizacion(idCotizacion):
         "total": float(total),
         "firma_instalacion": firma_instalacion,
         "firma_foto_instalacion": firma_foto_instalacion,
+        "cita_tipo": hoja_info.get("cita_tipo") if hoja_info else None,
     }), 200
     
 @app.put("/api/cotizaciones/<int:id_hoja>")
@@ -2568,12 +2592,140 @@ def get_inspeccion(id_cita):
             "dibujo": dibujo,
             "firma": firma,
             "firma_foto_instalacion": firma_foto_instalacion,
+            "cita_tipo": cita_tipo,
         }), 200
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
+
+@app.post("/api/soportes/<int:id_cita>/finalizar")
+def finalizar_soporte(id_cita):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT
+                c.id,
+                c.tipo,
+                c.estado,
+                EXISTS(SELECT 1 FROM hojas h WHERE h.cita = c.id) AS tiene_hoja
+            FROM citas c
+            WHERE c.id = %s
+            FOR UPDATE
+            """,
+            (id_cita,),
+        )
+        cita = cursor.fetchone()
+
+        if not cita:
+            mysql.connection.rollback()
+            return jsonify({"error": "Cita no encontrada"}), 404
+
+        tipo_cita = (cita.get("tipo") or "").strip().lower()
+        es_soporte_camaras = "soporte" in tipo_cita
+        es_soporte_internet = (
+            tipo_cita.startswith("internet") and not bool(cita.get("tiene_hoja"))
+        )
+        if not es_soporte_camaras and not es_soporte_internet:
+            mysql.connection.rollback()
+            return jsonify({"error": "Esta cita no corresponde a un soporte"}), 400
+
+        if int(cita.get("estado") or 0) == 9:
+            mysql.connection.rollback()
+            return jsonify({"error": "Este soporte ya fue finalizado"}), 409
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM hojas_inspeccion
+            WHERE cita = %s
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (id_cita,),
+        )
+        inspeccion = cursor.fetchone()
+        materiales = []
+
+        if inspeccion:
+            cursor.execute(
+                """
+                SELECT producto_id, SUM(cantidad) AS cantidad
+                FROM hojas_inspeccion_items
+                WHERE inspeccion_id = %s
+                GROUP BY producto_id
+                """,
+                (inspeccion["id"],),
+            )
+            cantidades = cursor.fetchall()
+
+            for cantidad_info in cantidades:
+                cursor.execute(
+                    "SELECT id, descrip, stock FROM productos WHERE id = %s FOR UPDATE",
+                    (cantidad_info["producto_id"],),
+                )
+                producto = cursor.fetchone()
+                if not producto:
+                    raise ValueError(
+                        f"Producto {cantidad_info['producto_id']} no encontrado"
+                    )
+                materiales.append({
+                    "producto_id": producto["id"],
+                    "descrip": producto["descrip"],
+                    "stock": producto["stock"],
+                    "cantidad": cantidad_info["cantidad"],
+                })
+
+        sin_stock = [
+            {
+                "id": material["producto_id"],
+                "descrip": material["descrip"],
+                "solicitado": int(material["cantidad"] or 0),
+                "disponible": int(material["stock"] or 0),
+            }
+            for material in materiales
+            if int(material["cantidad"] or 0) > int(material["stock"] or 0)
+        ]
+
+        if sin_stock:
+            mysql.connection.rollback()
+            return jsonify({
+                "error": "Stock insuficiente para finalizar el soporte",
+                "productos": sin_stock,
+            }), 409
+
+        productos_actualizados = []
+        for material in materiales:
+            cantidad = int(material["cantidad"] or 0)
+            if cantidad <= 0:
+                continue
+
+            cursor.execute(
+                "UPDATE productos SET stock = stock - %s WHERE id = %s",
+                (cantidad, material["producto_id"]),
+            )
+            productos_actualizados.append({
+                "id": material["producto_id"],
+                "descrip": material["descrip"],
+                "cantidad_descontada": cantidad,
+                "stock_actual": int(material["stock"] or 0) - cantidad,
+            })
+
+        cursor.execute("UPDATE citas SET estado = 9 WHERE id = %s", (id_cita,))
+        mysql.connection.commit()
+
+        return jsonify({
+            "msg": "Soporte finalizado correctamente",
+            "productos": productos_actualizados,
+        }), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
 
 @app.post("/api/inspeccion/<int:id_cita>")
 def guardar_inspeccion(id_cita):

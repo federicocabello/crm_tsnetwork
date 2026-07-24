@@ -3,7 +3,6 @@ import type { Usuarios } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getToken } from "../lib/api";
-import { Link } from "react-router-dom";
 import {
   FilePlusCorner,
   Cctv,
@@ -163,6 +162,16 @@ function formatShortDate(dateKey: string) {
 
 const TOTAL_VIDEOS_INDUCCION = 4;
 
+const esCitaSoporte = (
+  item: Pick<AgendaItem, "tipo" | "tiene_hoja">,
+) => {
+  const tipo = (item.tipo || "").trim().toLowerCase();
+  return (
+    tipo.includes("soporte") ||
+    (tipo.startsWith("internet") && Number(item.tiene_hoja) !== 1)
+  );
+};
+
 export default function Inicio() {
   const { user } = useAuth();
   const API_URL = import.meta.env.VITE_API_BASE_URL;
@@ -207,12 +216,13 @@ export default function Inicio() {
   const [openInspeccion, setOpenInspeccion] = useState(false);
   const [idCitaInspeccion, setIdCitaInspeccion] = useState<number | null>(null);
   const [idHojaInspeccion, setIdHojaInspeccion] = useState<number | null>(null);
-  const [inspeccionBloqueada, setInspeccionBloqueada] = useState(false);
+  const [soportesFinalizando, setSoportesFinalizando] = useState<Set<string>>(
+    new Set(),
+  );
   const [clienteInspeccion, setClienteInspeccion] =
     useState<ClienteInspeccion | null>(null);
   const abrirHojaInspeccion = (item: AgendaItem) => {
     setOpenInspeccion(true);
-    setInspeccionBloqueada(item.tipo_hoja === "instalacion_confirmada");
     setIdCitaInspeccion(Number(item.idcita));
     setIdHojaInspeccion(item.idhoja ? parseInt(item.idhoja) : null);
     setClienteInspeccion({
@@ -243,6 +253,8 @@ export default function Inicio() {
   >({});
   const [idCotizacion, setIdCotizacion] = useState<number | null>(null);
   const [cotizacionBloqueada, setCotizacionBloqueada] = useState(false);
+  const [categoriaCotizacion, setCategoriaCotizacion] =
+    useState<"internet" | "camaras" | undefined>(undefined);
   const [modoCotizacion, setModoCotizacion] = useState<"nuevo" | "editar">(
     "nuevo",
   );
@@ -384,6 +396,56 @@ export default function Inicio() {
     }
 
     setOpenModalConfirm(false);
+  }
+
+  async function finalizarSoporte(item: AgendaItem) {
+    if (!esCitaSoporte(item) || String(item.idestado) === "9") return;
+
+    const confirmado = window.confirm(
+      "¿Finalizar este soporte? Se descontará del inventario el material registrado en la hoja de inspección.",
+    );
+    if (!confirmado) return;
+
+    setSoportesFinalizando((prev) => new Set(prev).add(item.idcita));
+    try {
+      const res = await fetch(
+        `${API_URL}/api/soportes/${item.idcita}/finalizar`,
+        { method: "POST" },
+      );
+      const contentType = res.headers.get("content-type") || "";
+      const data = contentType.includes("application/json")
+        ? await res.json()
+        : { error: await res.text(), productos: undefined };
+
+      if (!res.ok) {
+        const detalle = Array.isArray(data.productos)
+          ? "\n" +
+            data.productos
+              .map(
+                (producto: { descrip: string; solicitado: number; disponible: number }) =>
+                  `${producto.descrip}: requiere ${producto.solicitado}, disponible ${producto.disponible}`,
+              )
+              .join("\n")
+          : "";
+        const mensaje =
+          res.status === 404
+            ? "La ruta para finalizar soportes no está disponible. Reinicia el servidor backend."
+            : data.error || "No se pudo finalizar el soporte";
+        alert(mensaje + detalle);
+        return;
+      }
+
+      await cargarInicio();
+    } catch (error) {
+      console.error("Error finalizando soporte:", error);
+      alert("Error de conexión al finalizar el soporte");
+    } finally {
+      setSoportesFinalizando((prev) => {
+        const next = new Set(prev);
+        next.delete(item.idcita);
+        return next;
+      });
+    }
   }
 
   useEffect(() => {
@@ -1175,8 +1237,7 @@ export default function Inicio() {
                         {(it.tipo == "camarasdesdecero" ||
                           it.tipo == "camaras-tiene-nuevo-instalacion" ||
                           it.tipo == "camaras-tiene-existente-instalacion" ||
-                          it.tipo == "camaras-tiene-nuevo-soporte" ||
-                          it.tipo == "camaras-tiene-existente-soporte") &&
+                          esCitaSoporte(it)) &&
                           (it.tiene_inspeccion ? (
                             <div className="text-sm flex items-center gap-1">
                               •<File className="h-4 w-4 text-blue-500" />
@@ -1199,6 +1260,24 @@ export default function Inicio() {
                                 Crear hoja inspección
                               </span>
                             </div>
+                          ))}
+
+                        {esCitaSoporte(it) &&
+                          (String(it.idestado) === "9" ? (
+                            <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-200">
+                              Soporte finalizado
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={soportesFinalizando.has(it.idcita)}
+                              onClick={() => finalizarSoporte(it)}
+                              className="rounded-full border border-emerald-400/40 bg-emerald-500/20 px-3 py-1 text-xs font-extrabold text-emerald-100 transition hover:bg-emerald-500/30 disabled:cursor-wait disabled:opacity-50">
+                              <CircleCheck className="mr-1 inline h-3.5 w-3.5" />
+                              {soportesFinalizando.has(it.idcita)
+                                ? "Finalizando..."
+                                : "Finalizar soporte"}
+                            </button>
                           ))}
 
                         {/* Hoja de Instalación - solo cuando ya fue confirmada */}
@@ -1409,8 +1488,7 @@ export default function Inicio() {
                           )}
 
                           {/* Soporte con hoja de inspeccion */}
-                          {(it.tipo == "camaras-tiene-nuevo-soporte" ||
-                            it.tipo == "camaras-tiene-existente-soporte") && (
+                          {esCitaSoporte(it) && (
                             <>
                               {it.tiene_inspeccion ? (
                                 <div className="text-sm flex items-center gap-1">
@@ -1477,6 +1555,12 @@ export default function Inicio() {
                                       setOpenCotizacion(true);
                                       setIdCotizacion(parseInt(it.idhoja));
                                       setModoCotizacion("editar");
+                                      setIdCitaSeleccionada(it.idcita);
+                                      setCategoriaCotizacion(
+                                        it.tipo.trim().toLowerCase().startsWith("internet")
+                                          ? "internet"
+                                          : "camaras",
+                                      );
                                       setCotizacionBloqueada(
                                         String(it.idestado) === "9",
                                       );
@@ -1495,6 +1579,11 @@ export default function Inicio() {
                                       setIdCotizacion(null);
                                       setModoCotizacion("nuevo");
                                       setIdCitaSeleccionada(it.idcita);
+                                      setCategoriaCotizacion(
+                                        it.tipo.trim().toLowerCase().startsWith("internet")
+                                          ? "internet"
+                                          : "camaras",
+                                      );
                                       setCotizacionBloqueada(false);
                                     }}>
                                     Agregar cotización
@@ -1510,7 +1599,25 @@ export default function Inicio() {
                             Editar registro
                           </button>
                         </div>
-                        {it.tiene_hoja &&
+                        {esCitaSoporte(it) ? (
+                          String(it.idestado) === "9" ? (
+                            <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-3 py-1 text-xs font-extrabold text-emerald-200">
+                              <CircleCheck className="mr-1 inline h-3.5 w-3.5" />
+                              Soporte finalizado
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={soportesFinalizando.has(it.idcita)}
+                              onClick={() => finalizarSoporte(it)}
+                              className="rounded-full border border-emerald-400/40 bg-emerald-500/20 px-3 py-1 text-xs font-extrabold text-emerald-100 transition hover:bg-emerald-500/30 disabled:cursor-wait disabled:opacity-50">
+                              <CircleCheck className="mr-1 inline h-3.5 w-3.5" />
+                              {soportesFinalizando.has(it.idcita)
+                                ? "Finalizando..."
+                                : "Finalizar soporte"}
+                            </button>
+                          )
+                        ) : it.tiene_hoja &&
                         it.tipo_hoja !== "instalacion_confirmada" ? (
                           <div className="shrink-0">
                             <button
@@ -1671,11 +1778,12 @@ export default function Inicio() {
             idCita={Number(idCitaSeleccionada)}
             onSaved={cargarInicio}
             bloqueada={cotizacionBloqueada}
+            categoriaServicio={categoriaCotizacion}
           />
         )}
 
         {openInspeccion && idCitaInspeccion && (
-          <HojaInspeccion
+        <HojaInspeccion
             idCita={idCitaInspeccion}
             idHoja={idHojaInspeccion}
             cliente={clienteInspeccion}
@@ -1686,7 +1794,6 @@ export default function Inicio() {
               setClienteInspeccion(null);
             }}
             onSaved={cargarInicio}
-            bloqueada={inspeccionBloqueada}
           />
         )}
 

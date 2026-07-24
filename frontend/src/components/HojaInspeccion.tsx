@@ -23,7 +23,6 @@ interface HojaInspeccionProps {
   idCita: number;
   idHoja?: number | null; // ID de la cotización (para pre-cargar artículos)
   cliente?: ClienteInspeccionInfo | null;
-  bloqueada?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -33,7 +32,13 @@ interface Producto {
   descrip: string;
   stock: number;
   precio: number;
+  categoria: "internet" | "camaras" | "ambos";
 }
+
+type FiltroCategoria = "todos" | "internet" | "camaras";
+
+const categoriaDesdeCita = (tipo: string): Exclude<FiltroCategoria, "todos"> =>
+  tipo.trim().toLowerCase().startsWith("internet") ? "internet" : "camaras";
 
 interface InspeccionItem {
   id?: number;
@@ -48,7 +53,6 @@ export default function HojaInspeccion({
   idCita,
   idHoja,
   cliente,
-  bloqueada = false,
   onClose,
   onSaved,
 }: HojaInspeccionProps) {
@@ -56,6 +60,8 @@ export default function HojaInspeccion({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [filtroCategoria, setFiltroCategoria] =
+    useState<FiltroCategoria>("todos");
   const [items, setItems] = useState<InspeccionItem[]>([]);
   const [cargadoDeCotizacion, setCargadoDeCotizacion] = useState(false);
 
@@ -72,6 +78,9 @@ export default function HojaInspeccion({
   const [firmaFotoUrl, setFirmaFotoUrl] = useState<string | null>(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [showFotoModal, setShowFotoModal] = useState(false);
+
+  // Bloqueada cuando tiene firma guardada — no admite modificaciones
+  const bloqueada = Boolean(firmaUrl);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -95,6 +104,9 @@ export default function HojaInspeccion({
         );
         if (resInspeccion.ok) {
           const dataInspeccion = await resInspeccion.json();
+          if (dataInspeccion.cita_tipo) {
+            setFiltroCategoria(categoriaDesdeCita(dataInspeccion.cita_tipo));
+          }
           if (dataInspeccion.dibujo) {
             setDibujoUrl(API_URL + dataInspeccion.dibujo);
           }
@@ -124,6 +136,9 @@ export default function HojaInspeccion({
           );
           if (resCotizacion.ok) {
             const dataCotizacion = await resCotizacion.json();
+            if (dataCotizacion.cita_tipo) {
+              setFiltroCategoria(categoriaDesdeCita(dataCotizacion.cita_tipo));
+            }
             if (dataCotizacion.firma_foto_instalacion) {
               setFirmaFotoUrl(API_URL + dataCotizacion.firma_foto_instalacion);
             }
@@ -197,6 +212,13 @@ export default function HojaInspeccion({
     setDetalle("");
   };
 
+  const productosFiltrados = productos.filter(
+    (producto) =>
+      filtroCategoria === "todos" ||
+      producto.categoria === "ambos" ||
+      producto.categoria === filtroCategoria,
+  );
+
   const handleRemoveItem = (index: number) => {
     const newItems = [...items];
     newItems.splice(index, 1);
@@ -204,9 +226,44 @@ export default function HojaInspeccion({
     setCargadoDeCotizacion(false);
   };
 
-  // Abre el modal de firma antes de guardar
+  // Guarda solo materiales / cambios sin requerir firma
+  const handleSaveWithoutFirma = async () => {
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append("items", JSON.stringify(items));
+      if (dibujoFile) {
+        formData.append("dibujo", dibujoFile);
+      }
+
+      const res = await fetch(`${API_URL}/api/inspeccion/${idCita}`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        onSaved();
+        alert("Cambios guardados correctamente");
+      } else {
+        alert("Error al guardar la hoja de inspección");
+      }
+    } catch (error) {
+      console.error("Error al guardar:", error);
+      alert("Error de conexión al guardar la hoja de inspección");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hasMapa = Boolean(dibujoFile || dibujoUrl);
+
+  // Si hay mapa cargado o creado, solicita la firma; de lo contrario guarda directamente sin firma
   const handleSave = () => {
-    setShowFirmaModal(true);
+    if (hasMapa) {
+      setShowFirmaModal(true);
+    } else {
+      handleSaveWithoutFirma();
+    }
   };
 
   // Se ejecuta después de que el cliente firma
@@ -539,7 +596,7 @@ export default function HojaInspeccion({
                   Hoja de Inspección
                 </h2>
                 <p className="text-xs text-white/50">
-                  Materiales para la instalación
+                  {bloqueada ? "Firmada · Solo lectura" : "Materiales para la instalación"}
                 </p>
               </div>
             </div>
@@ -549,6 +606,14 @@ export default function HojaInspeccion({
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Banner solo lectura */}
+          {bloqueada && (
+            <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2 shrink-0">
+              <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">🔒 Hoja firmada — Solo lectura</span>
+              <span className="text-amber-400/60 text-xs">No se pueden realizar modificaciones.</span>
+            </div>
+          )}
 
           {/* Content */}
           <div className="flex-1 flex flex-col min-h-0">
@@ -588,6 +653,26 @@ export default function HojaInspeccion({
                     <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
                       Agregar material
                     </p>
+                    <div className="flex gap-1">
+                      {(["internet", "camaras", "todos"] as FiltroCategoria[]).map(
+                        (categoria) => (
+                          <button
+                            key={categoria}
+                            type="button"
+                            onClick={() => {
+                              setFiltroCategoria(categoria);
+                              setSelectedProducto("");
+                            }}
+                            className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize ${
+                              filtroCategoria === categoria
+                                ? "bg-orange-500 text-white"
+                                : "bg-zinc-800 text-white/60 hover:text-white"
+                            }`}>
+                            {categoria === "camaras" ? "Cámaras" : categoria}
+                          </button>
+                        ),
+                      )}
+                    </div>
 
                   {/* Producto selector */}
                   <div>
@@ -603,7 +688,7 @@ export default function HojaInspeccion({
                       }
                       className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50">
                       <option value="">Selecciona un producto...</option>
-                      {productos.map((p) => (
+                      {productosFiltrados.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.descrip} — Stock: {p.stock}
                         </option>
@@ -800,17 +885,26 @@ export default function HojaInspeccion({
               PDF
             </button>
             {!bloqueada && (
-              <button
-                onClick={handleSave}
-                disabled={saving || loading}
-                className="flex-2 bg-orange-500 hover:bg-orange-400 active:bg-orange-600 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-500/20">
-                {saving ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                ) : (
+              <>
+                <button
+                  onClick={handleSaveWithoutFirma}
+                  disabled={saving || loading}
+                  className="flex-1 bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-700 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
                   <Save className="w-4 h-4" />
-                )}
-                Guardar
-              </button>
+                  Guardar Cambios
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving || loading}
+                  className="flex-1 bg-orange-500 hover:bg-orange-400 active:bg-orange-600 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-orange-500/20">
+                  {saving ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {hasMapa ? "Guardar con Firma" : "Firma Cliente"}
+                </button>
+              </>
             )}
           </div>
         </div>

@@ -7,7 +7,10 @@ type Producto = {
   descrip: string;
   precio: number;
   stock: number;
+  categoria: "internet" | "camaras" | "ambos";
 };
+
+type FiltroCategoria = "todos" | "internet" | "camaras" | "ambos";
 
 export default function Inventario() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
@@ -16,6 +19,8 @@ export default function Inventario() {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] =
+    useState<FiltroCategoria>("todos");
 
   // Edit state
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -27,6 +32,7 @@ export default function Inventario() {
     descrip: "",
     precio: 0,
     stock: 0,
+    categoria: "ambos",
   });
 
   const fetchProductos = async () => {
@@ -95,7 +101,12 @@ export default function Inventario() {
 
       if (res.ok) {
         setAddingProduct(false);
-        setNewProduct({ descrip: "", precio: 0, stock: 0 });
+        setNewProduct({
+          descrip: "",
+          precio: 0,
+          stock: 0,
+          categoria: "ambos",
+        });
         fetchProductos();
       } else {
         alert("Error al agregar producto");
@@ -122,11 +133,15 @@ export default function Inventario() {
     }
   };
 
-  const filteredProductos = productos.filter(
-    (p) =>
-      p.descrip.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.id.toString().includes(searchQuery),
-  );
+  const filteredProductos = productos.filter((p) => {
+    const coincideCategoria =
+      categoryFilter === "todos" || p.categoria === categoryFilter;
+    return (
+      coincideCategoria &&
+      (p.descrip.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.id.toString().includes(searchQuery))
+    );
+  });
 
   if (loading) return <Loading />;
 
@@ -138,7 +153,23 @@ export default function Inventario() {
           <h1 className="text-xl font-extrabold tracking-tight">Inventario</h1>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-lg border border-white/10 bg-zinc-900 p-1">
+            {(["todos", "internet", "camaras", "ambos"] as FiltroCategoria[]).map(
+              (categoria) => (
+                <button
+                  key={categoria}
+                  onClick={() => setCategoryFilter(categoria)}
+                  className={`rounded-md px-3 py-1 text-xs font-semibold capitalize transition-colors ${
+                    categoryFilter === categoria
+                      ? "bg-orange-500 text-white"
+                      : "text-white/60 hover:text-white"
+                  }`}>
+                  {categoria === "camaras" ? "Cámaras" : categoria}
+                </button>
+              ),
+            )}
+          </div>
           <div className="flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-orange-500/50 transition-colors">
             <Search className="w-4 h-4 text-white/50" />
             <input
@@ -165,6 +196,7 @@ export default function Inventario() {
             <thead className="bg-zinc-900/50 text-xs uppercase text-white/60 sticky top-0 backdrop-blur-md z-10">
               <tr>
                 <th className="px-4 py-3 w-1/2">Descripción</th>
+                <th className="px-4 py-3">Categoría</th>
                 <th className="px-4 py-3 text-right">Precio</th>
                 <th className="px-4 py-3 text-right">Stock</th>
                 <th className="px-4 py-3 text-center">Acciones</th>
@@ -188,6 +220,21 @@ export default function Inventario() {
                       }
                       autoFocus
                     />
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={newProduct.categoria || "ambos"}
+                      onChange={(e) =>
+                        setNewProduct({
+                          ...newProduct,
+                          categoria: e.target.value as Producto["categoria"],
+                        })
+                      }
+                      className="bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-orange-500">
+                      <option value="internet">Internet</option>
+                      <option value="camaras">Cámaras</option>
+                      <option value="ambos">Ambos</option>
+                    </select>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <input
@@ -226,7 +273,12 @@ export default function Inventario() {
                       <button
                         onClick={() => {
                           setAddingProduct(false);
-                          setNewProduct({ descrip: "", precio: 0, stock: 0 });
+                          setNewProduct({
+                            descrip: "",
+                            precio: 0,
+                            stock: 0,
+                            categoria: "ambos",
+                          });
                         }}
                         className="text-zinc-400 hover:text-zinc-300 p-1"
                         title="Cancelar">
@@ -254,6 +306,31 @@ export default function Inventario() {
                       />
                     ) : (
                       p.descrip
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {editingId === p.id ? (
+                      <select
+                        value={editForm.categoria || "ambos"}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            categoria: e.target.value as Producto["categoria"],
+                          })
+                        }
+                        className="bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-orange-500">
+                        <option value="internet">Internet</option>
+                        <option value="camaras">Cámaras</option>
+                        <option value="ambos">Ambos</option>
+                      </select>
+                    ) : (
+                      <span className="inline-flex rounded-full border border-orange-400/30 bg-orange-400/10 px-2 py-0.5 text-xs font-semibold text-orange-200">
+                        {p.categoria === "camaras"
+                          ? "Cámaras"
+                          : p.categoria === "ambos"
+                            ? "Ambos"
+                            : "Internet"}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
