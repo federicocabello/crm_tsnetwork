@@ -30,7 +30,13 @@ interface Producto {
   descrip: string;
   stock: number;
   precio: number;
+  categoria: "internet" | "camaras" | "ambos";
 }
+
+type FiltroCategoria = "todos" | "internet" | "camaras";
+
+const categoriaDesdeCita = (tipo: string): Exclude<FiltroCategoria, "todos"> =>
+  tipo.trim().toLowerCase().startsWith("internet") ? "internet" : "camaras";
 
 interface InstalacionItem {
   producto_id: number;
@@ -67,12 +73,15 @@ export default function HojaInstalacion({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [filtroCategoria, setFiltroCategoria] =
+    useState<FiltroCategoria>("todos");
   const [items, setItems] = useState<InstalacionItem[]>([]);
   const [selectedProducto, setSelectedProducto] = useState<number | "">("");
   const [cantidad, setCantidad] = useState<number>(1);
   const [detalle, setDetalle] = useState<string>("");
   const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
   const [firmaFotoUrl, setFirmaFotoUrl] = useState<string | null>(null);
+  const [dibujoUrl, setDibujoUrl] = useState<string | null>(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [showFotoModal, setShowFotoModal] = useState(false);
   const [cargadoDeInspeccion, setCargadoDeInspeccion] = useState(false);
@@ -86,15 +95,23 @@ export default function HojaInstalacion({
       try {
         setLoading(true);
 
-        const [resProductos, resCotizacion, resPlanPago] = await Promise.all([
+        const [resProductos, resCotizacion, resPlanPago, resInspeccion] = await Promise.all([
           fetch(`${API_URL}/api/productos`),
           fetch(`${API_URL}/api/cotizacion/${idHoja}`),
           fetch(`${API_URL}/api/clientes/pagos/${idCita}`),
+          fetch(`${API_URL}/api/inspeccion/${idCita}`).catch(() => null),
         ]);
 
         if (resProductos.ok) {
           const dataProductos = await resProductos.json();
           setProductos(dataProductos);
+        }
+
+        if (resInspeccion && resInspeccion.ok) {
+          const dataInspeccion = await resInspeccion.json();
+          if (dataInspeccion.dibujo) {
+            setDibujoUrl(API_URL + dataInspeccion.dibujo);
+          }
         }
 
         if (resCotizacion.ok) {
@@ -114,6 +131,7 @@ export default function HojaInstalacion({
           
           if (dataCotizacion.cita_tipo) {
             setCitaTipo(dataCotizacion.cita_tipo);
+            setFiltroCategoria(categoriaDesdeCita(dataCotizacion.cita_tipo));
           }
 
           if (productosInstalacion.length > 0) {
@@ -214,6 +232,13 @@ export default function HojaInstalacion({
     setCantidad(1);
     setDetalle("");
   };
+
+  const productosFiltrados = productos.filter(
+    (producto) =>
+      filtroCategoria === "todos" ||
+      producto.categoria === "ambos" ||
+      producto.categoria === filtroCategoria,
+  );
 
   const handleRemoveItem = (index: number) => {
     if (bloqueada) return;
@@ -778,7 +803,7 @@ export default function HojaInstalacion({
                   Hoja de Instalacion
                 </h2>
                 <p className="text-xs text-white/50">
-                  {bloqueada ? "Firmada y bloqueada" : "Materiales y firma"}
+                  {bloqueada ? "Firmada · Solo lectura" : "Materiales y firma"}
                 </p>
               </div>
             </div>
@@ -788,6 +813,14 @@ export default function HojaInstalacion({
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {/* Banner solo lectura */}
+          {bloqueada && (
+            <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2 shrink-0">
+              <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">🔒 Hoja firmada — Solo lectura</span>
+              <span className="text-amber-400/60 text-xs">No se pueden realizar modificaciones.</span>
+            </div>
+          )}
 
           {loading ? (
             <div className="flex-1 flex justify-center items-center">
@@ -800,6 +833,26 @@ export default function HojaInstalacion({
                   <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
                     Agregar material
                   </p>
+                  <div className="flex gap-1">
+                    {(["internet", "camaras", "todos"] as FiltroCategoria[]).map(
+                      (categoria) => (
+                        <button
+                          key={categoria}
+                          type="button"
+                          onClick={() => {
+                            setFiltroCategoria(categoria);
+                            setSelectedProducto("");
+                          }}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize ${
+                            filtroCategoria === categoria
+                              ? "bg-green-600 text-white"
+                              : "bg-zinc-800 text-white/60 hover:text-white"
+                          }`}>
+                          {categoria === "camaras" ? "Cámaras" : categoria}
+                        </button>
+                      ),
+                    )}
+                  </div>
                   <div>
                     <label className="block text-xs font-semibold text-white/60 mb-1">
                       Producto
@@ -811,7 +864,7 @@ export default function HojaInstalacion({
                       }
                       className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-green-500/50">
                       <option value="">Selecciona un producto...</option>
-                      {productos.map((p) => (
+                      {productosFiltrados.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.descrip} - Stock: {p.stock}
                         </option>

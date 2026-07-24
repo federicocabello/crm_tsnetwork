@@ -321,6 +321,7 @@ export default function FormularioCamarasTieneClienteNuevo() {
                       <Cotizador
                         onClose={handleCloseModal}
                         setCotizacion={handleSubmitPresupuesto}
+                        categoriaServicio="camaras"
                       />
                     )}
 

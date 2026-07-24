@@ -5,7 +5,10 @@ interface Producto {
   descrip: string;
   precio: number;
   stock: number;
+  categoria: "internet" | "camaras" | "ambos";
 }
+
+type CategoriaServicio = "internet" | "camaras";
 
 interface RowData {
   cantidad: number;
@@ -21,6 +24,7 @@ interface Props {
   onSaved?: () => void;
   idCita?: number | null;
   bloqueada?: boolean;
+  categoriaServicio?: CategoriaServicio;
 }
 
 export default function Cotizador({
@@ -31,6 +35,7 @@ export default function Cotizador({
   onSaved,
   idCita = null,
   bloqueada = false,
+  categoriaServicio,
 }: Props) {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -179,7 +184,14 @@ useEffect(() => {
 }, [API_URL, modo, idCotizacion]);
 
   const filteredData = useMemo(() => {
-    let baseData = data;
+    let baseData = categoriaServicio
+      ? data.filter(
+          (item) =>
+            item.categoria === categoriaServicio ||
+            item.categoria === "ambos" ||
+            Boolean(rows[item.id]?.cantidad),
+        )
+      : data;
     if (bloqueada) {
       baseData = data.filter((item) => rows[item.id] && rows[item.id].cantidad > 0);
     }
@@ -189,7 +201,7 @@ useEffect(() => {
     return baseData.filter((item) =>
       item.descrip.toLowerCase().includes(search.toLowerCase())
     );
-  }, [data, search, bloqueada, rows]);
+  }, [data, search, bloqueada, rows, categoriaServicio]);
 
   const totalGeneral = useMemo(() => {
     const total = Object.values(rows).reduce((acc, row) => {
@@ -225,6 +237,12 @@ useEffect(() => {
         <div className="flex-1 overflow-auto p-6">
           {/* Buscador */}
           <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              {categoriaServicio && (
+                <span className="rounded-full border border-orange-400/30 bg-orange-400/10 px-3 py-1 text-xs font-bold text-orange-200">
+                  Mostrando: {categoriaServicio === "camaras" ? "Cámaras" : "Internet"}
+                </span>
+              )}
             <div className="relative w-full max-w-md">
               <input
                 type="text"
@@ -237,6 +255,7 @@ useEffect(() => {
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
                 🔍
               </span>
+            </div>
             </div>
 
             <div className="hidden rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/60 sm:block">

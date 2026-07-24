@@ -604,6 +604,7 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
         <Cotizador
           onClose={handleCloseModal}
           setCotizacion={handleSubmitPresupuesto}
+          categoriaServicio={tipoRegistro === "internet" ? "internet" : "camaras"}
         />
       )}
     </div>

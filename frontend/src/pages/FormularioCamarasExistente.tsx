@@ -448,6 +448,7 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
                         <Cotizador
                           onClose={handleCloseModal}
                           setCotizacion={handleSubmitPresupuesto}
+                          categoriaServicio="camaras"
                         />
                       )}
         
