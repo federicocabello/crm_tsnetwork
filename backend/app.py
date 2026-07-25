@@ -7,6 +7,7 @@ from flask_jwt_extended import JWTManager, get_jwt, get_jwt_identity, jwt_requir
 import os, re, json
 from flask_cors import CORS
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 from werkzeug.utils import secure_filename
 
 load_dotenv()
@@ -54,6 +55,34 @@ def table_has_column(table_name, column_name):
         return int(row.get("cantidad") or 0) > 0
     finally:
         cursor.close()
+
+def normalizar_fecha_mysql(valor):
+    if valor is None:
+        return None
+
+    if isinstance(valor, datetime):
+        return valor.date().isoformat()
+
+    texto = str(valor).strip()
+    if not texto or not re.search(r"[1-9]", texto):
+        return None
+
+    formatos = (
+        "%Y-%m-%d",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S.%f",
+    )
+    for formato in formatos:
+        try:
+            return datetime.strptime(texto.rstrip("Z"), formato).date().isoformat()
+        except ValueError:
+            continue
+
+    try:
+        return parsedate_to_datetime(texto).date().isoformat()
+    except (TypeError, ValueError, OverflowError):
+        return None
 
 from flask import jsonify, request
 from flask_jwt_extended import create_access_token
@@ -2199,7 +2228,7 @@ def actualizar_plan_de_pagos(id_pago):
             interes     = float(cuota.get("interes", 0))
             vencimiento = cuota.get("vencimiento")
             pagado      = int(bool(cuota.get("pagado", False)))
-            fechapago   = cuota.get("fechapago") if pagado else None
+            fechapago   = normalizar_fecha_mysql(cuota.get("fechapago")) if pagado else None
             metodo      = int(cuota.get("idmetodo") or cuota.get("metodo") or 1)
             nota        = (cuota.get("nota") or "").strip()
             comprobante = (cuota.get("comprobante") or "").strip()
