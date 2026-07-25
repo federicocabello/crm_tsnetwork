@@ -50,6 +50,7 @@ type AgendaItem = {
   fullname: string;
   tipo: string;
   idestado: string;
+  soporte_finalizado?: number;
   estado: string;
   color: string;
   telefono: string;
@@ -399,7 +400,7 @@ export default function Inicio() {
   }
 
   async function finalizarSoporte(item: AgendaItem) {
-    if (!esCitaSoporte(item) || String(item.idestado) === "9") return;
+    if (!esCitaSoporte(item) || Number(item.soporte_finalizado) === 1) return;
 
     const confirmado = window.confirm(
       "¿Finalizar este soporte? Se descontará del inventario el material registrado en la hoja de inspección.",
@@ -1263,7 +1264,7 @@ export default function Inicio() {
                           ))}
 
                         {esCitaSoporte(it) &&
-                          (String(it.idestado) === "9" ? (
+                          (Number(it.soporte_finalizado) === 1 ? (
                             <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-200">
                               Soporte finalizado
                             </span>
@@ -1600,7 +1601,7 @@ export default function Inicio() {
                           </button>
                         </div>
                         {esCitaSoporte(it) ? (
-                          String(it.idestado) === "9" ? (
+                          Number(it.soporte_finalizado) === 1 ? (
                             <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-3 py-1 text-xs font-extrabold text-emerald-200">
                               <CircleCheck className="mr-1 inline h-3.5 w-3.5" />
                               Soporte finalizado
