@@ -464,6 +464,7 @@ def inicio():
                         auth.fullname AS fullname,
                         citas.tipo AS tipo,
                         citas.estado AS idestado,
+                        COALESCE(citas.soporte_finalizado, 0) AS soporte_finalizado,
                         citas_estados.estado AS estado,
                         citas_estados.color AS color,
                         citas.telefono AS telefono,
@@ -2610,6 +2611,7 @@ def finalizar_soporte(id_cita):
                 c.id,
                 c.tipo,
                 c.estado,
+                COALESCE(c.soporte_finalizado, 0) AS soporte_finalizado,
                 EXISTS(SELECT 1 FROM hojas h WHERE h.cita = c.id) AS tiene_hoja
             FROM citas c
             WHERE c.id = %s
@@ -2632,7 +2634,7 @@ def finalizar_soporte(id_cita):
             mysql.connection.rollback()
             return jsonify({"error": "Esta cita no corresponde a un soporte"}), 400
 
-        if int(cita.get("estado") or 0) == 9:
+        if int(cita.get("soporte_finalizado") or 0) == 1:
             mysql.connection.rollback()
             return jsonify({"error": "Este soporte ya fue finalizado"}), 409
 
@@ -2713,7 +2715,10 @@ def finalizar_soporte(id_cita):
                 "stock_actual": int(material["stock"] or 0) - cantidad,
             })
 
-        cursor.execute("UPDATE citas SET estado = 9 WHERE id = %s", (id_cita,))
+        cursor.execute(
+            "UPDATE citas SET soporte_finalizado = 1 WHERE id = %s",
+            (id_cita,),
+        )
         mysql.connection.commit()
 
         return jsonify({
