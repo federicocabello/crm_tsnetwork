@@ -1389,7 +1389,8 @@ export default function Inicio() {
                           timeIntervals={15}
                           timeCaption="Hora"
                           dateFormat="h:mm aa"
-                          className="inline-flex items-center rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-200 text-center w-20 cursor-pointer"
+                          calendarClassName="agenda-timepicker"
+                          className="inline-flex items-center rounded-full border border-zinc-300 bg-white px-2 py-1 text-xs font-bold text-black text-center w-20 cursor-pointer"
                           title="Cambiar hora"
                           selected={hora}
                           onChange={handleHoraChange.bind(null, it.idcita)}
