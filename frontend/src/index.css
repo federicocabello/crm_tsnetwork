@@ -78,3 +78,33 @@ html {
 .react-datepicker__day.agenda-sunday-blocked:hover {
   background: rgba(239, 68, 68, 0.18) !important;
 }
+.agenda-timepicker .react-datepicker__time-container,
+.agenda-timepicker .react-datepicker__time,
+.agenda-timepicker .react-datepicker__time-box,
+.agenda-timepicker .react-datepicker__time-list {
+  background: #ffffff !important;
+}
+
+.agenda-timepicker .react-datepicker__header--time {
+  border-color: #d4d4d8;
+  background: #ffffff !important;
+}
+
+.agenda-timepicker .react-datepicker-time__header {
+  color: #18181b !important;
+}
+
+.agenda-timepicker .react-datepicker__time-list-item {
+  background: #ffffff !important;
+  color: #18181b !important;
+}
+
+.agenda-timepicker .react-datepicker__time-list-item:hover {
+  background: #ffedd5 !important;
+  color: #18181b !important;
+}
+
+.agenda-timepicker .react-datepicker__time-list-item--selected {
+  background: #fed7aa !important;
+  color: #18181b !important;
+}

@@ -504,7 +504,8 @@ export default function Cliente() {
                           timeIntervals={15}
                           timeCaption="Hora"
                           dateFormat="h:mm aa"
-                          className="rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40 w-32"
+                          calendarClassName="agenda-timepicker"
+                          className="w-32 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-black outline-none focus:border-orange-500"
                           title="Cambiar hora"
                           selected={hora ?? undefined}
                           onChange={(date: Date | null) => {
