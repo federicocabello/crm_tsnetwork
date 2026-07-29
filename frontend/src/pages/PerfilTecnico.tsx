@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { PlayCircle, CheckCircle, FileText, Upload, Download, Trash2, Award, Calendar, Film, RotateCcw, Home } from "lucide-react";
+import { CheckCircle, FileText, Upload, Download, Trash2, Award, Calendar, RotateCcw, Home } from "lucide-react";
 
 interface Archivo {
   id: number;
