@@ -81,7 +81,7 @@ export default function HojaInstalacion({
   const [detalle, setDetalle] = useState<string>("");
   const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
   const [firmaFotoUrl, setFirmaFotoUrl] = useState<string | null>(null);
-  const [dibujoUrl, setDibujoUrl] = useState<string | null>(null);
+  const [, setDibujoUrl] = useState<string | null>(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [showFotoModal, setShowFotoModal] = useState(false);
   const [cargadoDeInspeccion, setCargadoDeInspeccion] = useState(false);

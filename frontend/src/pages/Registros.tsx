@@ -82,6 +82,15 @@ function getTareaKey(label: string) {
     .replace(/^-+|-+$/g, "") || "registro";
 }
 
+function normalizarBusqueda(valor: unknown) {
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 function isTipo(registro: RegistroTarea, filtro: FiltroTipo) {
   const notas = (registro.notas || "").trim();
 
@@ -135,7 +144,10 @@ export default function Registros() {
   }, [API_URL]);
 
   const registrosFiltrados = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizarBusqueda(query);
+    const palabras = q.split(/\s+/).filter(Boolean);
+    const querySoloDigitos = query.replace(/\D/g, "");
+    const esBusquedaTelefonica = Boolean(querySoloDigitos) && /^[\d\s()+.-]+$/.test(query.trim());
 
     return registros
       .filter((registro) => {
@@ -145,17 +157,26 @@ export default function Registros() {
         if (agente !== "todos" && String(registro.idagente) !== agente) return false;
         if (!q) return true;
 
+        const nombreCompleto = normalizarBusqueda(registro.nombre);
+        const domicilioCompleto = normalizarBusqueda(registro.direccion);
+        if (
+          palabras.every((palabra) => nombreCompleto.includes(palabra)) ||
+          palabras.every((palabra) => domicilioCompleto.includes(palabra))
+        ) {
+          return true;
+        }
+
+        const telefonoSoloDigitos = String(registro.telefono || "").replace(/\D/g, "");
+        if (esBusquedaTelefonica && telefonoSoloDigitos.includes(querySoloDigitos)) return true;
+
         return [
-          registro.nombre,
-          registro.telefono,
-          registro.direccion,
           registro.notas,
           registro.fullname,
           registro.estado,
           registro.tipo,
         ]
           .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(q));
+          .some((value) => normalizarBusqueda(value).includes(q));
       })
       .sort((a, b) => {
         const fechaA = `${a.dia || ""} ${a.hora || "00:00"}`;

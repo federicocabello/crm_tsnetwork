@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Package, Pencil, Save, X, Plus, Trash2, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Package, Pencil, Save, X, Plus, Trash2, Search, TriangleAlert } from "lucide-react";
 import Loading from "../components/Loading";
 
 type Producto = {
@@ -11,6 +11,7 @@ type Producto = {
 };
 
 type FiltroCategoria = "todos" | "internet" | "camaras" | "ambos";
+type FiltroStock = "todos" | "bajo";
 
 export default function Inventario() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
@@ -21,6 +22,9 @@ export default function Inventario() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] =
     useState<FiltroCategoria>("todos");
+  const [stockFilter, setStockFilter] = useState<FiltroStock>("todos");
+  const [mostrarAlertaStock, setMostrarAlertaStock] = useState(false);
+  const alertaInicialEvaluada = useRef(false);
 
   // Edit state
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -41,6 +45,12 @@ export default function Inventario() {
       if (res.ok) {
         const data = await res.json();
         setProductos(data);
+        if (!alertaInicialEvaluada.current) {
+          setMostrarAlertaStock(
+            data.some((producto: Producto) => Number(producto.stock) <= 3),
+          );
+          alertaInicialEvaluada.current = true;
+        }
       }
     } catch (error) {
       console.error("Error fetching productos:", error);
@@ -136,8 +146,10 @@ export default function Inventario() {
   const filteredProductos = productos.filter((p) => {
     const coincideCategoria =
       categoryFilter === "todos" || p.categoria === categoryFilter;
+    const coincideStock = stockFilter === "todos" || Number(p.stock) <= 3;
     return (
       coincideCategoria &&
+      coincideStock &&
       (p.descrip.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.id.toString().includes(searchQuery))
     );
@@ -170,6 +182,17 @@ export default function Inventario() {
               ),
             )}
           </div>
+          <button
+            onClick={() => setStockFilter((actual) => actual === "bajo" ? "todos" : "bajo")}
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
+              stockFilter === "bajo"
+                ? "border-red-500/60 bg-red-500/20 text-red-300"
+                : "border-white/10 bg-zinc-900 text-white/60 hover:border-red-500/40 hover:text-red-300"
+            }`}
+            aria-pressed={stockFilter === "bajo"}>
+            <TriangleAlert className="h-4 w-4" />
+            Stock bajo
+          </button>
           <div className="flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-orange-500/50 transition-colors">
             <Search className="w-4 h-4 text-white/50" />
             <input
@@ -292,7 +315,11 @@ export default function Inventario() {
               {filteredProductos.map((p) => (
                 <tr
                   key={p.id}
-                  className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  className={`border-b transition-colors ${
+                    Number(p.stock) <= 3
+                      ? "border-red-500/20 bg-red-500/10 hover:bg-red-500/15"
+                      : "border-white/5 hover:bg-white/5"
+                  }`}>
                   {/* <td className="px-4 py-3">{p.id}</td> */}
                   <td className="px-4 py-3">
                     {editingId === p.id ? (
@@ -363,9 +390,12 @@ export default function Inventario() {
                           })
                         }
                       />
-                    ) : (
-                      p.stock
-                    )}
+                    ) : Number(p.stock) <= 3 ? (
+                      <span className="inline-flex items-center gap-1 rounded-md border border-red-500/30 bg-red-500/15 px-2 py-1 font-black text-red-300">
+                        <TriangleAlert className="h-3.5 w-3.5" />
+                        {p.stock}
+                      </span>
+                    ) : p.stock}
                   </td>
                   <td className="px-4 py-3 text-center">
                     {editingId === p.id ? (
@@ -415,6 +445,34 @@ export default function Inventario() {
           </table>
         </div>
       </div>
+      {mostrarAlertaStock && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-lg border border-red-500/35 bg-zinc-900 shadow-2xl shadow-red-950/50">
+            <div className="flex items-start gap-3 border-b border-red-500/20 bg-red-500/10 p-5">
+              <TriangleAlert className="mt-0.5 h-7 w-7 shrink-0 text-red-400" />
+              <div>
+                <h2 className="text-lg font-black text-red-300">Stock bajo</h2>
+                <p className="mt-1 text-sm text-white/60">Hay productos con 3 unidades o menos disponibles.</p>
+              </div>
+            </div>
+            <div className="max-h-64 overflow-y-auto p-4">
+              <ul className="space-y-2">
+                {productos.filter((p) => Number(p.stock) <= 3).map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-3 border-b border-white/5 px-2 py-2 text-sm last:border-0">
+                    <span className="min-w-0 truncate text-white/80">{p.descrip}</span>
+                    <span className="shrink-0 font-black text-red-300">{p.stock} unid.</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex justify-end border-t border-white/10 p-4">
+              <button onClick={() => setMostrarAlertaStock(false)} className="rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-500">
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

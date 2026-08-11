@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Download, Trash2, Upload, X, Files } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CirclePlay, Download, Trash2, Upload, X, Files, FolderUp, Loader2 } from "lucide-react";
 import { darkenColor } from "../utils/colores";
 
 type ArchivoCita = {
@@ -19,6 +19,10 @@ export default function GaleriaCita({ idCita, color }: Props) {
   const [archivos, setArchivos] = useState<ArchivoCita[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [preview, setPreview] = useState<ArchivoCita | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [errorSubida, setErrorSubida] = useState("");
+  const [progresoSubida, setProgresoSubida] = useState({ actual: 0, total: 0 });
+  const subidaEnCurso = useRef(false);
 
   const cargarArchivos = async () => {
     try {
@@ -40,30 +44,50 @@ export default function GaleriaCita({ idCita, color }: Props) {
   }, [idCita]);
 
   const subirArchivos = async () => {
-    if (files.length === 0) return;
+    if (files.length === 0 || subidaEnCurso.current) return;
 
-    const formData = new FormData();
-
-    files.forEach((file) => {
-      formData.append("archivos", file);
-    });
+    subidaEnCurso.current = true;
+    setSubiendo(true);
+    setErrorSubida("");
+    setProgresoSubida({ actual: 0, total: files.length });
+    let cantidadSubida = 0;
 
     try {
-      const res = await fetch(`${API_URL}/api/citas/${idCita}/archivos`, {
-        method: "POST",
-        body: formData,
-      });
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        const rutaRelativa = file.webkitRelativePath || file.name;
+        const formData = new FormData();
+        formData.append("archivos", file, rutaRelativa);
+        setProgresoSubida({ actual: index + 1, total: files.length });
 
-      const data = await res.json();
+        const res = await fetch(`${API_URL}/api/citas/${idCita}/archivos`, {
+          method: "POST",
+          body: formData,
+        });
 
-      if (res.ok) {
-        setFiles([]);
-        cargarArchivos();
-      } else {
-        console.error("Error al subir archivos:", data);
+        const esJson = res.headers.get("content-type")?.includes("application/json");
+        const data = esJson ? await res.json().catch(() => null) : null;
+
+        if (!res.ok) {
+          const tamanoMb = (file.size / 1024 / 1024).toFixed(1);
+          const mensaje = res.status === 413
+            ? `"${rutaRelativa}" (${tamanoMb} MB) supera el limite de carga del servidor.`
+            : data?.error || `No se pudo subir "${rutaRelativa}" (error ${res.status}).`;
+          throw new Error(mensaje);
+        }
+
+        cantidadSubida += 1;
       }
+
+      setFiles([]);
     } catch (error) {
-      console.error("Error de conexión subiendo archivos:", error);
+      setFiles((actuales) => actuales.slice(cantidadSubida));
+      setErrorSubida(error instanceof Error ? error.message : "Error al subir los archivos.");
+    } finally {
+      if (cantidadSubida > 0) cargarArchivos();
+      subidaEnCurso.current = false;
+      setSubiendo(false);
+      setProgresoSubida({ actual: 0, total: 0 });
     }
   };
 
@@ -109,6 +133,24 @@ export default function GaleriaCita({ idCita, color }: Props) {
             className="max-h-[90vh] max-w-full rounded-xl object-contain"
           />
         );
+      case "mp4":
+      case "webm":
+      case "mov":
+      case "m4v":
+      case "avi":
+      case "mkv":
+        return (
+          <video
+            src={`${API_URL}${archivo.directorio}`}
+            controls
+            autoPlay
+            playsInline
+            preload="metadata"
+            className="max-h-[90vh] max-w-full rounded-xl bg-black"
+          >
+            El navegador no puede reproducir este formato de video.
+          </video>
+        );
       case "doc":
       case "docx":
         return (
@@ -148,6 +190,26 @@ export default function GaleriaCita({ idCita, color }: Props) {
       case "jpeg":
       case "png":
         return <img src={`${API_URL}${archivo.directorio}`} alt={archivo.original} className="h-full w-full object-cover transition group-hover:scale-105" />;
+      case "mp4":
+      case "webm":
+      case "mov":
+      case "m4v":
+      case "avi":
+      case "mkv":
+        return (
+          <div className="relative h-full w-full bg-black">
+            <video
+              src={`${API_URL}${archivo.directorio}`}
+              muted
+              playsInline
+              preload="metadata"
+              className="h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+              <CirclePlay className="h-9 w-9 text-white drop-shadow-lg" />
+            </div>
+          </div>
+        );
       case "doc":
       case "gdoc":
       case "docx":
@@ -178,17 +240,33 @@ export default function GaleriaCita({ idCita, color }: Props) {
           <div className="mb-2 space-y-1">
             {files.map((file, index) => (
               <div key={index} className="truncate text-xs text-white/60">
-                📄 {file.name}
+                {file.webkitRelativePath || file.name}
               </div>
             ))}
           </div>
 
           <button
             onClick={subirArchivos}
-            className="rounded-md bg-orange-600 px-3 py-1 text-xs font-bold text-white hover:bg-orange-700"
+            disabled={subiendo}
+            className="inline-flex min-w-28 items-center justify-center gap-1 rounded-md bg-orange-600 px-3 py-1 text-xs font-bold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Subir archivos
+            {subiendo ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Subiendo {progresoSubida.actual}/{progresoSubida.total}
+              </>
+            ) : (
+              <>
+                <Upload className="h-3.5 w-3.5" />
+                Subir archivos
+              </>
+            )}
           </button>
+          {errorSubida && (
+            <div className="mt-2 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-xs font-semibold text-red-200">
+              {errorSubida}
+            </div>
+          )}
         </div>
       )}
 
@@ -240,20 +318,42 @@ export default function GaleriaCita({ idCita, color }: Props) {
         </div>
       )}
 
-      <label className="flex cursor-pointer items-center gap-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs font-bold text-white/70 hover:border-orange-500/40 w-24 justify-center">
-        <Upload className="h-3.5 w-3.5" />
-        Agregar
-        <input
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files) {
-              setFiles(Array.from(e.target.files));
-            }
-          }}
-        />
-      </label>
+      <div className="flex flex-wrap gap-2">
+        <label className="flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs font-bold text-white/70 hover:border-orange-500/40">
+          <Upload className="h-3.5 w-3.5" />
+          Archivos
+          <input
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) {
+                setFiles(Array.from(e.target.files));
+                setErrorSubida("");
+              }
+              e.currentTarget.value = "";
+            }}
+          />
+        </label>
+
+        <label className="flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-xs font-bold text-orange-200 hover:bg-orange-500/20">
+          <FolderUp className="h-3.5 w-3.5" />
+          Carpeta
+          <input
+            type="file"
+            multiple
+            className="hidden"
+            {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+            onChange={(e) => {
+              if (e.target.files) {
+                setFiles(Array.from(e.target.files));
+                setErrorSubida("");
+              }
+              e.currentTarget.value = "";
+            }}
+          />
+        </label>
+      </div>
 
       {preview && (
         <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 p-4">

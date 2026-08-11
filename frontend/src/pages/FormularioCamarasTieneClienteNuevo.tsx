@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { ClipboardList, Drill, Wrench, CircleDollarSign, SearchAlert, Files } from 'lucide-react';
+import { ClipboardList, Drill, Wrench, CircleDollarSign, SearchAlert, Files, Loader2 } from 'lucide-react';
 import type { Usuarios } from "../types/auth";
 import DatePicker from "react-datepicker";
 import Cotizador from "./Cotizador";
@@ -12,6 +12,7 @@ export default function FormularioCamarasTieneClienteNuevo() {
     const API_URL = import.meta.env.VITE_API_BASE_URL;
     const { user } = useAuth();
     const [loading, setLoading] = useState<boolean>(false);
+    const guardadoEnCurso = useRef(false);
     const navigate = useNavigate();
     const [users, setUsers] = useState<Usuarios[]>([]);
     const [opcionTipoInstalacion, setOpcionTipoInstalacion] = useState<"instalacion" | "soporte" | null>(null);
@@ -134,10 +135,12 @@ export default function FormularioCamarasTieneClienteNuevo() {
 
     const submitFormularioCamarasTiene = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (guardadoEnCurso.current) return;
         if (isSundayKey(formRegistro.fecha)) {
           alert("No se pueden agendar visitas los domingos.");
           return;
         }
+        guardadoEnCurso.current = true;
         setLoading(true);
   
         const datosCompletos = {
@@ -173,30 +176,57 @@ export default function FormularioCamarasTieneClienteNuevo() {
         }
         } catch (error) {
         console.error("Error en la conexión con el backend", error);
+        } finally {
+        guardadoEnCurso.current = false;
+        setLoading(false);
         }
     };
-
     const [alerta, setAlerta] = useState<string | null>(null);
+    const [telefonoDuplicado, setTelefonoDuplicado] = useState(false);
+    const [validandoTelefono, setValidandoTelefono] = useState(false);
 
-  const handleBlur = async () => {
-  if (!formRegistro.telefono) return; // Si el teléfono está vacío no hacer nada
+    const validarTelefono = async () => {
+      const telefono = formRegistro.telefono.replace(/\D/g, "");
+      if (!telefono) {
+        setTelefonoDuplicado(false);
+        setAlerta(null);
+        return;
+      }
 
-  try {
-    const response = await fetch(`/api/clientes/buscar-telefono?telefono=${encodeURIComponent(formRegistro.telefono)}`);
+      setValidandoTelefono(true);
+      try {
+        const response = await fetch(`/api/clientes/buscar-telefono?telefono=${encodeURIComponent(telefono)}`);
+        const data = await response.json();
+        const existe = Boolean(data.existe);
+        setTelefonoDuplicado(existe);
+        setAlerta(existe ? `Número de teléfono ya registrado con el cliente: ${data.cliente.nombre}` : null);
+      } catch (error) {
+        console.error("Error al buscar el teléfono:", error);
+        setTelefonoDuplicado(false);
+        setAlerta("Hubo un error al buscar el teléfono.");
+      } finally {
+        setValidandoTelefono(false);
+      }
+    };
 
-    const data = await response.json();
+    useEffect(() => {
+      setTelefonoDuplicado(false);
+      setAlerta(null);
+      if (!formRegistro.telefono.replace(/\D/g, "")) return;
 
-    if (data.existe) {
-      setAlerta(`Número de teléfono ya registrado con el cliente: ${data.cliente.nombre}`);
-    } else {
-      setAlerta(null); // Si no existe, limpiar la alerta
-    }
-  } catch (error) {
-    console.error("Error al buscar el teléfono:", error);
-    setAlerta("Hubo un error al buscar el teléfono.");
-  }
-};
+      setValidandoTelefono(true);
+      const timer = window.setTimeout(() => {
+        void validarTelefono();
+      }, 400);
+      return () => {
+        window.clearTimeout(timer);
+        setValidandoTelefono(false);
+      };
+    }, [formRegistro.telefono]);
 
+    const handleBlur = () => {
+      void validarTelefono();
+    };
     const [files, setFiles] = useState<File[]>([]);
 
     return (
@@ -446,9 +476,9 @@ export default function FormularioCamarasTieneClienteNuevo() {
               </select>
             </div>
 
-              {formRegistro.nombre && formRegistro.telefono && formRegistro.fecha && hora && opcionTipoInstalacion && (
-                <button className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-orange-600 cursor-pointer" disabled={loading} onClick={submitFormularioCamarasTiene}>
-                  {loading ? "Guardando..." : "Guardar"}
+              {formRegistro.nombre && formRegistro.telefono && formRegistro.fecha && hora && opcionTipoInstalacion && !telefonoDuplicado && !validandoTelefono && (
+                <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-orange-600 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60" disabled={loading} onClick={submitFormularioCamarasTiene}>
+                  {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Guardando...</> : "Guardar"}
                 </button>
               )}
 

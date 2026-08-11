@@ -486,7 +486,7 @@ def inicio():
                         clientes.id AS idcliente,
                         clientes.nombre AS nombre,
                         DATE_FORMAT(citas.dia, '%Y-%m-%d') AS dia,
-                        DATE_FORMAT(citas.hora, '%h:%i') AS hora,
+                        DATE_FORMAT(citas.hora, '%H:%i') AS hora,
                         DATE_FORMAT(citas.hora, '%h:%i %p') AS hora_format,
                         citas.notas AS notas,
                         auth.id AS idagente,
@@ -514,7 +514,8 @@ def inicio():
                     JOIN auth ON auth.id = citas.asignado
                     JOIN citas_estados ON citas_estados.id = citas.estado
                     LEFT JOIN hojas ON hojas.cita = citas.id
-                    LEFT JOIN hojas_inspeccion ON hojas_inspeccion.cita = citas.id;
+                    LEFT JOIN hojas_inspeccion ON hojas_inspeccion.cita = citas.id
+                    ORDER BY citas.dia ASC, citas.hora ASC, citas.id ASC;
                    """)
     citas = cursor.fetchall()
     cursor.execute("SELECT * FROM citas_estados;")
@@ -858,7 +859,23 @@ def nuevo_registro_guardar():
     tipo_cita = "internet" if data.get("tipoRegistro") == "internet" else "camarasdesdecero"
     estado_cita = data.get("estadoCita") if data.get("tipoRegistro") == "internet" and data.get("estadoCita") else 1
     cursor = mysql.connection.cursor()
-    
+    cursor.execute(
+        """
+        SELECT clientes.id, clientes.nombre
+        FROM clientes
+        JOIN citas ON citas.cliente = clientes.id
+        WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(citas.telefono, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = %s
+        LIMIT 1
+        """,
+        (telefono,),
+    )
+    cliente_existente = cursor.fetchone()
+    if cliente_existente:
+        cursor.close()
+        return jsonify({
+            "error": "El número de teléfono ya está registrado",
+            "cliente": cliente_existente,
+        }), 409
     cursor.execute("INSERT INTO clientes (nombre, email, fecha, agente) VALUES (%s, %s, now(), %s)", (datos["nombre"].strip().upper(), datos["email"].strip().lower(), current_user))
     id_cliente = cursor.lastrowid
     cursor.execute("INSERT INTO citas (cliente, dia, hora, creador, tipo, estado, asignado, notas, telefono, domicilio) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (id_cliente, datos["fecha"], data.get("hora"), current_user, tipo_cita, estado_cita, datos["asignado"], data.get("notas").strip(), telefono, datos["direccion"].strip().upper()))
@@ -903,6 +920,23 @@ def nuevo_registro_camaras_tiene_nuevo():
     current_user = data.get("user")["id"]
     
     cursor = mysql.connection.cursor()
+    cursor.execute(
+        """
+        SELECT clientes.id, clientes.nombre
+        FROM clientes
+        JOIN citas ON citas.cliente = clientes.id
+        WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(citas.telefono, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = %s
+        LIMIT 1
+        """,
+        (telefono,),
+    )
+    cliente_existente = cursor.fetchone()
+    if cliente_existente:
+        cursor.close()
+        return jsonify({
+            "error": "El número de teléfono ya está registrado",
+            "cliente": cliente_existente,
+        }), 409
     cursor.execute("INSERT INTO clientes (nombre, email, fecha, agente) VALUES (%s, %s, now(), %s)", (datos["nombre"].strip().upper(), datos["email"].strip().lower(), current_user))
     id_cliente = cursor.lastrowid
     
@@ -946,12 +980,21 @@ def nuevo_registro_camaras_tiene_nuevo():
 
 @app.get("/api/clientes/buscar-telefono")
 def buscar_telefono():
-    telefono = request.args.get("telefono")
+    telefono = re.sub(r"\D", "", request.args.get("telefono") or "")
     if not telefono:
         return jsonify({"error": "Número de teléfono no proporcionado"}), 400
 
     cursor = mysql.connection.cursor()
-    cursor.execute("SELECT clientes.id, clientes.nombre FROM clientes JOIN citas ON citas.cliente = clientes.id WHERE citas.telefono = %s", (telefono,))
+    cursor.execute(
+        """
+        SELECT clientes.id, clientes.nombre
+        FROM clientes
+        JOIN citas ON citas.cliente = clientes.id
+        WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(citas.telefono, ' ', ''), '-', ''), '(', ''), ')', ''), '+', '') = %s
+        LIMIT 1
+        """,
+        (telefono,),
+    )
     cliente = cursor.fetchone()
     
     cursor.close()
@@ -2087,13 +2130,37 @@ def busqueda_clientes():
 
     cursor = mysql.connection.cursor()
     try:
-        query = """
-            SELECT id, nombre, email
+        palabras = [palabra for palabra in q.split() if palabra]
+        telefono = re.sub(r"\D", "", q)
+        condiciones = []
+        parametros = []
+
+        if palabras:
+            condiciones_nombre = " AND ".join(["clientes.nombre LIKE %s"] * len(palabras))
+            condiciones_domicilio = " AND ".join(["citas.domicilio LIKE %s"] * len(palabras))
+            condiciones.extend([f"({condiciones_nombre})", f"({condiciones_domicilio})"])
+            parametros.extend([f"%{palabra}%" for palabra in palabras])
+            parametros.extend([f"%{palabra}%" for palabra in palabras])
+
+        if telefono:
+            condiciones.append("citas.telefono LIKE %s")
+            parametros.append(f"%{telefono}%")
+
+        query = f"""
+            SELECT
+                clientes.id,
+                clientes.nombre,
+                clientes.email,
+                COALESCE(GROUP_CONCAT(DISTINCT NULLIF(citas.telefono, '') SEPARATOR ' / '), '') AS telefono,
+                COALESCE(GROUP_CONCAT(DISTINCT NULLIF(citas.domicilio, '') SEPARATOR ' / '), '') AS domicilio
             FROM clientes
-            WHERE nombre LIKE %s GROUP BY nombre
+            LEFT JOIN citas ON citas.cliente = clientes.id
+            WHERE {' OR '.join(condiciones)}
+            GROUP BY clientes.id, clientes.nombre, clientes.email
+            ORDER BY clientes.nombre ASC
+            LIMIT 20
         """
-        search_term = f"%{q}%"
-        cursor.execute(query, (search_term,))
+        cursor.execute(query, tuple(parametros))
         clientes = cursor.fetchall()
 
         return jsonify({"clientes": clientes}), 200
