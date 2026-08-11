@@ -1251,7 +1251,7 @@ def get_cotizacion(idCotizacion):
 
     cursor.execute(
         """
-        SELECT h.firma_instalacion, h.firma_foto_instalacion, c.tipo AS cita_tipo
+        SELECT h.firma_instalacion, h.firma_foto_instalacion, h.notas, c.tipo AS cita_tipo
         FROM hojas h
         JOIN citas c ON c.id = h.cita
         WHERE h.id = %s
@@ -1261,6 +1261,7 @@ def get_cotizacion(idCotizacion):
     hoja_info = cursor.fetchone()
     firma_instalacion = hoja_info["firma_instalacion"] if hoja_info else None
     firma_foto_instalacion = hoja_info["firma_foto_instalacion"] if hoja_info else None
+    notas = hoja_info["notas"] if hoja_info else None
 
     cursor.close()
 
@@ -1269,6 +1270,7 @@ def get_cotizacion(idCotizacion):
         "total": float(total),
         "firma_instalacion": firma_instalacion,
         "firma_foto_instalacion": firma_foto_instalacion,
+        "notas": notas,
         "cita_tipo": hoja_info.get("cita_tipo") if hoja_info else None,
     }), 200
     
@@ -1497,7 +1499,7 @@ def get_cotizacion_detallada(idCotizacion):
     try:
         cursor.execute(
             """
-            SELECT h.id, h.cita, h.firma_instalacion, h.firma_foto_instalacion, c.tipo as cita_tipo
+            SELECT h.id, h.cita, h.firma_instalacion, h.firma_foto_instalacion, h.notas, c.tipo as cita_tipo
             FROM hojas h
             JOIN citas c ON h.cita = c.id
             WHERE h.id = %s
@@ -1581,6 +1583,7 @@ def get_cotizacion_detallada(idCotizacion):
             "total": float(total),
             "firma_instalacion": hoja_info.get("firma_instalacion"),
             "firma_foto_instalacion": hoja_info.get("firma_foto_instalacion"),
+            "notas": hoja_info.get("notas"),
             "inspeccion_items": inspeccion_items,
             "cita_tipo": hoja_info.get("cita_tipo"),
         }), 200
@@ -1645,6 +1648,7 @@ def confirmar_instalacion_sin_stock(id_hoja):
 @app.post("/api/cotizaciones/<int:id_hoja>/firma-instalacion")
 def guardar_firma_instalacion_con_materiales(id_hoja):
     items_str = request.form.get("items", "[]")
+    notas = request.form.get("notas", "")
     try:
         items = json.loads(items_str)
     except Exception:
@@ -1673,10 +1677,6 @@ def guardar_firma_instalacion_con_materiales(id_hoja):
         if hoja.get("tipo") != "instalacion_confirmada":
             mysql.connection.rollback()
             return jsonify({"error": "La instalacion no esta confirmada aun"}), 400
-
-        if hoja.get("firma_instalacion"):
-            mysql.connection.rollback()
-            return jsonify({"error": "La hoja de instalacion ya esta firmada y no se puede editar"}), 409
 
         productos_insert = []
         producto_ids = []
@@ -1746,91 +1746,96 @@ def guardar_firma_instalacion_con_materiales(id_hoja):
                 rows
             )
 
+        # Update notes
+        cursor.execute("UPDATE hojas SET notas = %s WHERE id = %s", (notas or None, id_hoja))
+
         firma_path = None
         foto_path = None
         productos_actualizados = []
 
         if archivo_firma:
-            id_cita = hoja["cita"]
-            carpeta = os.path.join(UPLOADS_DIR, f"cita_{id_cita}")
-            os.makedirs(carpeta, exist_ok=True)
-
-            cursor.execute(
-                """
-                SELECT
-                    hp.producto,
-                    hp.cantidad,
-                    p.descrip,
-                    p.stock
-                FROM hojas_productos hp
-                JOIN productos p ON p.id = hp.producto
-                WHERE hp.hoja = %s
-                FOR UPDATE
-                """,
-                (id_hoja,)
-            )
-            productos = cursor.fetchall()
-
-            sin_stock = [
-                {
-                    "id": producto["producto"],
-                    "descrip": producto["descrip"],
-                    "stock": int(producto["stock"] or 0),
-                    "cantidad": int(producto["cantidad"] or 0),
-                }
-                for producto in productos
-                if int(producto["stock"] or 0) < int(producto["cantidad"] or 0)
-            ]
-
-            if sin_stock:
-                mysql.connection.rollback()
-                return jsonify({
-                    "error": "Stock insuficiente para firmar la instalacion",
-                    "productos": sin_stock,
-                }), 409
-
-            for producto in productos:
-                cantidad = int(producto["cantidad"] or 0)
-                producto_id = int(producto["producto"])
-                stock_anterior = int(producto["stock"] or 0)
+            # Solo descontar del stock y guardar firma si NO tiene firma guardada
+            if not hoja.get("firma_instalacion"):
+                id_cita = hoja["cita"]
+                carpeta = os.path.join(UPLOADS_DIR, f"cita_{id_cita}")
+                os.makedirs(carpeta, exist_ok=True)
 
                 cursor.execute(
                     """
-                    UPDATE productos
-                    SET stock = stock - %s
-                    WHERE id = %s
+                    SELECT
+                        hp.producto,
+                        hp.cantidad,
+                        p.descrip,
+                        p.stock
+                    FROM hojas_productos hp
+                    JOIN productos p ON p.id = hp.producto
+                    WHERE hp.hoja = %s
+                    FOR UPDATE
                     """,
-                    (cantidad, producto_id)
+                    (id_hoja,)
                 )
+                productos = cursor.fetchall()
 
-                productos_actualizados.append({
-                    "id": producto_id,
-                    "descrip": producto["descrip"],
-                    "cantidad_descontada": cantidad,
-                    "stock_anterior": stock_anterior,
-                    "stock_actual": stock_anterior - cantidad,
-                })
+                sin_stock = [
+                    {
+                        "id": producto["producto"],
+                        "descrip": producto["descrip"],
+                        "stock": int(producto["stock"] or 0),
+                        "cantidad": int(producto["cantidad"] or 0),
+                    }
+                    for producto in productos
+                    if int(producto["stock"] or 0) < int(producto["cantidad"] or 0)
+                ]
 
-            nombre_seguro_firma = secure_filename(archivo_firma.filename)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            nombre_final_firma = f"firma_inst_{timestamp}_{nombre_seguro_firma}"
-            archivo_firma.save(os.path.join(carpeta, nombre_final_firma))
-            firma_path = f"/uploads/cita_{id_cita}/{nombre_final_firma}"
+                if sin_stock:
+                    mysql.connection.rollback()
+                    return jsonify({
+                        "error": "Stock insuficiente para firmar la instalacion",
+                        "productos": sin_stock,
+                    }), 409
 
-            if archivo_foto:
-                nombre_seguro_foto = secure_filename(archivo_foto.filename)
-                nombre_final_foto = f"foto_firma_inst_{timestamp}_{nombre_seguro_foto}"
-                archivo_foto.save(os.path.join(carpeta, nombre_final_foto))
-                foto_path = f"/uploads/cita_{id_cita}/{nombre_final_foto}"
-                cursor.execute(
-                    "UPDATE hojas SET firma_instalacion = %s, firma_foto_instalacion = %s WHERE id = %s",
-                    (firma_path, foto_path, id_hoja)
-                )
-            else:
-                cursor.execute(
-                    "UPDATE hojas SET firma_instalacion = %s WHERE id = %s",
-                    (firma_path, id_hoja)
-                )
+                for producto in productos:
+                    cantidad = int(producto["cantidad"] or 0)
+                    producto_id = int(producto["producto"])
+                    stock_anterior = int(producto["stock"] or 0)
+
+                    cursor.execute(
+                        """
+                        UPDATE productos
+                        SET stock = stock - %s
+                        WHERE id = %s
+                        """,
+                        (cantidad, producto_id)
+                    )
+
+                    productos_actualizados.append({
+                        "id": producto_id,
+                        "descrip": producto["descrip"],
+                        "cantidad_descontada": cantidad,
+                        "stock_anterior": stock_anterior,
+                        "stock_actual": stock_anterior - cantidad,
+                    })
+
+                nombre_seguro_firma = secure_filename(archivo_firma.filename)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                nombre_final_firma = f"firma_inst_{timestamp}_{nombre_seguro_firma}"
+                archivo_firma.save(os.path.join(carpeta, nombre_final_firma))
+                firma_path = f"/uploads/cita_{id_cita}/{nombre_final_firma}"
+
+                if archivo_foto:
+                    nombre_seguro_foto = secure_filename(archivo_foto.filename)
+                    nombre_final_foto = f"foto_firma_inst_{timestamp}_{nombre_seguro_foto}"
+                    archivo_foto.save(os.path.join(carpeta, nombre_final_foto))
+                    foto_path = f"/uploads/cita_{id_cita}/{nombre_final_foto}"
+                    cursor.execute(
+                        "UPDATE hojas SET firma_instalacion = %s, firma_foto_instalacion = %s WHERE id = %s",
+                        (firma_path, foto_path, id_hoja)
+                    )
+                else:
+                    cursor.execute(
+                        "UPDATE hojas SET firma_instalacion = %s WHERE id = %s",
+                        (firma_path, id_hoja)
+                    )
 
         mysql.connection.commit()
 
