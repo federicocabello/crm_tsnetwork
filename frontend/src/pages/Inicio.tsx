@@ -80,6 +80,8 @@ type CitasEstados = {
 type Cliente = {
   id: number;
   nombre: string;
+  telefono?: string;
+  domicilio?: string;
 };
 
 type BuscarCitas = {
@@ -118,6 +120,22 @@ function addDays(dateKey: string, delta: number) {
   const d = fromDateKey(dateKey);
   d.setDate(d.getDate() + delta);
   return toDateKey(d);
+}
+
+function horaEnMinutos(hora: string | null | undefined) {
+  if (!hora) return Number.MAX_SAFE_INTEGER;
+
+  const match = hora.trim().match(/^(\d{1,2}):(\d{2})(?:\s*(AM|PM))?$/i);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+
+  let horas = Number(match[1]);
+  const minutos = Number(match[2]);
+  const periodo = match[3]?.toUpperCase();
+
+  if (periodo === "AM" && horas === 12) horas = 0;
+  if (periodo === "PM" && horas !== 12) horas += 12;
+
+  return horas * 60 + minutos;
 }
 
 function isSundayDate(date: Date) {
@@ -272,7 +290,11 @@ export default function Inicio() {
         if (user?.rol === "tecnico" && Number(i.idagente) !== Number(user?.id)) return false;
         return true;
       })
-      .sort((a, b) => a.hora.localeCompare(b.hora));
+      .sort((a, b) => {
+        const diferenciaHora = horaEnMinutos(a.hora) - horaEnMinutos(b.hora);
+        if (diferenciaHora !== 0) return diferenciaHora;
+        return Number(a.idcita) - Number(b.idcita);
+      });
   }, [items, selectedDay, user]);
 
   const [citasEstados, setCitasEstados] = useState<CitasEstados[]>([]);
@@ -287,7 +309,6 @@ export default function Inicio() {
 
   const [loading, setLoading] = useState(true);
   const [loading2, setLoading2] = useState(false);
-  const [lowStockProducts, setLowStockProducts] = useState<any[]>([]);
   const [cuotasAlertas, setCuotasAlertas] = useState<CuotaAlerta[]>([]);
   const [induccionCompleta, setInduccionCompleta] = useState(false);
 
@@ -484,25 +505,6 @@ export default function Inicio() {
     setOpenModalConfirm(false);
     setIdHojaConfirmar(null);
   }
-
-  useEffect(() => {
-    const chequearStock = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/productos`);
-        if (res.ok) {
-          const prods = await res.json();
-          const pocos = prods.filter((p: any) => p.stock <= 3);
-          if (pocos.length > 0) {
-            setLowStockProducts(pocos);
-          }
-        }
-      } catch (error) {
-        console.error("Error verificando stock:", error);
-      }
-    };
-
-    chequearStock();
-  }, []);
 
   useEffect(() => {
     if (user?.rol == "tecnico") {
@@ -962,7 +964,14 @@ export default function Inicio() {
                     onClick={() => {
                       seleccionarCliente(c.id, c.nombre);
                     }}>
-                    <span>{c.nombre}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-bold">{c.nombre}</span>
+                      {(c.telefono || c.domicilio) && (
+                        <span className="block truncate text-[11px] text-white/55">
+                          {[c.telefono, c.domicilio].filter(Boolean).join(" - ")}
+                        </span>
+                      )}
+                    </span>
                     <span hidden={!esSeleccionado}>
                       <CircleCheck className="w-4 h-4" />
                     </span>
@@ -1827,47 +1836,6 @@ export default function Inicio() {
             onConfirm={handleConfirmInstalacion}
             onCancel={handleCancelModal}
           />
-        )}
-
-        {lowStockProducts.length > 0 && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-            <div className="bg-zinc-900 border border-red-500/30 rounded-3xl w-full max-w-md shadow-2xl shadow-red-500/10 overflow-hidden">
-              <div className="bg-red-500/10 p-6 flex flex-col items-center border-b border-red-500/20">
-                <div className="bg-red-500/20 p-3 rounded-full mb-3">
-                  <TriangleAlert className="w-8 h-8 text-red-500" />
-                </div>
-                <h2 className="text-xl font-black text-red-400">
-                  Alerta Stock
-                </h2>
-                <p className="text-sm text-red-200/70 text-center mt-2">
-                  Los siguientes productos están a punto de agotarse.
-                </p>
-              </div>
-              <div className="p-6 max-h-[40vh] overflow-y-auto">
-                <ul className="space-y-3">
-                  {lowStockProducts.map((p) => (
-                    <li
-                      key={p.id}
-                      className="flex items-center justify-between bg-zinc-950 p-3 rounded-xl border border-white/5">
-                      <span className="text-white/80 font-medium">
-                        {p.descrip}
-                      </span>
-                      <span className="font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-lg text-sm">
-                        {p.stock} unid.
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="p-4 border-t border-white/10 bg-zinc-950/50 flex justify-end">
-                <button
-                  onClick={() => setLowStockProducts([])}
-                  className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-xl transition-colors">
-                  Entendido
-                </button>
-              </div>
-            </div>
-          </div>
         )}
         <style>{`
           .react-datepicker {

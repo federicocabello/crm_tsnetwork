@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Download, Trash2, Upload, X, Files, FolderUp, Loader2 } from "lucide-react";
+import { CirclePlay, Download, Trash2, Upload, X, Files, FolderUp, Loader2 } from "lucide-react";
 import { darkenColor } from "../utils/colores";
 
 type ArchivoCita = {
@@ -133,6 +133,24 @@ export default function GaleriaCita({ idCita, color }: Props) {
             className="max-h-[90vh] max-w-full rounded-xl object-contain"
           />
         );
+      case "mp4":
+      case "webm":
+      case "mov":
+      case "m4v":
+      case "avi":
+      case "mkv":
+        return (
+          <video
+            src={`${API_URL}${archivo.directorio}`}
+            controls
+            autoPlay
+            playsInline
+            preload="metadata"
+            className="max-h-[90vh] max-w-full rounded-xl bg-black"
+          >
+            El navegador no puede reproducir este formato de video.
+          </video>
+        );
       case "doc":
       case "docx":
         return (
@@ -172,6 +190,26 @@ export default function GaleriaCita({ idCita, color }: Props) {
       case "jpeg":
       case "png":
         return <img src={`${API_URL}${archivo.directorio}`} alt={archivo.original} className="h-full w-full object-cover transition group-hover:scale-105" />;
+      case "mp4":
+      case "webm":
+      case "mov":
+      case "m4v":
+      case "avi":
+      case "mkv":
+        return (
+          <div className="relative h-full w-full bg-black">
+            <video
+              src={`${API_URL}${archivo.directorio}`}
+              muted
+              playsInline
+              preload="metadata"
+              className="h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+              <CirclePlay className="h-9 w-9 text-white drop-shadow-lg" />
+            </div>
+          </div>
+        );
       case "doc":
       case "gdoc":
       case "docx":

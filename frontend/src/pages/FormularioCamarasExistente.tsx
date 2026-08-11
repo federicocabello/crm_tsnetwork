@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { ClipboardList, Drill, Wrench, CircleDollarSign, Files, Home, Phone } from 'lucide-react';
+import { ClipboardList, Drill, Wrench, CircleDollarSign, Files, Home, Phone, Loader2 } from 'lucide-react';
 import type { Usuarios } from "../types/auth";
 import DatePicker from "react-datepicker";
 import Cotizador from "./Cotizador";
@@ -35,6 +35,8 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null);
   const [mostrarMenu, setMostrarMenu] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const guardadoEnCurso = useRef(false);
   const [users, setUsers] = useState<Usuarios[]>([]);
   const [citasEstados, setCitasEstados] = useState<EstadoCita[]>([]);
   const { user } = useAuth();
@@ -241,10 +243,13 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
   
       const submitFormularioCamarasTiene = async (e: React.FormEvent) => {
           e.preventDefault();
+          if (guardadoEnCurso.current) return;
           if (isSundayKey(formRegistro.fecha)) {
             alert("No se pueden agendar visitas los domingos.");
             return;
           }
+          guardadoEnCurso.current = true;
+          setGuardando(true);
     
           const datosCompletos = {
           datos: formRegistro,
@@ -282,6 +287,9 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
           }
           } catch (error) {
           console.error("Error en la conexión con el backend", error);
+          } finally {
+          guardadoEnCurso.current = false;
+          setGuardando(false);
           }
       };
 
@@ -574,8 +582,8 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
                     </div>
         
                       {clienteSeleccionado && formRegistro.fecha && hora && ((esInternet && estadoInternet) || (!esInternet && opcionTipoInstalacion)) && (
-                        <button className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-orange-600 cursor-pointer mt-3 w-full" disabled={loading} onClick={submitFormularioCamarasTiene}>
-                          {loading ? "Guardando..." : "Guardar"}
+                        <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-orange-600 cursor-pointer mt-3 disabled:cursor-not-allowed disabled:opacity-60" disabled={guardando} onClick={submitFormularioCamarasTiene}>
+                          {guardando ? <><Loader2 className="h-4 w-4 animate-spin" />Guardando...</> : "Guardar"}
                         </button>
                       )}
 
