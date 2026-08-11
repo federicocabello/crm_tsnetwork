@@ -9,6 +9,7 @@ import {
   FileText,
   PencilRuler,
   ListChecks,
+  StickyNote,
 } from "lucide-react";
 import CanvasDibujo from "./CanvasDibujo";
 import FirmaModal from "./FirmaModal";
@@ -69,7 +70,9 @@ export default function HojaInspeccion({
   const [cantidad, setCantidad] = useState<number>(1);
   const [detalle, setDetalle] = useState<string>("");
 
-  const [activeTab, setActiveTab] = useState<"materiales" | "dibujo">(
+  const [notas, setNotas] = useState<string>("");
+
+  const [activeTab, setActiveTab] = useState<"materiales" | "dibujo" | "notas">(
     "materiales",
   );
   const [dibujoFile, setDibujoFile] = useState<File | null>(null);
@@ -79,8 +82,8 @@ export default function HojaInspeccion({
   const [showFirmaModal, setShowFirmaModal] = useState(false);
   const [showFotoModal, setShowFotoModal] = useState(false);
 
-  // Bloqueada cuando tiene firma guardada — no admite modificaciones
-  const bloqueada = Boolean(firmaUrl);
+  // La firma es inmutable, pero la hoja siempre se puede editar
+  const bloqueada = false;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -117,6 +120,9 @@ export default function HojaInspeccion({
             setFirmaFotoUrl(API_URL + dataInspeccion.firma_foto_instalacion);
           } else {
             setFirmaFotoUrl(null);
+          }
+          if (dataInspeccion.notas) {
+            setNotas(dataInspeccion.notas);
           }
           if (dataInspeccion.items && dataInspeccion.items.length > 0) {
             // Tiene items guardados en la inspección → úsalos y no cargar cotización
@@ -226,12 +232,13 @@ export default function HojaInspeccion({
     setCargadoDeCotizacion(false);
   };
 
-  // Guarda solo materiales / cambios sin requerir firma
+  // Guarda materiales, notas y dibujo sin requerir firma
   const handleSaveWithoutFirma = async () => {
     setSaving(true);
     try {
       const formData = new FormData();
       formData.append("items", JSON.stringify(items));
+      formData.append("notas", notas);
       if (dibujoFile) {
         formData.append("dibujo", dibujoFile);
       }
@@ -273,10 +280,11 @@ export default function HojaInspeccion({
     try {
       const formData = new FormData();
       formData.append("items", JSON.stringify(items));
+      formData.append("notas", notas);
       if (dibujoFile) {
         formData.append("dibujo", dibujoFile);
       }
-      // Adjuntar la firma como archivo PNG
+      // Adjuntar la firma como archivo PNG (solo se guarda si no existe ya)
       const firmaFile = new File([firmaBlob], "firma.png", {
         type: "image/png",
       });
@@ -596,7 +604,7 @@ export default function HojaInspeccion({
                   Hoja de Inspección
                 </h2>
                 <p className="text-xs text-white/50">
-                  {bloqueada ? "Firmada · Solo lectura" : "Materiales para la instalación"}
+                  {firmaUrl ? "Hoja firmada · Editable" : "Materiales para la instalación"}
                 </p>
               </div>
             </div>
@@ -607,11 +615,11 @@ export default function HojaInspeccion({
             </button>
           </div>
 
-          {/* Banner solo lectura */}
-          {bloqueada && (
-            <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2 shrink-0">
-              <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">🔒 Hoja firmada — Solo lectura</span>
-              <span className="text-amber-400/60 text-xs">No se pueden realizar modificaciones.</span>
+          {/* Banner informativo cuando tiene firma */}
+          {firmaUrl && (
+            <div className="bg-emerald-500/10 border-b border-emerald-500/30 px-4 py-2 flex items-center gap-2 shrink-0">
+              <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">✅ Hoja firmada</span>
+              <span className="text-emerald-400/60 text-xs">Puedes modificar materiales, mapa y notas. La firma no se puede cambiar.</span>
             </div>
           )}
 
@@ -638,6 +646,19 @@ export default function HojaInspeccion({
                 }`}>
                 <PencilRuler className="w-4 h-4" />
                 Mapa
+              </button>
+              <button
+                onClick={() => setActiveTab("notas")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-bold transition-colors ${
+                  activeTab === "notas"
+                    ? "bg-white/10 text-white"
+                    : "text-white/40 hover:bg-white/5 hover:text-white/80"
+                }`}>
+                <StickyNote className="w-4 h-4" />
+                Notas
+                {notas.trim() && (
+                  <span className="ml-1 h-2 w-2 rounded-full bg-orange-400 shrink-0" />
+                )}
               </button>
             </div>
 
@@ -795,13 +816,30 @@ export default function HojaInspeccion({
                   )}
                 </div>
               </>
-            ) : (
+            ) : activeTab === "dibujo" ? (
               /* Dibujo Tab */
               <CanvasDibujo
                 initialImage={dibujoUrl}
                 onImageChange={(file) => setDibujoFile(file)}
-                readOnly={bloqueada}
+                readOnly={false}
               />
+            ) : (
+              /* Notas Tab */
+              <div className="flex-1 flex flex-col p-4 min-h-0">
+                <p className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">
+                  Notas de inspección
+                </p>
+                <textarea
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  placeholder="Escribe aquí observaciones generales, condiciones del lugar, acuerdos, etc."
+                  rows={10}
+                  className="flex-1 w-full bg-zinc-950/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 resize-none leading-relaxed"
+                />
+                <p className="text-xs text-white/25 mt-2">
+                  Las notas se guardan junto con los materiales al presionar "Guardar Cambios".
+                </p>
+              </div>
             )}
           </div>
 
