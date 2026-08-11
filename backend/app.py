@@ -2652,7 +2652,7 @@ def get_inspeccion(id_cita):
         cita_row = cursor.fetchone()
         cita_tipo = cita_row.get("tipo") if cita_row else None
 
-        cursor.execute("SELECT id, dibujo, firma FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
+        cursor.execute("SELECT id, dibujo, firma, notas FROM hojas_inspeccion WHERE cita = %s", (id_cita,))
         inspeccion = cursor.fetchone()
         
         if not inspeccion:
@@ -2661,6 +2661,7 @@ def get_inspeccion(id_cita):
                 "items": [],
                 "dibujo": None,
                 "firma": None,
+                "notas": None,
                 "firma_foto_instalacion": firma_foto_instalacion,
                 "cita_tipo": cita_tipo,
             }), 200
@@ -2668,6 +2669,7 @@ def get_inspeccion(id_cita):
         inspeccion_id = inspeccion["id"]
         dibujo = inspeccion.get("dibujo")
         firma  = inspeccion.get("firma")
+        notas  = inspeccion.get("notas")
         
         cursor.execute("""
             SELECT 
@@ -2688,6 +2690,7 @@ def get_inspeccion(id_cita):
             "items": items,
             "dibujo": dibujo,
             "firma": firma,
+            "notas": notas,
             "firma_foto_instalacion": firma_foto_instalacion,
             "cita_tipo": cita_tipo,
         }), 200
@@ -2834,8 +2837,10 @@ def guardar_inspeccion(id_cita):
     if request.is_json:
         data = request.get_json(silent=True) or {}
         items = data.get("items") or []
+        notas = data.get("notas", "")
     else:
         items_str = request.form.get("items", "[]")
+        notas = request.form.get("notas", "")
         try:
             items = json.loads(items_str)
         except:
@@ -2850,10 +2855,11 @@ def guardar_inspeccion(id_cita):
         inspeccion = cursor.fetchone()
         
         if not inspeccion:
-            cursor.execute("INSERT INTO hojas_inspeccion (cita) VALUES (%s)", (id_cita,))
+            cursor.execute("INSERT INTO hojas_inspeccion (cita, notas) VALUES (%s, %s)", (id_cita, notas or None))
             inspeccion_id = cursor.lastrowid
         else:
             inspeccion_id = inspeccion["id"]
+            cursor.execute("UPDATE hojas_inspeccion SET notas = %s WHERE id = %s", (notas or None, inspeccion_id))
             
         carpeta = os.path.join(UPLOADS_DIR, f"cita_{id_cita}")
         os.makedirs(carpeta, exist_ok=True)
@@ -2868,14 +2874,17 @@ def guardar_inspeccion(id_cita):
             dibujo_path = f"/uploads/cita_{id_cita}/{nombre_final}"
             cursor.execute("UPDATE hojas_inspeccion SET dibujo = %s WHERE id = %s", (dibujo_path, inspeccion_id))
 
-        # Process signature upload if exists
+        # Process signature upload if exists — la firma nunca se puede reemplazar si ya existe
         if archivo_firma:
-            nombre_seguro_firma = secure_filename(archivo_firma.filename)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            nombre_final_firma = f"firma_{timestamp}_{nombre_seguro_firma}"
-            archivo_firma.save(os.path.join(carpeta, nombre_final_firma))
-            firma_path = f"/uploads/cita_{id_cita}/{nombre_final_firma}"
-            cursor.execute("UPDATE hojas_inspeccion SET firma = %s WHERE id = %s", (firma_path, inspeccion_id))
+            cursor.execute("SELECT firma FROM hojas_inspeccion WHERE id = %s", (inspeccion_id,))
+            existing = cursor.fetchone()
+            if not existing or not existing.get("firma"):
+                nombre_seguro_firma = secure_filename(archivo_firma.filename)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                nombre_final_firma = f"firma_{timestamp}_{nombre_seguro_firma}"
+                archivo_firma.save(os.path.join(carpeta, nombre_final_firma))
+                firma_path = f"/uploads/cita_{id_cita}/{nombre_final_firma}"
+                cursor.execute("UPDATE hojas_inspeccion SET firma = %s WHERE id = %s", (firma_path, inspeccion_id))
             
         cursor.execute("DELETE FROM hojas_inspeccion_items WHERE inspeccion_id = %s", (inspeccion_id,))
         
