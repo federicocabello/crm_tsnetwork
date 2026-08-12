@@ -1105,6 +1105,41 @@ def agenda_cambiar_estado():
     return jsonify(), 201
 
 
+@app.post("/api/agenda/cambiar-asignado")
+def agenda_cambiar_asignado():
+    data = request.get_json(silent=True) or {}
+    id_cita = data.get("idcita")
+    nuevo_asignado = data.get("nuevoAsignado")
+
+    if not id_cita or not nuevo_asignado:
+        return jsonify({"error": "Faltan datos"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            "SELECT id FROM auth WHERE id = %s AND habilitado = 1",
+            (nuevo_asignado,),
+        )
+        if not cursor.fetchone():
+            return jsonify({"error": "Agente no disponible"}), 404
+
+        cursor.execute(
+            "UPDATE citas SET asignado = %s WHERE id = %s",
+            (nuevo_asignado, id_cita),
+        )
+        if cursor.rowcount == 0:
+            mysql.connection.rollback()
+            return jsonify({"error": "Cita no encontrada"}), 404
+
+        mysql.connection.commit()
+        return jsonify({"msg": "Agente asignado actualizado"}), 200
+    except Exception as error:
+        mysql.connection.rollback()
+        return jsonify({"error": str(error)}), 500
+    finally:
+        cursor.close()
+
+
 @app.get("/api/productos")
 def get_productos():
     categoria = (request.args.get("categoria") or "todos").strip().lower()
