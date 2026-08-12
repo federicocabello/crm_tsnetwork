@@ -1049,6 +1049,7 @@ export default function HojaInstalacion({
                   </p>
                 </div>
               )}
+            </div>
           )}
 
           {firmaUrl && (
