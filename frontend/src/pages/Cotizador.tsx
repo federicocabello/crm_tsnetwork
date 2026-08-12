@@ -212,10 +212,10 @@ useEffect(() => {
   }, [rows]);
 
   return (
-    <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="flex h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 shadow-2xl">
+    <div className="fixed inset-0 z-70 flex items-center justify-center overflow-y-auto bg-black/80 p-2 backdrop-blur-sm sm:p-4">
+      <div className="my-auto flex h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl sm:h-[90vh] sm:rounded-3xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 bg-zinc-900/80 px-6 py-4">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 bg-zinc-900/80 px-4 py-3 sm:items-center sm:px-6 sm:py-4">
           <div>
             <h1 className="text-xl font-bold text-white">Nueva cotización</h1>
             <p className="text-sm text-white/50">
@@ -234,16 +234,16 @@ useEffect(() => {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-6">
           {/* Buscador */}
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
               {categoriaServicio && (
                 <span className="rounded-full border border-orange-400/30 bg-orange-400/10 px-3 py-1 text-xs font-bold text-orange-200">
                   Mostrando: {categoriaServicio === "camaras" ? "Cámaras" : "Internet"}
                 </span>
               )}
-            <div className="relative w-full max-w-md">
+            <div className="relative w-full sm:max-w-md">
               <input
                 type="text"
                 placeholder="Buscar producto por nombre..."
@@ -263,8 +263,8 @@ useEffect(() => {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-white/10">
-            <table className="w-full min-w-900px text-sm">
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full min-w-[900px] text-sm">
               <thead className="sticky top-0 z-10 bg-orange-600 text-left text-xs uppercase tracking-wide text-white">
                 <tr>
                   <th className="px-4 py-3">Producto</th>
@@ -356,7 +356,7 @@ useEffect(() => {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-white/10 bg-zinc-900/80 px-6 py-4">
+        <div className="shrink-0 border-t border-white/10 bg-zinc-900/80 px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-wide text-white/40">
