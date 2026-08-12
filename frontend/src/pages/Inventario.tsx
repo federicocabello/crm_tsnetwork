@@ -159,13 +159,23 @@ export default function Inventario() {
 
   return (
     <div className="w-full h-full min-h-0 flex flex-col gap-3">
-      <div className="w-full cuadro shrink-0 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Package className="w-6 h-6 text-orange-500" />
-          <h1 className="text-xl font-extrabold tracking-tight">Inventario</h1>
+      <div className="w-full cuadro shrink-0 flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Package className="w-6 h-6 text-orange-500" />
+            <h1 className="text-xl font-extrabold tracking-tight">Inventario</h1>
+          </div>
+
+          <button
+            onClick={() => setAddingProduct(true)}
+            className="flex shrink-0 items-center gap-2 boton bg-orange-500 text-white hover:bg-orange-600 px-3 py-1.5 text-sm">
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Nuevo Producto</span>
+            <span className="sm:hidden">Nuevo</span>
+          </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg border border-white/10 bg-zinc-900 p-1">
             {(["todos", "internet", "camaras", "ambos"] as FiltroCategoria[]).map(
               (categoria) => (
@@ -193,28 +203,22 @@ export default function Inventario() {
             <TriangleAlert className="h-4 w-4" />
             Stock bajo
           </button>
-          <div className="flex items-center gap-2 bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-orange-500/50 transition-colors">
+          <div className="flex w-full items-center gap-2 bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-orange-500/50 transition-colors sm:w-auto">
             <Search className="w-4 h-4 text-white/50" />
             <input
               type="text"
               placeholder="Buscar por descripción o ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none outline-none text-sm text-white placeholder:text-white/30 w-64"
+              className="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-white/30 sm:w-64"
             />
           </div>
 
-          <button
-            onClick={() => setAddingProduct(true)}
-            className="flex items-center gap-2 boton bg-orange-500 text-white hover:bg-orange-600 px-3 py-1.5 text-sm">
-            <Plus className="w-4 h-4" />
-            Nuevo Producto
-          </button>
         </div>
       </div>
 
       <div className="flex-1 min-h-0 cuadro overflow-hidden flex flex-col">
-        <div className="overflow-y-auto">
+        <div className="overflow-x-auto overflow-y-auto">
           <table className="w-full text-left text-sm text-white/80">
             <thead className="bg-zinc-900/50 text-xs uppercase text-white/60 sticky top-0 backdrop-blur-md z-10">
               <tr>

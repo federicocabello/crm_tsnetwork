@@ -76,8 +76,8 @@ export default function EditAgendaModal({
     };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-      <div className="w-1/2 rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4">
+      <div className="my-auto w-full max-w-lg rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-xl">
         <div className="mb-4 flex items-center gap-2">
             <Pencil className="text-white h-4 w-4" />
             <h2 className="text-lg font-bold text-white">Editar cita</h2>
@@ -120,12 +120,12 @@ export default function EditAgendaModal({
                 name="notas"
                 value={form.notas || ""}
                 onChange={handleChange}
-                rows={12}
+                rows={6}
                 className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40"
                 />
             </div>
 
-            <div className="flex justify-between">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row">
 
                 <div>
                     <label className="text-xs text-white/60">Fecha</label>

@@ -85,7 +85,7 @@ export default function Sidebar() {
   }, [API_URL, role]);
 
   return (
-    <aside className="fixed left-0 top-0 z-30 h-screen w-16 border-r border-white/10 bg-white/5 backdrop-blur-xl">
+    <aside className="fixed left-0 top-0 z-20 h-screen w-16 border-r border-white/10 bg-white/5 backdrop-blur-xl">
       <nav className="p-3 space-y-2">
         {items.map((it) => {
           const Icon = it.icon;

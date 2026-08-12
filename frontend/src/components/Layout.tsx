@@ -89,7 +89,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             />
           </div>
           {/* bg-zinc-900 p-4 border border-white/10 shadow-lg shadow-black/20 */}
-          <div className="relative z-10 h-full min-h-0">{children}</div>
+          <div className="relative h-full min-h-0">{children}</div>
         </main>
       </div>
     </div>
