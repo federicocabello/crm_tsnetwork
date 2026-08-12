@@ -560,6 +560,24 @@ export default function Inicio() {
     }
   };
 
+  const cambiarAsignado = async (idcita: string, nuevoAsignado: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/agenda/cambiar-asignado`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idcita, nuevoAsignado }),
+      });
+
+      if (res.ok) {
+        await cargarInicio();
+      } else {
+        console.error("Error al cambiar el asignado. Código:", res.status);
+      }
+    } catch (err) {
+      console.error("Error de conexión al cambiar el asignado:", err);
+    }
+  };
+
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
 
@@ -1219,9 +1237,19 @@ export default function Inicio() {
                       </div>
 
                       <div className="shrink-0 lg:text-right">
-                        <span className="text-xs italic text-white/60">
-                          Asignado a <strong>{it.fullname}</strong>
-                        </span>
+                        <select
+                          value={String(it.idagente)}
+                          onChange={(e) => void cambiarAsignado(it.idcita, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Asignado a ${it.fullname}`}
+                          title="Cambiar agente asignado"
+                          className="max-w-44 cursor-pointer bg-transparent text-right text-xs italic text-white/60 outline-none">
+                          {users.map((agente) => (
+                            <option key={agente.id} value={agente.id} className="bg-white text-black">
+                              Asignado a {agente.fullname}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
@@ -1470,9 +1498,19 @@ export default function Inicio() {
                       </div>
 
                       <div className="shrink-0 lg:text-right">
-                        <span className="text-xs italic text-white/60">
-                          Asignado a <strong>{it.fullname}</strong>
-                        </span>
+                        <select
+                          value={String(it.idagente)}
+                          onChange={(e) => void cambiarAsignado(it.idcita, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Asignado a ${it.fullname}`}
+                          title="Cambiar agente asignado"
+                          className="max-w-44 cursor-pointer bg-transparent text-right text-xs italic text-white/60 outline-none">
+                          {users.map((agente) => (
+                            <option key={agente.id} value={agente.id} className="bg-white text-black">
+                              Asignado a {agente.fullname}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 

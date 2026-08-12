@@ -264,7 +264,7 @@ export default function Registros() {
             No hay registros para los filtros seleccionados.
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <div className="flex w-full flex-col gap-3">
             {registrosFiltrados.map((registro) => {
               const atrasada = isOverdue(registro);
 
