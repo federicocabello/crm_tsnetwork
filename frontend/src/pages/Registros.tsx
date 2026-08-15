@@ -4,7 +4,9 @@ import {
   AlertTriangle,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   Clock,
+  ExternalLink,
   Filter,
   ListTodo,
   MapPin,
@@ -122,6 +124,7 @@ export default function Registros() {
   const [tipo, setTipo] = useState<FiltroTipo>("todos");
   const [estado, setEstado] = useState("todos");
   const [agente, setAgente] = useState("todos");
+  const [registroAbierto, setRegistroAbierto] = useState<number | null>(null);
 
   useEffect(() => {
     const cargarRegistros = async () => {
@@ -267,19 +270,24 @@ export default function Registros() {
           <div className="flex w-full flex-col gap-3">
             {registrosFiltrados.map((registro) => {
               const atrasada = isOverdue(registro);
+              const abierto = registroAbierto === registro.idcita;
 
               return (
                 <article
                   key={registro.idcita}
                   role="button"
                   tabIndex={0}
-                  onClick={() => navigate(`/inicio?dia=${registro.dia}`, { state: { citaResaltada: String(registro.idcita) } })}
+                  aria-expanded={abierto}
+                  onClick={() => setRegistroAbierto(abierto ? null : registro.idcita)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") navigate(`/inicio?dia=${registro.dia}`, { state: { citaResaltada: String(registro.idcita) } });
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setRegistroAbierto(abierto ? null : registro.idcita);
+                    }
                   }}
-                  className="cursor-pointer rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20 transition hover:border-orange-500/25 hover:bg-white/[0.07]">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
+                  className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-4 py-3 shadow-lg shadow-black/20 transition hover:border-orange-500/25 hover:bg-white/[0.07]">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide text-orange-200">
                           {getTipoLabel(registro.tipo)}
@@ -296,47 +304,66 @@ export default function Registros() {
                           </span>
                         )}
                       </div>
-
-                      <div className="mt-3 truncate text-lg font-black text-white">
+                      <div className="mt-2 truncate text-lg font-black text-white">
                         {registro.nombre}
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-right">
-                      <div className="flex items-center justify-end gap-2 text-sm font-bold text-white">
-                        <CalendarDays className="h-4 w-4 text-orange-300" />
-                        {formatDate(registro.dia)}
+                    <div className="flex shrink-0 items-center justify-between gap-3 rounded-lg border border-white/10 bg-zinc-950/40 px-3 py-2 sm:justify-end">
+                      <div className="text-right">
+                        <div className="flex items-center justify-end gap-2 text-sm font-bold text-white">
+                          <CalendarDays className="h-4 w-4 text-orange-300" />
+                          {formatDate(registro.dia)}
+                        </div>
+                        <div className="mt-1 flex items-center justify-end gap-2 text-xs font-semibold text-white/55">
+                          <Clock className="h-3.5 w-3.5" />
+                          {registro.hora_format || registro.hora}
+                        </div>
                       </div>
-                      <div className="mt-1 flex items-center justify-end gap-2 text-xs font-semibold text-white/55">
-                        <Clock className="h-3.5 w-3.5" />
-                        {registro.hora_format || registro.hora}
-                      </div>
+                      <ChevronDown className={`h-5 w-5 text-white/45 transition-transform ${abierto ? "rotate-180" : ""}`} />
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-white/70 md:grid-cols-2">
-                    <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/30 px-3 py-2">
-                      <User className="h-4 w-4 shrink-0 text-white/40" />
-                      <span className="truncate">{registro.fullname}</span>
-                    </div>
-                    <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/30 px-3 py-2">
-                      <Phone className="h-4 w-4 shrink-0 text-white/40" />
-                      <span className="truncate">{registro.telefono || "Sin telefono"}</span>
-                    </div>
-                    <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/30 px-3 py-2 md:col-span-2">
-                      <MapPin className="h-4 w-4 shrink-0 text-white/40" />
-                      <span className="truncate">{registro.direccion || "Sin direccion"}</span>
-                    </div>
-                  </div>
+                  {abierto && (
+                    <div className="mt-4 border-t border-white/10 pt-4">
+                      <div className="grid grid-cols-1 gap-2 text-sm text-white/70 md:grid-cols-2">
+                        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-zinc-950/30 px-3 py-2">
+                          <User className="h-4 w-4 shrink-0 text-white/40" />
+                          <span className="truncate">{registro.fullname}</span>
+                        </div>
+                        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-zinc-950/30 px-3 py-2">
+                          <Phone className="h-4 w-4 shrink-0 text-white/40" />
+                          <span className="truncate">{registro.telefono || "Sin telefono"}</span>
+                        </div>
+                        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-zinc-950/30 px-3 py-2 md:col-span-2">
+                          <MapPin className="h-4 w-4 shrink-0 text-white/40" />
+                          <span className="break-words">{registro.direccion || "Sin direccion"}</span>
+                        </div>
+                      </div>
 
-                  {registro.notas?.trim() ? (
-                    <p className="mt-3 rounded-xl border border-white/10 bg-zinc-950/30 px-3 py-2 text-sm leading-relaxed text-white/75">
-                      {registro.notas}
-                    </p>
-                  ) : (
-                    <div className="mt-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/30 px-3 py-2 text-xs font-semibold text-white/40">
-                      <CheckCircle2 className="h-4 w-4" />
-                      Sin notas cargadas
+                      {registro.notas?.trim() ? (
+                        <p className="mt-3 rounded-lg border border-white/10 bg-zinc-950/30 px-3 py-2 text-sm leading-relaxed text-white/75">
+                          {registro.notas}
+                        </p>
+                      ) : (
+                        <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-zinc-950/30 px-3 py-2 text-xs font-semibold text-white/40">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Sin notas cargadas
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/inicio?dia=${registro.dia}`, { state: { citaResaltada: String(registro.idcita) } });
+                          }}
+                          className="inline-flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-2 text-xs font-bold text-orange-200 transition hover:bg-orange-500/20">
+                          <ExternalLink className="h-4 w-4" />
+                          Ver en agenda
+                        </button>
+                      </div>
                     </div>
                   )}
                 </article>
