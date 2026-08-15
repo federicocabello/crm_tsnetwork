@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../auth/AuthContext";
 import WorldClock from "./WorldClock";
+import { ClipboardCheck } from "lucide-react";
 
 function roleBadgeClass(role?: string) {
   switch (role) {
@@ -49,6 +50,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               className={`hidden md:block w-32 opacity-90 drop-shadow-xl pointer-events-none`}
             />
             <div className="flex items-center gap-3">
+              {user?.rol === "tecnico" && (
+                <button
+                  type="button"
+                  onClick={() => nav("/mis-tareas")}
+                  title="Ver mis tareas"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-orange-500/30 bg-orange-500/10 text-orange-300 transition hover:bg-orange-500/20">
+                  <ClipboardCheck className="h-4 w-4" />
+                </button>
+              )}
               <div
                 className={`text-right leading-tight ${user?.rol === "tecnico" ? "cursor-pointer hover:opacity-85 transition-all select-none" : ""}`}
                 onClick={() => user?.rol === "tecnico" && nav("/perfil-tecnico")}

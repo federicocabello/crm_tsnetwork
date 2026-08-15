@@ -19,6 +19,7 @@ import Layout from "./components/Layout";
 import Cliente from "./pages/Cliente";
 import Pagos from "./pages/Pagos";
 import Registros from "./pages/Registros";
+import MisTareasTecnico from "./pages/MisTareasTecnico";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -120,6 +121,16 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             }
           />
           <Route path="/tareas" element={<Navigate to="/registros" replace />} />
+          <Route
+            path="/mis-tareas"
+            element={
+              <RoleRoute allow={["tecnico"]}>
+                <Layout>
+                  <MisTareasTecnico />
+                </Layout>
+              </RoleRoute>
+            }
+          />
           {/* Default */}
           <Route path="/" element={<Navigate to="/inicio" replace />} />
           <Route path="*" element={<Navigate to="/inicio" replace />} />
