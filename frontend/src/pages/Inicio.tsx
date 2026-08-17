@@ -23,6 +23,8 @@ import {
   CircleCheck,
   X,
   FileText,
+  StickyNote,
+  ChevronDown,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -190,6 +192,44 @@ const esCitaSoporte = (
     (tipo.startsWith("internet") && Number(item.tiene_hoja) !== 1)
   );
 };
+
+function NotaCompacta({ nota }: { nota: string }) {
+  const [expandida, setExpandida] = useState(false);
+  const contenido = nota.trim();
+  const esLarga = contenido.length > 160 || contenido.split(/\r?\n/).length > 2;
+
+  if (!contenido) return null;
+
+  return (
+    <div className="my-1.5 rounded-lg border border-amber-400/15 bg-amber-400/5 px-2.5 py-2">
+      <div className="flex items-start gap-2">
+        <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300/80" />
+        <p
+          className={`min-w-0 flex-1 whitespace-pre-wrap text-xs leading-5 text-white/70 ${
+            esLarga && !expandida ? "line-clamp-2" : ""
+          }`}>
+          {contenido}
+        </p>
+        {esLarga && (
+          <button
+            type="button"
+            aria-expanded={expandida}
+            onClick={() => setExpandida((valor) => !valor)}
+            className="flex shrink-0 items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-bold text-white/65 hover:bg-white/10 hover:text-white">
+            <span className="hidden sm:inline">
+              {expandida ? "Ver menos" : "Ver más"}
+            </span>
+            <ChevronDown
+              className={`h-3.5 w-3.5 transition-transform ${
+                expandida ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function Inicio() {
   const { user } = useAuth();
@@ -1181,10 +1221,10 @@ export default function Inicio() {
                 /* ────────── TARJETA SOLO LECTURA (técnico) ────────── */
                 <div
                   key={it.idcita}
-                  className={`rounded-2xl border p-3 transition ${citaResaltada === String(it.idcita) ? "border-orange-300 bg-zinc-950/30 shadow-[0_0_18px_rgba(251,146,60,0.45)] ring-2 ring-orange-300/50 animate-pulse" : "border-white/10 bg-zinc-950/30"}`}>
+                  className={`rounded-xl border p-2.5 transition ${citaResaltada === String(it.idcita) ? "border-orange-300 bg-zinc-950/30 shadow-[0_0_18px_rgba(251,146,60,0.45)] ring-2 ring-orange-300/50 animate-pulse" : "border-white/10 bg-zinc-950/30"}`}>
                   <div>
                     {/* Fila 1: estado (badge solo lectura) + tipo de instalación */}
-                    <div className="mb-2 flex flex-col justify-between gap-2 lg:flex-row lg:items-start">
+                    <div className="mb-1.5 flex flex-col justify-between gap-1.5 lg:flex-row lg:items-start">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {/* Badge de hora (solo lectura) */}
                         <span className="inline-flex items-center rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-200 w-20 justify-center">
@@ -1331,11 +1371,7 @@ export default function Inicio() {
                         )}
                       </div>
 
-                      {it.notas && (
-                        <div className="text-sm text-white/80 my-2 whitespace-pre-wrap w-full">
-                          {it.notas}
-                        </div>
-                      )}
+                      {it.notas && <NotaCompacta nota={it.notas} />}
 
                       {/* Items de inspección expandibles */}
                       {it.tiene_inspeccion ? (
@@ -1415,9 +1451,9 @@ export default function Inicio() {
                 /* ────────── TARJETA COMPLETA (otros roles) ────────── */
                 <div
                   key={it.idcita}
-                  className={`rounded-2xl border p-3 transition ${citaResaltada === String(it.idcita) ? "border-orange-300 bg-zinc-950/30 shadow-[0_0_18px_rgba(251,146,60,0.45)] ring-2 ring-orange-300/50 animate-pulse" : "border-white/10 bg-zinc-950/30"}`}>
+                  className={`rounded-xl border p-2.5 transition ${citaResaltada === String(it.idcita) ? "border-orange-300 bg-zinc-950/30 shadow-[0_0_18px_rgba(251,146,60,0.45)] ring-2 ring-orange-300/50 animate-pulse" : "border-white/10 bg-zinc-950/30"}`}>
                   <div>
-                    <div className="mb-2 flex flex-col justify-between gap-2 lg:flex-row lg:items-start">
+                    <div className="mb-1.5 flex flex-col justify-between gap-1.5 lg:flex-row lg:items-start">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <DatePicker
                           value={it.hora_format}
@@ -1690,11 +1726,7 @@ export default function Inicio() {
                         ) : ""}
                       </div>
 
-                      {it.notas && (
-                        <div className="text-sm text-white/80 my-2 whitespace-pre-wrap w-full">
-                          {it.notas}
-                        </div>
-                      )}
+                      {it.notas && <NotaCompacta nota={it.notas} />}
 
                       <div className="flex flex-wrap items-center gap-2">
                         {(it.tipo == "camarasdesdecero" ||
