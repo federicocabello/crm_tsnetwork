@@ -1825,6 +1825,7 @@ export default function Inicio() {
             idCotizacion={idCotizacion}
             modo={modoCotizacion}
             idCita={Number(idCitaSeleccionada)}
+            idCliente={items.find((item) => item.idcita === idCitaSeleccionada)?.idcliente}
             onSaved={cargarInicio}
             bloqueada={cotizacionBloqueada}
             categoriaServicio={categoriaCotizacion}

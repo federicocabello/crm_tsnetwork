@@ -42,11 +42,11 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
   const { user } = useAuth();
   const navigate = useNavigate();
 
-        interface Presupuesto {
-        cantidad: number;
-        costo: string;
-        precioFinal: string;
-      }
+        type Presupuesto = Record<number, {
+  cantidad: number;
+  costo: string;
+  precioFinal: string;
+}>
   
       type Formulario = {
         fecha: string,
@@ -456,6 +456,7 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
                         <Cotizador
                           onClose={handleCloseModal}
                           setCotizacion={handleSubmitPresupuesto}
+  cotizacionInicial={presupuesto}
                           categoriaServicio="camaras"
                         />
                       )}
