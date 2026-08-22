@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Package, Pencil, Save, X, Plus, Trash2, Search, TriangleAlert } from "lucide-react";
 import Loading from "../components/Loading";
+import { useAuth } from "../auth/AuthContext";
 
 type Producto = {
   id: number;
@@ -15,6 +16,7 @@ type FiltroStock = "todos" | "bajo";
 
 export default function Inventario() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const { user } = useAuth();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,7 +49,8 @@ export default function Inventario() {
         setProductos(data);
         if (!alertaInicialEvaluada.current) {
           setMostrarAlertaStock(
-            data.some((producto: Producto) => Number(producto.stock) <= 3),
+            user?.rol !== "tecnico" &&
+              data.some((producto: Producto) => Number(producto.stock) <= 3),
           );
           alertaInicialEvaluada.current = true;
         }
@@ -449,7 +452,7 @@ export default function Inventario() {
           </table>
         </div>
       </div>
-      {mostrarAlertaStock && (
+      {mostrarAlertaStock && user?.rol !== "tecnico" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md overflow-hidden rounded-lg border border-red-500/35 bg-zinc-900 shadow-2xl shadow-red-950/50">
             <div className="flex items-start gap-3 border-b border-red-500/20 bg-red-500/10 p-5">

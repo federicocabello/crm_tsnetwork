@@ -9,6 +9,10 @@ from flask_cors import CORS
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from werkzeug.utils import secure_filename
+from tareas_programadas import asegurar_tabla as asegurar_tabla_tareas_programadas
+from tareas_programadas import normalizar_rango as normalizar_rango_tareas
+from tareas_programadas import obtener_ocurrencias as obtener_ocurrencias_tareas
+from tareas_programadas_routes import registrar_rutas as registrar_rutas_tareas_programadas
 
 load_dotenv()
 
@@ -37,6 +41,7 @@ app.config["JWT_VERIFY_SUB"] = False
 jwt = JWTManager(app)
 
 mysql = MySQL(app)
+registrar_rutas_tareas_programadas(app, mysql)
 
 def table_has_column(table_name, column_name):
     cursor = mysql.connection.cursor()
@@ -522,6 +527,18 @@ def inicio():
     citas_estados = cursor.fetchall()
     cursor.execute("SELECT dia FROM citas GROUP BY dia ORDER BY dia DESC;")
     dias = cursor.fetchall()
+    try:
+        asegurar_tabla_tareas_programadas(mysql)
+        desde_tareas, hasta_tareas = normalizar_rango_tareas(
+            request.args.get("desde"),
+            request.args.get("hasta"),
+        )
+        tareas_programadas = obtener_ocurrencias_tareas(
+            cursor, desde_tareas, hasta_tareas
+        )
+    except Exception as error:
+        print("Error cargando tareas programadas en agenda:", error)
+        tareas_programadas = []
     cursor.execute("""
         SELECT
             pagos_cuotas.id AS idcuota,
@@ -544,7 +561,14 @@ def inicio():
     cuotas_alertas = cursor.fetchall()
     cursor.close()
     
-    return jsonify({"usuarios": usuarios, "citas": citas, "citas_estados": citas_estados, "dias": dias, "cuotas_alertas": cuotas_alertas}), 200
+    return jsonify({
+        "usuarios": usuarios,
+        "citas": citas,
+        "tareas_programadas": tareas_programadas,
+        "citas_estados": citas_estados,
+        "dias": dias,
+        "cuotas_alertas": cuotas_alertas,
+    }), 200
 
 @app.get("/api/tareas/registros")
 def tareas_registros():
