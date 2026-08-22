@@ -29,11 +29,11 @@ export default function FormularioCamarasDesdeCero({ tipoRegistro = "camaras" }:
   const [users, setUsers] = useState<Usuarios[]>([]);
   const [citasEstados, setCitasEstados] = useState<EstadoCita[]>([]);
 
-  interface Presupuesto {
+  type Presupuesto = Record<number, {
   cantidad: number;
   costo: string;
   precioFinal: string;
-}
+}>
 
 type SiNo = "si" | "no" | null;
 
@@ -635,6 +635,7 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
         <Cotizador
           onClose={handleCloseModal}
           setCotizacion={handleSubmitPresupuesto}
+  cotizacionInicial={presupuesto}
           categoriaServicio={tipoRegistro === "internet" ? "internet" : "camaras"}
         />
       )}
