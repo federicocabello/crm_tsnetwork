@@ -20,6 +20,7 @@ import Cliente from "./pages/Cliente";
 import Pagos from "./pages/Pagos";
 import Registros from "./pages/Registros";
 import MisTareasTecnico from "./pages/MisTareasTecnico";
+import TareasResumen from "./pages/TareasResumen";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -121,6 +122,16 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             }
           />
           <Route path="/tareas" element={<Navigate to="/registros" replace />} />
+          <Route
+            path="/tareas-programadas"
+            element={
+              <RoleRoute allow={["usuario", "moderador", "administrador", "superadmin"]}>
+                <Layout>
+                  <TareasResumen />
+                </Layout>
+              </RoleRoute>
+            }
+          />
           <Route
             path="/mis-tareas"
             element={

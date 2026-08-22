@@ -25,6 +25,8 @@ import {
   FileText,
   StickyNote,
   ChevronDown,
+  CalendarClock,
+  Repeat2,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -65,6 +67,22 @@ type AgendaItem = {
   detalles: boolean;
   preguntas?: { pregunta: string; respuesta: string }[];
   mostrarImagenes: boolean;
+};
+
+type TareaProgramadaAgenda = {
+  id: string;
+  id_tarea_programada: number;
+  nombre: string;
+  telefono: string;
+  direccion: string;
+  tarea: string;
+  categoria: "general" | "internet" | "camaras";
+  frecuencia: "semanal" | "mensual";
+  dia: string;
+  hora: string;
+  hora_format: string;
+  idagente: number;
+  fullname: string;
 };
 
 type ClienteInspeccion = {
@@ -322,6 +340,7 @@ export default function Inicio() {
   );
   const [users, setUsers] = useState<Usuarios[]>([]);
   const [items, setItems] = useState<AgendaItem[]>([]);
+  const [tareasProgramadas, setTareasProgramadas] = useState<TareaProgramadaAgenda[]>([]);
 
   const dayItems = useMemo(() => {
     return items
@@ -337,11 +356,21 @@ export default function Inicio() {
       });
   }, [items, selectedDay, user]);
 
+  const tareasProgramadasDelDia = useMemo(() =>
+    tareasProgramadas.filter((tarea) => {
+      if (tarea.dia !== selectedDay) return false;
+      if (user?.rol === "tecnico" && Number(tarea.idagente) !== Number(user.id)) return false;
+      return true;
+    }),
+  [selectedDay, tareasProgramadas, user],
+  );
+
   const [citasEstados, setCitasEstados] = useState<CitasEstados[]>([]);
 
   type InicioResponse = {
     usuarios: Usuarios[];
     citas: AgendaItem[];
+    tareas_programadas: TareaProgramadaAgenda[];
     citas_estados: CitasEstados[];
     dias: string[];
     cuotas_alertas: CuotaAlerta[];
@@ -371,7 +400,7 @@ export default function Inicio() {
   const cargarInicio = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/inicio`);
+      const res = await fetch(`${API_URL}/api/inicio?desde=${selectedDay}&hasta=${selectedDay}`);
 
       if (res.status === 200) {
         const data: InicioResponse = await res.json();
@@ -382,6 +411,7 @@ export default function Inicio() {
 
         setUsers(data.usuarios);
         setItems(citasConDetalles);
+        setTareasProgramadas(data.tareas_programadas ?? []);
         setCitasEstados(data.citas_estados);
         setCuotasAlertas(data.cuotas_alertas ?? []);
         setLoading(false);
@@ -1207,7 +1237,27 @@ export default function Inicio() {
         </div>
 
         <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-0 xl:min-h-0 xl:pr-2">
-          {dayItems.length === 0 ? (
+          {tareasProgramadasDelDia.map((tarea) => (
+            <div key={tarea.id} className="rounded-xl border border-purple-400/25 bg-purple-500/[0.08] p-3">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex w-20 justify-center rounded-full border border-purple-400/30 bg-purple-500/15 px-2 py-1 text-xs font-black text-purple-100">{tarea.hora_format || tarea.hora}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-purple-400/30 bg-purple-500/15 px-2 py-1 text-xs font-black uppercase text-purple-100"><Repeat2 className="h-3.5 w-3.5" />{tarea.frecuencia}</span>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs font-bold capitalize text-white/65">{tarea.categoria === "camaras" ? "Cámaras" : tarea.categoria}</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 font-black"><CalendarClock className="h-4 w-4 text-purple-300" />{tarea.tarea}</div>
+                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-white/60">
+                    <span className="font-bold text-white/80">{tarea.nombre}</span>
+                    {tarea.telefono && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{tarea.telefono}</span>}
+                    {tarea.direccion && <span className="flex items-center gap-1"><Home className="h-3.5 w-3.5" />{tarea.direccion}</span>}
+                  </div>
+                </div>
+                <span className="shrink-0 text-xs italic text-white/45">Asignado a {tarea.fullname}</span>
+              </div>
+            </div>
+          ))}
+          {dayItems.length === 0 && tareasProgramadasDelDia.length === 0 ? (
             loading ? (
               <Loading />
             ) : (
