@@ -1286,9 +1286,19 @@ def get_cotizacion(idCotizacion):
 
     cursor.execute(
         """
-        SELECT h.firma_instalacion, h.firma_foto_instalacion, h.notas, c.tipo AS cita_tipo
+        SELECT
+            h.firma_instalacion,
+            h.firma_foto_instalacion,
+            h.notas,
+            c.tipo AS cita_tipo,
+            DATE_FORMAT(c.dia, '%Y-%m-%d') AS cita_fecha,
+            c.telefono,
+            c.domicilio,
+            clientes.nombre AS cliente_nombre,
+            clientes.email AS cliente_email
         FROM hojas h
         JOIN citas c ON c.id = h.cita
+        JOIN clientes ON clientes.id = c.cliente
         WHERE h.id = %s
         """,
         (idCotizacion,),
@@ -1307,6 +1317,12 @@ def get_cotizacion(idCotizacion):
         "firma_foto_instalacion": firma_foto_instalacion,
         "notas": notas,
         "cita_tipo": hoja_info.get("cita_tipo") if hoja_info else None,
+        "cliente": {
+            "nombre": hoja_info.get("cliente_nombre") if hoja_info else "",
+            "telefono": hoja_info.get("telefono") if hoja_info else "",
+            "direccion": hoja_info.get("domicilio") if hoja_info else "",
+        },
+        "cita_fecha": hoja_info.get("cita_fecha") if hoja_info else None,
     }), 200
     
 @app.put("/api/cotizaciones/<int:id_hoja>")
@@ -1534,9 +1550,21 @@ def get_cotizacion_detallada(idCotizacion):
     try:
         cursor.execute(
             """
-            SELECT h.id, h.cita, h.firma_instalacion, h.firma_foto_instalacion, h.notas, c.tipo as cita_tipo
+            SELECT
+                h.id,
+                h.cita,
+                h.firma_instalacion,
+                h.firma_foto_instalacion,
+                h.notas,
+                c.tipo AS cita_tipo,
+                DATE_FORMAT(c.dia, '%Y-%m-%d') AS cita_fecha,
+                c.telefono,
+                c.domicilio,
+                clientes.nombre AS cliente_nombre,
+            clientes.email AS cliente_email
             FROM hojas h
             JOIN citas c ON h.cita = c.id
+            JOIN clientes ON clientes.id = c.cliente
             WHERE h.id = %s
             """,
             (idCotizacion,)
@@ -1621,6 +1649,12 @@ def get_cotizacion_detallada(idCotizacion):
             "notas": hoja_info.get("notas"),
             "inspeccion_items": inspeccion_items,
             "cita_tipo": hoja_info.get("cita_tipo"),
+            "cliente": {
+                "nombre": hoja_info.get("cliente_nombre") or "",
+                "telefono": hoja_info.get("telefono") or "",
+                "direccion": hoja_info.get("domicilio") or "",
+            },
+            "cita_fecha": hoja_info.get("cita_fecha"),
         }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

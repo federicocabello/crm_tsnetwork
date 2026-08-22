@@ -17,11 +17,11 @@ export default function FormularioCamarasTieneClienteNuevo() {
     const [users, setUsers] = useState<Usuarios[]>([]);
     const [opcionTipoInstalacion, setOpcionTipoInstalacion] = useState<"instalacion" | "soporte" | null>(null);
 
-    interface Presupuesto {
-      cantidad: number;
-      costo: string;
-      precioFinal: string;
-    }
+    type Presupuesto = Record<number, {
+  cantidad: number;
+  costo: string;
+  precioFinal: string;
+}>
 
     type Formulario = {
       nombre: string;
@@ -351,6 +351,7 @@ export default function FormularioCamarasTieneClienteNuevo() {
                       <Cotizador
                         onClose={handleCloseModal}
                         setCotizacion={handleSubmitPresupuesto}
+  cotizacionInicial={presupuesto}
                         categoriaServicio="camaras"
                       />
                     )}

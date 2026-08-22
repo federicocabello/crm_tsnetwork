@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FileDown } from "lucide-react";
 
 interface Producto {
   id: number;
@@ -16,13 +17,22 @@ interface RowData {
   precioFinal: string;
 }
 
+interface ClienteCotizacion {
+  nombre: string;
+  telefono: string;
+  direccion: string;
+  email: string;
+}
+
 interface Props {
   onClose: (arg0: boolean) => void;
   setCotizacion?: (data: any) => void;
+  cotizacionInicial?: Record<number, RowData> | null;
   idCotizacion?: number | null;
   modo?: "nuevo" | "editar";
   onSaved?: () => void;
   idCita?: number | null;
+  idCliente?: number | null;
   bloqueada?: boolean;
   categoriaServicio?: CategoriaServicio;
 }
@@ -30,18 +40,22 @@ interface Props {
 export default function Cotizador({
   onClose,
   setCotizacion,
+  cotizacionInicial = null,
   idCotizacion = null,
   modo = "nuevo",
   onSaved,
   idCita = null,
+  idCliente = null,
   bloqueada = false,
   categoriaServicio,
 }: Props) {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
 
   const [data, setData] = useState<Producto[]>([]);
-  const [rows, setRows] = useState<Record<number, RowData>>({});
+  const [rows, setRows] = useState<Record<number, RowData>>(() => cotizacionInicial ?? {});
   const [search, setSearch] = useState("");
+  const [clienteCotizacion, setClienteCotizacion] = useState<ClienteCotizacion | null>(null);
+  const [fechaCita, setFechaCita] = useState<string | null>(null);
 
   const roundUp = (num: number) => Math.ceil(num * 100) / 100;
 
@@ -161,6 +175,8 @@ useEffect(() => {
       }
 
       const cotizacion = await res.json();
+      setClienteCotizacion(cotizacion.cliente ?? null);
+      setFechaCita(cotizacion.cita_fecha ?? null);
 
       const rowsCargadas: Record<number, RowData> = {};
 
@@ -179,9 +195,29 @@ useEffect(() => {
     }
   };
 
+  const fetchClienteCotizacion = async () => {
+    if (!idCliente) return;
+    try {
+      const res = await fetch(`${API_URL}/api/clientes/${idCliente}`);
+      if (!res.ok) return;
+      const dataCliente = await res.json();
+      const cita = dataCliente.citas?.find(
+        (item: { idcita: number }) => Number(item.idcita) === Number(idCita),
+      );
+      setClienteCotizacion({
+        nombre: dataCliente.cliente?.nombre ?? "",
+        email: dataCliente.cliente?.email ?? "",
+        telefono: cita?.telefono ?? "",
+        direccion: cita?.domicilio ?? "",
+      });
+    } catch (error) {
+      console.error("Error cargando datos del cliente:", error);
+    }
+  };
   fetchApi();
   fetchCotizacion();
-}, [API_URL, modo, idCotizacion]);
+  fetchClienteCotizacion();
+}, [API_URL, modo, idCotizacion, idCita, idCliente]);
 
   const filteredData = useMemo(() => {
     let baseData = categoriaServicio
@@ -211,6 +247,65 @@ useEffect(() => {
     return total.toFixed(2);
   }, [rows]);
 
+  const exportarPdf = () => {
+    const articulos = Object.entries(rows)
+      .filter(([, row]) => row.cantidad > 0)
+      .map(([id, row]) => ({
+        nombre: data.find((producto) => producto.id === Number(id))?.descrip ?? "Artículo",
+        precio: Number(row.precioFinal) || 0,
+      }));
+
+    if (!articulos.length) {
+      alert("Agregá al menos un artículo antes de exportar.");
+      return;
+    }
+
+    const ventana = window.open("", "_blank", "width=900,height=1100");
+    if (!ventana) {
+      alert("Habilitá las ventanas emergentes para exportar el PDF.");
+      return;
+    }
+
+    const escape = (value: string | null | undefined) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    const money = (value: number) =>
+      value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+    const numero = idCotizacion ? String(idCotizacion).padStart(6, "0") : "BORRADOR";
+    const visita = fechaCita
+      ? new Date(`${fechaCita}T12:00:00`).toLocaleDateString("es-AR")
+      : "-";
+    const filas = articulos
+      .map(({ nombre }) => `<tr><td>${escape(nombre)}</td></tr>`)
+      .join("");
+    const logo = new URL("/logo_tsnetwork.png", window.location.origin).href;
+
+    ventana.document.write(`<!doctype html>
+<html lang="es"><head><meta charset="UTF-8"><title>Cotización ${numero}</title>
+<style>
+*{box-sizing:border-box}body{margin:0;color:#18181b;font-family:Arial,sans-serif}.page{max-width:820px;min-height:1040px;margin:auto;padding:42px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:32px;padding-bottom:24px;border-bottom:3px solid #f97316}
+.logo{width:190px;max-height:82px;object-fit:contain;object-position:left center}h1{margin:0 0 8px;font-size:30px;text-transform:uppercase}
+.number{color:#f97316;font-weight:700}.meta{margin-top:7px;color:#52525b;font-size:13px}
+.client{margin:28px 0;padding:18px 20px;border:1px solid #d4d4d8;border-left:5px solid #f97316}
+.client h2{margin:0 0 12px;font-size:14px;text-transform:uppercase;color:#71717a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;font-size:14px}.address{grid-column:1/-1}
+table{width:100%;border-collapse:collapse}th{padding:12px 14px;color:#fff;background:#27272a;text-align:left;font-size:13px;text-transform:uppercase}
+td{padding:14px;border-bottom:1px solid #e4e4e7;font-size:14px}.price{width:190px;text-align:right;white-space:nowrap}
+.total{display:flex;justify-content:flex-end;margin-top:22px}.total div{min-width:300px;padding:16px 18px;color:#fff;background:#27272a;display:flex;justify-content:space-between;font-size:19px;font-weight:700}
+footer{margin-top:70px;padding-top:18px;border-top:1px solid #d4d4d8;color:#71717a;font-size:11px;text-align:center}
+@page{size:A4;margin:0}@media print{.page{max-width:none;min-height:auto}}
+</style></head><body><main class="page">
+<header><img class="logo" src="${logo}" alt="TS Network"><div><h1>Cotización</h1><div class="number">N.º ${numero}</div><div class="meta">Emisión: ${new Date().toLocaleDateString("es-AR")}</div><div class="meta">Visita: ${visita}</div></div></header>
+<section class="client"><h2>Datos del cliente</h2><div class="grid"><div><strong>Cliente:</strong> ${escape(clienteCotizacion?.nombre) || "-"}</div><div><strong>Teléfono:</strong> ${escape(clienteCotizacion?.telefono) || "-"}</div><div><strong>Email:</strong> ${escape(clienteCotizacion?.email) || "-"}</div><div class="address"><strong>Domicilio:</strong> ${escape(clienteCotizacion?.direccion) || "-"}</div></div></section>
+<table><thead><tr><th>Artículos incluidos</th></tr></thead><tbody>${filas}</tbody></table>
+<div class="total"><div><span>Total</span><span>${money(Number(totalGeneral))}</span></div></div>
+<footer>Documento de cotización comercial. Precios y disponibilidad sujetos a confirmación.</footer>
+</main><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));<\/script></body></html>`);
+    ventana.document.close();
+  };
   return (
     <div className="fixed inset-0 z-70 flex items-center justify-center overflow-y-auto bg-black/80 p-2 backdrop-blur-sm sm:p-4">
       <div className="my-auto flex h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl sm:h-[90vh] sm:rounded-3xl">
@@ -365,7 +460,12 @@ useEffect(() => {
               <p className="text-3xl font-black text-white">${totalGeneral}</p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
+              {modo === "editar" && idCotizacion && (
+                <button type="button" onClick={exportarPdf} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20">
+                <FileDown className="h-4 w-4" /> Exportar a PDF
+                </button>
+              )}
               <button
                 onClick={() => onClose(false)}
                 className="rounded-xl border border-white/10 px-5 py-3 text-sm font-bold text-white/70 transition hover:bg-white/10 hover:text-white"
