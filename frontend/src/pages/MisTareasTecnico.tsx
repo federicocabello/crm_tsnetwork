@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, CalendarDays, ChevronDown, Clock, MapPin, Phone, UserRoundCheck } from "lucide-react";
+import { AlertTriangle, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Clock, Copy, MapPin, Phone, UserRoundCheck } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import Loading from "../components/Loading";
 
@@ -18,6 +18,10 @@ type Tarea = {
   telefono: string;
   direccion: string;
 };
+
+type SeccionKey = "hoy" | "manana" | "proximas" | "atrasadas";
+
+const TAREAS_POR_PAGINA = 10;
 
 function fechaKey(fecha: Date) {
   return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
@@ -44,6 +48,23 @@ function tipoLabel(tipo: string) {
   return "Cámaras";
 }
 
+async function copiarAlPortapapeles(texto: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(texto);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = texto;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copiado = document.execCommand("copy");
+  textarea.remove();
+  if (!copiado) throw new Error("No se pudo copiar la lista");
+}
+
 export default function MisTareasTecnico() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const { user } = useAuth();
@@ -51,6 +72,13 @@ export default function MisTareasTecnico() {
   const [tareas, setTareas] = useState<Tarea[]>([]);
   const [loading, setLoading] = useState(true);
   const [seccionesCerradas, setSeccionesCerradas] = useState<Set<string>>(() => new Set());
+  const [paginas, setPaginas] = useState<Record<SeccionKey, number>>({
+    hoy: 1,
+    manana: 1,
+    proximas: 1,
+    atrasadas: 1,
+  });
+  const [estadoCopia, setEstadoCopia] = useState<"idle" | "copiado" | "error">("idle");
 
   useEffect(() => {
     const cargar = async () => {
@@ -100,6 +128,10 @@ export default function MisTareasTecnico() {
     });
   };
 
+  const cambiarPagina = (seccion: SeccionKey, pagina: number) => {
+    setPaginas((actuales) => ({ ...actuales, [seccion]: pagina }));
+  };
+
   if (loading) return <Loading />;
 
   const secciones = [
@@ -108,6 +140,41 @@ export default function MisTareasTecnico() {
     { key: "proximas", titulo: "Próximas", tareas: grupos.proximas, alerta: false },
     { key: "atrasadas", titulo: "Atrasadas", tareas: grupos.atrasadas, alerta: true },
   ] as const;
+
+  const crearTextoLista = () => {
+    const tareasDeHoy = grupos.hoy;
+    const encabezado = [
+      `*Tareas de hoy (${tareasDeHoy.length})*`,
+      user?.fullname ? `Asignado a: ${user.fullname}` : "",
+      `Fecha: ${new Date().toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}`,
+    ].filter(Boolean);
+
+    if (tareasDeHoy.length === 0) {
+      return [...encabezado, "", "No hay tareas para hoy."].join("\n");
+    }
+
+    const detalle = tareasDeHoy.map((tarea, indice) =>
+      [
+        `${indice + 1}. ${tarea.hora_format || tarea.hora || "Sin hora"} - *${tarea.nombre}*`,
+        `   ${tipoLabel(tarea.tipo)} | ${tarea.estado}`,
+        `   Tel: ${tarea.telefono || "Sin teléfono"}`,
+        `   Dirección: ${tarea.direccion || "Sin dirección"}`,
+      ].join("\n"),
+    );
+
+    return [...encabezado, "", ...detalle].join("\n");
+  };
+
+  const copiarLista = async () => {
+    try {
+      await copiarAlPortapapeles(crearTextoLista());
+      setEstadoCopia("copiado");
+    } catch (error) {
+      console.error("Error copiando las tareas de hoy:", error);
+      setEstadoCopia("error");
+    }
+    window.setTimeout(() => setEstadoCopia("idle"), 2500);
+  };
 
   return (
     <div className="h-full min-h-0 overflow-y-auto px-1 pr-3 sm:pr-4">
@@ -120,11 +187,31 @@ export default function MisTareasTecnico() {
             </div>
             <h1 className="mt-1 text-2xl font-black">Mis tareas</h1>
           </div>
-          <span className="max-w-32 truncate text-right text-xs font-semibold text-white/50 sm:max-w-none sm:text-sm">{user?.fullname}</span>
+          <div className="flex flex-col items-end gap-2">
+            <span className="max-w-40 truncate text-right text-xs font-semibold text-white/50 sm:max-w-none sm:text-sm">{user?.fullname}</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void copiarLista()}
+                aria-label="Copiar tareas de hoy"
+                title="Copiar tareas de hoy"
+                className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold transition active:scale-95 ${estadoCopia === "copiado" ? "border-green-500/40 bg-green-500/15 text-green-300" : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"}`}>
+                {estadoCopia === "copiado" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                <span className="hidden sm:inline">{estadoCopia === "copiado" ? "Copiado" : estadoCopia === "error" ? "Error" : "Copiar"}</span>
+              </button>
+            </div>
+            <span className="sr-only" role="status" aria-live="polite">
+              {estadoCopia === "copiado" ? "Tareas de hoy copiadas" : estadoCopia === "error" ? "No se pudo copiar la lista" : ""}
+            </span>
+          </div>
         </header>
 
         {secciones.map((seccion) => {
           const cerrada = seccionesCerradas.has(seccion.key);
+          const totalPaginas = Math.max(1, Math.ceil(seccion.tareas.length / TAREAS_POR_PAGINA));
+          const paginaActual = Math.min(paginas[seccion.key], totalPaginas);
+          const inicioPagina = (paginaActual - 1) * TAREAS_POR_PAGINA;
+          const tareasPaginadas = seccion.tareas.slice(inicioPagina, inicioPagina + TAREAS_POR_PAGINA);
           return (
             <section key={seccion.key} className="border-b border-white/10 pb-3 last:border-0">
               <button
@@ -142,7 +229,7 @@ export default function MisTareasTecnico() {
                 <p className="px-1 py-3 text-sm text-white/40">No hay tareas en este grupo.</p>
               ) : (
                 <div className="space-y-2">
-                  {seccion.tareas.map((tarea) => (
+                  {tareasPaginadas.map((tarea) => (
                     <button
                       key={tarea.idcita}
                       type="button"
@@ -166,6 +253,34 @@ export default function MisTareasTecnico() {
                       </span>
                     </button>
                   ))}
+                  {totalPaginas > 1 && (
+                    <div className="flex flex-col gap-2 px-1 pt-1 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+                      <span>
+                        Mostrando {inicioPagina + 1}-{Math.min(inicioPagina + TAREAS_POR_PAGINA, seccion.tareas.length)} de {seccion.tareas.length}
+                      </span>
+                      <div className="flex items-center justify-between gap-2 sm:justify-end">
+                        <button
+                          type="button"
+                          aria-label={`Página anterior de ${seccion.titulo}`}
+                          disabled={paginaActual === 1}
+                          onClick={() => cambiarPagina(seccion.key, paginaActual - 1)}
+                          className="rounded-lg border border-white/10 p-2 text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30">
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <span className="min-w-24 text-center font-bold text-white/70">
+                          Página {paginaActual} de {totalPaginas}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label={`Página siguiente de ${seccion.titulo}`}
+                          disabled={paginaActual === totalPaginas}
+                          onClick={() => cambiarPagina(seccion.key, paginaActual + 1)}
+                          className="rounded-lg border border-white/10 p-2 text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30">
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </section>

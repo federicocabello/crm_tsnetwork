@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   Camera,
+  Check,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
   Globe,
   ListTodo,
   MapPin,
@@ -101,6 +103,23 @@ const etiquetaCategoria = (valor: Categoria) =>
       ? "Cámaras"
       : "General";
 
+async function copiarAlPortapapeles(texto: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(texto);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = texto;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copiado = document.execCommand("copy");
+  textarea.remove();
+  if (!copiado) throw new Error("No se pudo copiar la lista");
+}
+
 export default function TareasResumen() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const { user } = useAuth();
@@ -121,6 +140,7 @@ export default function TareasResumen() {
   const [modal, setModal] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [formulario, setFormulario] = useState<Formulario>(inicial);
+  const [estadoCopia, setEstadoCopia] = useState<"idle" | "copiado" | "error">("idle");
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -188,6 +208,41 @@ export default function TareasResumen() {
     inicioPagina + TAREAS_POR_PAGINA,
   );
 
+  const crearTextoLista = () => {
+    const tareasDeHoy = tareas.filter((item) => item.dia === hoyKey);
+    const encabezado = [
+      `*Tareas de hoy (${tareasDeHoy.length})*`,
+      `Fecha: ${new Date().toLocaleDateString("es-MX", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}`,
+    ];
+
+    if (tareasDeHoy.length === 0) {
+      return [...encabezado, "", "No hay tareas para hoy."].join("\n");
+    }
+
+    const detalle = tareasDeHoy.map((item, indice) =>
+      [
+        `${indice + 1}. ${item.hora_format || item.hora || "Sin hora"} - *${item.nombre || "Sin cliente"}*`,
+        `   ${item.tarea} | ${etiquetaCategoria(item.categoria)}`,
+        `   Responsable: ${item.fullname || "Sin asignar"}`,
+        `   Tel: ${item.telefono || "Sin teléfono"}`,
+        `   Dirección: ${item.direccion || "Sin dirección"}`,
+      ].join("\n"),
+    );
+
+    return [...encabezado, "", ...detalle].join("\n");
+  };
+
+  const copiarLista = async () => {
+    try {
+      await copiarAlPortapapeles(crearTextoLista());
+      setEstadoCopia("copiado");
+    } catch (err) {
+      console.error("Error copiando las tareas de hoy:", err);
+      setEstadoCopia("error");
+    }
+    window.setTimeout(() => setEstadoCopia("idle"), 2500);
+  };
+
   const guardar = async (event: React.FormEvent) => {
     event.preventDefault();
     setGuardando(true);
@@ -254,14 +309,29 @@ export default function TareasResumen() {
                 Citas de clientes y actividades recurrentes.
               </p>
             </div>
-            {administra && (
+            <div className="flex flex-wrap items-center gap-2">
               <button
-                onClick={() => setModal(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-black hover:bg-orange-500">
-                <Plus className="h-4 w-4" />
-                Nueva tarea recurrente
+                type="button"
+                onClick={() => void copiarLista()}
+                disabled={loading}
+                aria-label="Copiar tareas de hoy"
+                title="Copiar tareas de hoy"
+                className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${estadoCopia === "copiado" ? "border-green-500/40 bg-green-500/15 text-green-300" : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"}`}>
+                {estadoCopia === "copiado" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {estadoCopia === "copiado" ? "Copiado" : estadoCopia === "error" ? "Error" : "Copiar"}
               </button>
-            )}
+              {administra && (
+                <button
+                  onClick={() => setModal(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-black hover:bg-orange-500">
+                  <Plus className="h-4 w-4" />
+                  Nueva tarea recurrente
+                </button>
+              )}
+              <span className="sr-only" role="status" aria-live="polite">
+                {estadoCopia === "copiado" ? "Tareas de hoy copiadas" : estadoCopia === "error" ? "No se pudo copiar la lista" : ""}
+              </span>
+            </div>
           </div>
           <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_150px_150px_150px_auto_auto]">
             <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2">

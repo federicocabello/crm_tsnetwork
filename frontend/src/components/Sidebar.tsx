@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import type { Role } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
 import type { LucideIcon } from "lucide-react";
-import { Home, Settings, FileHeadphone, Package, CircleDollarSign, ListTodo, CalendarClock } from "lucide-react";
+import { Home, Settings, FileHeadphone, Package, CircleDollarSign, ListTodo, CalendarClock, ClipboardCheck } from "lucide-react";
 
 type NavItem = {
   label: string;
@@ -17,6 +17,19 @@ const NAV: NavItem[] = [
     label: "Inicio",
     path: "/inicio",
     icon: Home,
+    roles: [
+      "invitado",
+      "usuario",
+      "moderador",
+      "administrador",
+      "superadmin",
+      "tecnico",
+    ],
+  },
+  {
+    label: "Mis tareas",
+    path: "/mis-tareas",
+    icon: ClipboardCheck,
     roles: [
       "invitado",
       "usuario",
