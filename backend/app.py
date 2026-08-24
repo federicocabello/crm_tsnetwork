@@ -17,6 +17,9 @@ from tareas_programadas_routes import registrar_rutas as registrar_rutas_tareas_
 load_dotenv()
 
 app = Flask(__name__)
+FRONTEND_DIST_DIR = os.path.abspath(
+    os.path.join(app.root_path, "..", "frontend", "dist")
+)
 #CORS(app, resources={r"/api/*": {"origins": "http://localhost:5174"}}, supports_credentials=True)
 CORS(
     app,
@@ -3182,6 +3185,29 @@ def marcar_video_visto():
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def servir_frontend(path):
+    """Sirve el build de React y permite navegar directamente a rutas del SPA."""
+    if path == "api" or path.startswith("api/"):
+        return jsonify({"error": "Ruta no encontrada"}), 404
+
+    if path:
+        archivo = os.path.join(FRONTEND_DIST_DIR, path)
+        if os.path.isfile(archivo):
+            return send_from_directory(FRONTEND_DIST_DIR, path)
+
+    index_path = os.path.join(FRONTEND_DIST_DIR, "index.html")
+    if not os.path.isfile(index_path):
+        return jsonify({
+            "error": "Frontend no compilado",
+            "detalle": "Ejecuta 'npm run build' dentro de la carpeta frontend."
+        }), 503
+
+    response = send_from_directory(FRONTEND_DIST_DIR, "index.html")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 if __name__ == "__main__":
     app.run(debug=True)

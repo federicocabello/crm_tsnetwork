@@ -135,11 +135,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route
             path="/mis-tareas"
             element={
-              <RoleRoute allow={["tecnico"]}>
+              <ProtectedRoute>
                 <Layout>
                   <MisTareasTecnico />
                 </Layout>
-              </RoleRoute>
+              </ProtectedRoute>
             }
           />
           {/* Default */}
