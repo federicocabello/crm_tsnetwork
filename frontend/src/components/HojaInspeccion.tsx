@@ -77,6 +77,7 @@ export default function HojaInspeccion({
   );
   const [dibujoFile, setDibujoFile] = useState<File | null>(null);
   const [dibujoUrl, setDibujoUrl] = useState<string | null>(null);
+  const [mapaEliminado, setMapaEliminado] = useState(false);
   const [firmaUrl, setFirmaUrl] = useState<string | null>(null);
   const [firmaFotoUrl, setFirmaFotoUrl] = useState<string | null>(null);
   const [showFirmaModal, setShowFirmaModal] = useState(false);
@@ -241,6 +242,8 @@ export default function HojaInspeccion({
       formData.append("notas", notas);
       if (dibujoFile) {
         formData.append("dibujo", dibujoFile);
+      } else if (mapaEliminado || !dibujoUrl) {
+        formData.append("eliminar_dibujo", "true");
       }
 
       const res = await fetch(`${API_URL}/api/inspeccion/${idCita}`, {
@@ -262,14 +265,13 @@ export default function HojaInspeccion({
     }
   };
 
-  const hasMapa = Boolean(dibujoFile || dibujoUrl);
-
-  // Si hay mapa cargado o creado, solicita la firma; de lo contrario guarda directamente sin firma
+  // La firma del cliente es independiente del mapa. Si la hoja ya fue firmada,
+  // el boton solo guarda los cambios porque la firma no se puede reemplazar.
   const handleSave = () => {
-    if (hasMapa) {
-      setShowFirmaModal(true);
-    } else {
+    if (firmaUrl) {
       handleSaveWithoutFirma();
+    } else {
+      setShowFirmaModal(true);
     }
   };
 
@@ -283,6 +285,8 @@ export default function HojaInspeccion({
       formData.append("notas", notas);
       if (dibujoFile) {
         formData.append("dibujo", dibujoFile);
+      } else if (mapaEliminado || !dibujoUrl) {
+        formData.append("eliminar_dibujo", "true");
       }
       // Adjuntar la firma como archivo PNG (solo se guarda si no existe ya)
       const firmaFile = new File([firmaBlob], "firma.png", {
@@ -309,7 +313,7 @@ export default function HojaInspeccion({
     }
   };
 
-  const puedeDescargarPdf = Boolean(dibujoUrl && firmaUrl && items.length > 0);
+  const puedeDescargarPdf = Boolean(firmaUrl && items.length > 0);
   const fotoClienteDownloadName = `foto_cliente_cita_${idCita}.jpg`;
 
   const escapePdfHtml = (value: string | number) =>
@@ -338,12 +342,19 @@ export default function HojaInspeccion({
   const shouldHideProductInPdf = (productName: string) =>
     hiddenPdfProductNames.has(normalizePdfProductName(productName));
   const handleDownloadPdf = () => {
-    if (!dibujoUrl || !firmaUrl || items.length === 0) {
+    if (!firmaUrl || items.length === 0) {
       alert(
-        "Para descargar el PDF, la hoja debe tener imagen, productos y firma guardados.",
+        "Para descargar el PDF, la hoja debe tener productos y firma guardados.",
       );
       return;
     }
+
+    const mapaSection = (dibujoUrl && dibujoUrl.trim() !== "")
+      ? `<section class="section avoid-break">
+              <h2>Mapa / imagen de instalaci&oacute;n</h2>
+              <div class="mapa"><img src="${escapePdfHtml(dibujoUrl)}" /></div>
+            </section>`
+      : "";
 
     const rows = items
       .filter((item) => !shouldHideProductInPdf(item.producto_descrip))
@@ -561,10 +572,7 @@ export default function HojaInspeccion({
               </table>
             </section>
 
-            <section class="section avoid-break">
-              <h2>Mapa / imagen de instalaci&oacute;n</h2>
-              <div class="mapa"><img src="${escapePdfHtml(dibujoUrl)}" /></div>
-            </section>
+            ${mapaSection}
 
             <section class="final-signature">
               <h2>Firma de conformidad</h2>
@@ -820,7 +828,13 @@ export default function HojaInspeccion({
               /* Dibujo Tab */
               <CanvasDibujo
                 initialImage={dibujoUrl}
-                onImageChange={(file) => setDibujoFile(file)}
+                onImageChange={(file) => {
+                  setDibujoFile(file);
+                  if (!file) {
+                    setDibujoUrl(null);
+                    setMapaEliminado(true);
+                  }
+                }}
                 readOnly={false}
               />
             ) : (
@@ -916,7 +930,7 @@ export default function HojaInspeccion({
               title={
                 puedeDescargarPdf
                   ? "Descargar PDF"
-                  : "Requiere imagen, productos y firma guardados"
+                  : "Requiere productos y firma guardados"
               }
               className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
               <Download className="w-4 h-4" />
@@ -940,7 +954,7 @@ export default function HojaInspeccion({
                   ) : (
                     <Save className="w-4 h-4" />
                   )}
-                  {hasMapa ? "Guardar con Firma" : "Firma Cliente"}
+                  {firmaUrl ? "Guardar Cambios" : "Firma Cliente"}
                 </button>
               </>
             )}

@@ -439,6 +439,13 @@ export default function HojaInstalacion({
 
     const firmaPdfUrl = firmaUrl;
 
+    const mapaSection = (dibujoUrl && dibujoUrl.trim() !== "")
+      ? `<section class="section avoid-break">
+              <h2>Mapa / croquis de instalaci&oacute;n</h2>
+              <div class="mapa"><img src="${escapePdfHtml(dibujoUrl)}" /></div>
+            </section>`
+      : "";
+
     const rows = items
       .filter((item) => !shouldHideProductInPdf(item.producto_descrip))
       .map(
@@ -657,6 +664,20 @@ export default function HojaInstalacion({
             .payment-summary strong { font-size: 13px; }
             .money { width: 120px; text-align: right; font-weight: 800; white-space: nowrap; }
             .status { width: 110px; text-align: center; }
+            .mapa {
+              border: 1px solid #d1d5db;
+              background: #f9fafb;
+              padding: 10px;
+              break-inside: avoid;
+            }
+            .mapa img {
+              display: block;
+              width: 100%;
+              max-height: 520px;
+              object-fit: contain;
+              background: #ffffff;
+              border: 1px solid #e5e7eb;
+            }
             .warranty-box {
               border: 2px solid #f97316;
               background-color: #fff7ed;
@@ -753,6 +774,8 @@ export default function HojaInstalacion({
             </section>
 
             ${planPagoSection}
+
+            ${mapaSection}
 
             <section class="warranty-box">
               <h3>Aviso Importante y Garant&iacute;a</h3>
