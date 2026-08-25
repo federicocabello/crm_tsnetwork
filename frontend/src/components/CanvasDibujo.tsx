@@ -17,6 +17,7 @@ export default function CanvasDibujo({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [isDrawing, setIsDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
   const [color, setColor] = useState("#ef4444"); // Red default
   const [lineWidth, setLineWidth] = useState(3);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
@@ -41,11 +42,13 @@ export default function CanvasDibujo({
       img.src = initialImage;
       img.onload = () => {
         setBgImage(img);
-        drawInitialState(img);
+        setHasDrawn(false);
+        drawInitialState(img, false);
         setLoadingImage(false);
       };
       img.onerror = () => {
         setBgImage(null);
+        setHasDrawn(false);
         drawInitialState(null, false);
         setLoadingImage(false);
       };
@@ -53,6 +56,7 @@ export default function CanvasDibujo({
     }
 
     setBgImage(null);
+    setHasDrawn(false);
     drawInitialState(null, false);
     setLoadingImage(false);
   }, [initialImage]);
@@ -109,7 +113,8 @@ export default function CanvasDibujo({
       const img = new Image();
       img.onload = () => {
         setBgImage(img);
-        drawInitialState(img);
+        setHasDrawn(false);
+        drawInitialState(img, true);
         setLoadingImage(false);
       };
       img.onerror = () => {
@@ -150,6 +155,10 @@ export default function CanvasDibujo({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    if (!hasDrawn) {
+      setHasDrawn(true);
+    }
+
     // Get coordinates depending on event type
     let clientX, clientY;
     if ("touches" in e) {
@@ -181,20 +190,31 @@ export default function CanvasDibujo({
   const clearCanvas = () => {
     if (readOnly) return;
 
-    drawInitialState(bgImage);
+    setHasDrawn(false);
+    drawInitialState(bgImage, Boolean(bgImage));
+    if (!bgImage) {
+      onImageChange(null);
+    }
   };
 
   const deleteBgAndClear = () => {
     if (readOnly) return;
 
     setBgImage(null);
-    drawInitialState(null);
+    setHasDrawn(false);
+    drawInitialState(null, false);
+    onImageChange(null);
   };
 
   // Convert canvas to file and send to parent
   const exportCanvas = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    if (!bgImage && !hasDrawn) {
+      onImageChange(null);
+      return;
+    }
 
     canvas.toBlob(
       (blob) => {

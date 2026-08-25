@@ -2965,8 +2965,8 @@ def guardar_inspeccion(id_cita):
         carpeta = os.path.join(UPLOADS_DIR, f"cita_{id_cita}")
         os.makedirs(carpeta, exist_ok=True)
 
-        # Process drawing upload if exists
-        dibujo_path = None
+        # Process drawing upload if exists or delete if requested
+        eliminar_dibujo = request.form.get("eliminar_dibujo") == "true"
         if archivo_dibujo:
             nombre_seguro = secure_filename(archivo_dibujo.filename)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2974,6 +2974,8 @@ def guardar_inspeccion(id_cita):
             archivo_dibujo.save(os.path.join(carpeta, nombre_final))
             dibujo_path = f"/uploads/cita_{id_cita}/{nombre_final}"
             cursor.execute("UPDATE hojas_inspeccion SET dibujo = %s WHERE id = %s", (dibujo_path, inspeccion_id))
+        elif eliminar_dibujo:
+            cursor.execute("UPDATE hojas_inspeccion SET dibujo = NULL WHERE id = %s", (inspeccion_id,))
 
         # Process signature upload if exists — la firma nunca se puede reemplazar si ya existe
         if archivo_firma:
