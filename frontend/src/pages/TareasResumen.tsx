@@ -444,7 +444,7 @@ export default function TareasResumen() {
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-            <div className="hidden grid-cols-[150px_minmax(210px,1fr)_minmax(230px,1.2fr)_150px] gap-4 border-b border-white/10 bg-zinc-900/70 px-4 py-3 text-xs font-black uppercase text-white/45 lg:grid">
+            <div className="hidden grid-cols-[150px_minmax(210px,1fr)_minmax(230px,1.2fr)_150px] gap-4 border-b border-white/10 bg-zinc-900/70 px-4 py-3 text-xs font-black uppercase text-white/80 lg:grid">
               <span>Fecha</span>
               <span>Cliente</span>
               <span>Tarea</span>

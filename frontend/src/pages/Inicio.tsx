@@ -859,22 +859,22 @@ export default function Inicio() {
           <div className="flex items-center justify-around gap-2 flex-wrap">
             <button
               onClick={goPrev}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold hover:bg-white/10 cursor-pointer sm:text-sm">
+              className="btn-secondary text-xs font-bold sm:text-sm">
               ← Anterior
             </button>
             <button
               onClick={goToday}
-              className="rounded-xl border border-orange-500/30 bg-orange-500/15 px-3 py-2 text-xs font-bold text-orange-100 hover:bg-orange-500/20 cursor-pointer sm:text-sm">
+              className="btn-primary text-xs font-extrabold sm:text-sm">
               Hoy
             </button>
             <button
               onClick={goNext}
-              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold hover:bg-white/10 cursor-pointer sm:text-sm">
+              className="btn-secondary text-xs font-bold sm:text-sm">
               Siguiente →
             </button>
 
-            <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-              <span className="text-xs text-white/60">Ir a</span>
+            <div className="flex min-w-0 items-center gap-2 rounded-xl border border-[var(--bg-border)] bg-[var(--bg-surface-2)] px-3 py-2">
+              <span className="text-xs text-muted">Ir a</span>
               <DatePicker
                 selected={fromDateKey(selectedDay)}
                 onChange={(date: Date | null) => {
@@ -887,7 +887,7 @@ export default function Inicio() {
                   isSundayDate(date) ? "datepicker-sunday-blocked" : ""
                 }
                 dateFormat="MM/dd/yyyy"
-                className="w-24 bg-transparent text-sm outline-none sm:w-28"
+                className="w-24 bg-transparent text-sm font-bold text-orange-500 outline-none sm:w-28 cursor-pointer"
               />
             </div>
           </div>
@@ -1029,7 +1029,7 @@ export default function Inicio() {
           <div className="flex min-w-0 items-center gap-2">
             <input
               type="text"
-              className="min-w-0 bg-zinc-900 text-white placeholder:text-white/60 border border-white/10 focus:border-orange-500/40 text-sm p-2 rounded-lg w-full uppercase"
+              className="min-w-0 bg-[var(--bg-input)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border border-[var(--bg-border)] focus:border-orange-500/40 text-sm p-2 rounded-lg w-full uppercase"
               placeholder="Nombre, teléfono o domicilio"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -1037,7 +1037,7 @@ export default function Inicio() {
           </div>
 
           {resultados?.length > 0 && (
-            <ul className="bg-zinc-800 mt-2 max-h-60 overflow-y-auto rounded-lg border border-white/10 text-xs">
+            <ul className="bg-[var(--bg-surface-2)] mt-2 max-h-60 overflow-y-auto rounded-lg border border-[var(--bg-border)] text-xs shadow-lg">
               {resultados.map((c) => {
                 const esSeleccionado = c.id === clienteSeleccionado;
                 return (
@@ -1174,16 +1174,16 @@ export default function Inicio() {
                             onClick={() =>
                               navigate(`/clientes/${cuota.idcliente}`)
                             }
-                            className="w-full border-b border-white/5 bg-zinc-950/30 px-3 py-2 text-left text-xs transition hover:bg-white/5 last:border-b-0">
+                            className="w-full border-b border-[var(--bg-border)] bg-[var(--bg-surface-2)] px-3 py-2 text-left text-xs transition hover:bg-[var(--color-primary-l)] last:border-b-0">
                             <div className="flex min-w-0 items-center justify-between gap-2">
-                              <span className="truncate font-bold text-white">
+                              <span className="truncate font-bold text-[var(--text-primary)]">
                                 {cuota.cliente}
                               </span>
-                              <span className="shrink-0 font-bold text-orange-300">
+                              <span className="shrink-0 font-extrabold text-orange-500">
                                 <FormatearNumero numero={Number(cuota.monto)} />
                               </span>
                             </div>
-                            <div className="mt-0.5 flex flex-wrap items-center justify-between gap-2 text-white/45">
+                            <div className="mt-0.5 flex flex-wrap items-center justify-between gap-2 opacity-70">
                               <span>{formatShortDate(cuota.vencimiento)}</span>
                               <span>
                                 {Number(cuota.dias) < 0
@@ -1236,32 +1236,79 @@ export default function Inicio() {
           </span>
         </div>
 
-        <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-0 xl:min-h-0 xl:pr-2">
-          {tareasProgramadasDelDia.map((tarea) => (
-            <div key={tarea.id} className="rounded-xl border border-purple-400/25 bg-purple-500/[0.08] p-3">
-              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex w-20 justify-center rounded-full border border-purple-400/30 bg-purple-500/15 px-2 py-1 text-xs font-black text-purple-100">{tarea.hora_format || tarea.hora}</span>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-purple-400/30 bg-purple-500/15 px-2 py-1 text-xs font-black uppercase text-purple-100"><Repeat2 className="h-3.5 w-3.5" />{tarea.frecuencia}</span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs font-bold capitalize text-white/65">{tarea.categoria === "camaras" ? "Cámaras" : tarea.categoria}</span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 font-black"><CalendarClock className="h-4 w-4 text-purple-300" />{tarea.tarea}</div>
-                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-white/60">
-                    <span className="font-bold text-white/80">{tarea.nombre}</span>
-                    {tarea.telefono && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" />{tarea.telefono}</span>}
-                    {tarea.direccion && <span className="flex items-center gap-1"><Home className="h-3.5 w-3.5" />{tarea.direccion}</span>}
+        <div className="mt-3 flex-1 space-y-4 overflow-y-auto pr-0 xl:min-h-0 xl:pr-2">
+          {/* ───────────────── SECCIÓN: TAREAS PROGRAMADAS RECURRENTES ───────────────── */}
+          {tareasProgramadasDelDia.length > 0 && (
+            <div className="space-y-2 rounded-2xl border border-purple-300/80 dark:border-purple-800/60 bg-purple-500/[0.04] dark:bg-purple-950/20 p-3">
+              <div className="flex items-center justify-between px-1 pb-1">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-600 text-white font-extrabold text-xs shadow-sm">
+                    <Repeat2 className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="text-xs font-black uppercase tracking-wider text-purple-900 dark:text-purple-300">
+                    Tareas Programadas Recurrentes ({tareasProgramadasDelDia.length})
+                  </span>
+                </div>
+                <span className="rounded-full bg-purple-500/15 border border-purple-400/30 px-2 py-0.5 text-[10px] font-extrabold text-purple-800 dark:text-purple-200">
+                  Mantenimiento / Rutina
+                </span>
+              </div>
+
+              {tareasProgramadasDelDia.map((tarea) => (
+                <div
+                  key={tarea.id}
+                  style={{ borderLeftColor: '#9333ea', borderLeftWidth: '6px' }}
+                  className="rounded-xl border-2 border-purple-400 dark:border-purple-600/80 bg-purple-100/90 dark:bg-purple-950/80 p-3.5 shadow-md transition-all duration-200 hover:-translate-y-0.5">
+                  <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex w-20 justify-center rounded-full border border-purple-500/40 bg-purple-600 text-white px-2 py-0.5 text-xs font-black">
+                          {tarea.hora_format || tarea.hora}
+                        </span>
+                        <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/40 bg-purple-200 dark:bg-purple-900/60 px-2.5 py-0.5 text-xs font-black uppercase text-purple-950 dark:text-purple-100">
+                          <Repeat2 className="h-3.5 w-3.5" />
+                          {tarea.frecuencia}
+                        </span>
+                        <span className="rounded-full border border-purple-300 dark:border-purple-700 bg-white dark:bg-purple-900/40 px-2.5 py-0.5 text-xs font-extrabold capitalize text-purple-900 dark:text-purple-200">
+                          {tarea.categoria === "camaras" ? "Cámaras" : tarea.categoria}
+                        </span>
+                      </div>
+                      <div className="mt-2.5 flex items-center gap-2 font-black text-slate-900 dark:text-purple-100 text-base">
+                        <CalendarClock className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                        {tarea.tarea}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-800 dark:text-purple-200">
+                        <span className="font-extrabold text-slate-950 dark:text-white">{tarea.nombre}</span>
+                        {tarea.telefono && <span className="flex items-center gap-1 font-semibold"><Phone className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />{tarea.telefono}</span>}
+                        {tarea.direccion && <span className="flex items-center gap-1 font-semibold"><Home className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />{tarea.direccion}</span>}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs italic font-semibold text-purple-800 dark:text-purple-300 bg-purple-200/60 dark:bg-purple-900/40 px-2.5 py-1 rounded-lg">
+                      Asignado a {tarea.fullname}
+                    </span>
                   </div>
                 </div>
-                <span className="shrink-0 text-xs italic text-white/45">Asignado a {tarea.fullname}</span>
-              </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* ───────────────── SECCIÓN: CITAS Y EVENTOS DEL DÍA ───────────────── */}
+          {dayItems.length > 0 && tareasProgramadasDelDia.length > 0 && (
+            <div className="flex items-center gap-2 pt-2 px-1">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-500 text-white font-extrabold text-xs shadow-sm">
+                <CalendarClock className="h-3.5 w-3.5" />
+              </span>
+              <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                Citas y Atenciones a Clientes del Día ({dayItems.length})
+              </span>
+            </div>
+          )}
+
           {dayItems.length === 0 && tareasProgramadasDelDia.length === 0 ? (
             loading ? (
               <Loading />
             ) : (
-              <div className="rounded-xl border border-white/10 bg-zinc-950/30 p-3 text-white/60">
+              <div className="rounded-xl border border-[var(--bg-border)] bg-[var(--bg-surface-2)] p-3 text-[var(--text-muted)]">
                 No hay eventos para este día.
               </div>
             )
@@ -1271,19 +1318,20 @@ export default function Inicio() {
                 /* ────────── TARJETA SOLO LECTURA (técnico) ────────── */
                 <div
                   key={it.idcita}
-                  className={`rounded-xl border p-2.5 transition ${citaResaltada === String(it.idcita) ? "border-orange-300 bg-zinc-950/30 shadow-[0_0_18px_rgba(251,146,60,0.45)] ring-2 ring-orange-300/50 animate-pulse" : "border-white/10 bg-zinc-950/30"}`}>
+                  style={{ borderLeftColor: it.color || '#f97316', borderLeftWidth: '5px' }}
+                  className={`card-event ${citaResaltada === String(it.idcita) ? "border-orange-400 bg-orange-500/10 ring-2 ring-orange-400 animate-pulse" : ""}`}>
                   <div>
                     {/* Fila 1: estado (badge solo lectura) + tipo de instalación */}
                     <div className="mb-1.5 flex flex-col justify-between gap-1.5 lg:flex-row lg:items-start">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         {/* Badge de hora (solo lectura) */}
-                        <span className="inline-flex items-center rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-200 w-20 justify-center">
+                        <span className="inline-flex items-center rounded-full border border-orange-500/30 bg-orange-500/15 px-2.5 py-1 text-xs font-black text-orange-700 dark:text-orange-300 w-20 justify-center">
                           {it.hora_format}
                         </span>
 
                         {/* Badge de estado (solo lectura) */}
                         <span
-                          className="rounded-full text-xs font-bold py-0.5 px-1.5 text-center border-2"
+                          className="rounded-full text-xs font-bold py-0.5 px-2 text-center border text-white"
                           style={{
                             backgroundColor: it.color,
                             borderColor: darkenColor(it.color, 0.5),
@@ -1295,14 +1343,14 @@ export default function Inicio() {
                           it.tipo == "camaras-tiene-nuevo-instalacion" ||
                           it.tipo == "camaras-tiene-existente-instalacion") && (
                           <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            <div className="rounded-full text-xs font-bold py-0.5 px-1.5 text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
+                            <div className="rounded-full text-xs font-bold py-0.5 px-2 text-center border border-blue-700 bg-blue-600 text-white flex justify-center items-center gap-1">
                               <Cctv className="h-4 w-4" />
                               <span>INSTALACIÓN DE CÁMARAS</span>
                             </div>
                             {(it.tipo == "camaras-tiene-nuevo-instalacion" ||
                               it.tipo ==
                                 "camaras-tiene-existente-instalacion") && (
-                              <span className="text-xs text-yellow-500 font-bold italic flex items-center gap-1">
+                              <span className="text-xs text-amber-600 dark:text-yellow-400 font-bold italic flex items-center gap-1">
                                 <TriangleAlert className="h-4 w-4" />
                                 Ya tiene cámaras instaladas
                               </span>
@@ -1311,7 +1359,7 @@ export default function Inicio() {
                         )}
 
                         {(it.tipo || "").includes("internet") && (
-                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 text-center border-2 border-orange-700 bg-orange-500 flex justify-center items-center gap-1">
+                          <div className="rounded-full text-xs font-bold py-0.5 px-2 text-center border border-orange-700 bg-orange-600 text-white flex justify-center items-center gap-1">
                             <Globe className="h-4 w-4" />
                             <span>INTERNET</span>
                           </div>
@@ -1319,7 +1367,7 @@ export default function Inicio() {
 
                         {(it.tipo == "camaras-tiene-nuevo-soporte" ||
                           it.tipo == "camaras-tiene-existente-soporte") && (
-                          <div className="rounded-full text-xs font-bold py-0.5 px-1.5 text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
+                          <div className="rounded-full text-xs font-bold py-0.5 px-2 text-center border border-green-700 bg-green-600 text-white flex justify-center items-center gap-1">
                             <Wrench className="h-4 w-4" />
                             <span>SOPORTE</span>
                           </div>
@@ -1333,7 +1381,7 @@ export default function Inicio() {
                           onClick={(e) => e.stopPropagation()}
                           aria-label={`Asignado a ${it.fullname}`}
                           title="Cambiar agente asignado"
-                          className="max-w-44 cursor-pointer bg-transparent text-right text-xs italic text-white/60 outline-none">
+                          className="max-w-44 cursor-pointer bg-transparent text-right text-xs italic font-semibold opacity-80 outline-none">
                           {users.map((agente) => (
                             <option key={agente.id} value={agente.id} className="bg-white text-black">
                               Asignado a {agente.fullname}
@@ -1501,7 +1549,8 @@ export default function Inicio() {
                 /* ────────── TARJETA COMPLETA (otros roles) ────────── */
                 <div
                   key={it.idcita}
-                  className={`rounded-xl border p-2.5 transition ${citaResaltada === String(it.idcita) ? "border-orange-300 bg-zinc-950/30 shadow-[0_0_18px_rgba(251,146,60,0.45)] ring-2 ring-orange-300/50 animate-pulse" : "border-white/10 bg-zinc-950/30"}`}>
+                  style={{ borderLeftColor: it.color || '#f97316', borderLeftWidth: '5px' }}
+                  className={`card-event ${citaResaltada === String(it.idcita) ? "border-orange-400 bg-orange-500/10 ring-2 ring-orange-400 animate-pulse" : ""}`}>
                   <div>
                     <div className="mb-1.5 flex flex-col justify-between gap-1.5 lg:flex-row lg:items-start">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -1521,7 +1570,7 @@ export default function Inicio() {
                         <select
                           value={it.idestado}
                           disabled={it.idestado == "9" ? true : false}
-                          className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2"
+                          className="rounded-full text-xs font-bold py-0.5 px-2 cursor-pointer text-center border text-white"
                           style={{
                             backgroundColor: it.color,
                             borderColor: darkenColor(it.color, 0.5),
@@ -1552,14 +1601,14 @@ export default function Inicio() {
                           it.tipo == "camaras-tiene-nuevo-instalacion" ||
                           it.tipo == "camaras-tiene-existente-instalacion") && (
                           <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            <div className="rounded-full text-xs font-bold py-0.5 px-1.5 cursor-pointer text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
+                            <div className="rounded-full text-xs font-bold py-0.5 px-2 cursor-pointer text-center border border-blue-700 bg-blue-600 text-white flex justify-center items-center gap-1">
                               <Cctv className="h-4 w-4" />
                               <span>INSTALACIÓN DE CÁMARAS</span>
                             </div>
                             {(it.tipo == "camaras-tiene-nuevo-instalacion" ||
                               it.tipo ==
                                 "camaras-tiene-existente-instalacion") && (
-                              <span className="text-xs text-yellow-500 font-bold italic flex items-center gap-1">
+                              <span className="text-xs text-amber-600 dark:text-yellow-400 font-bold italic flex items-center gap-1">
                                 <TriangleAlert className="h-4 w-4" />
                                 Ya tiene cámaras instaladas
                               </span>

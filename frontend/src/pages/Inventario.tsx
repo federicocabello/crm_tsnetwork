@@ -223,7 +223,7 @@ export default function Inventario() {
       <div className="flex-1 min-h-0 cuadro overflow-hidden flex flex-col">
         <div className="overflow-x-auto overflow-y-auto">
           <table className="w-full text-left text-sm text-white/80">
-            <thead className="bg-zinc-900/50 text-xs uppercase text-white/60 sticky top-0 backdrop-blur-md z-10">
+            <thead className="bg-zinc-900/50 text-xs uppercase text-white/80 font-black sticky top-0 backdrop-blur-md z-10">
               <tr>
                 <th className="px-4 py-3 w-1/2">Descripción</th>
                 <th className="px-4 py-3">Categoría</th>

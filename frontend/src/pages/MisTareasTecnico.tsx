@@ -177,32 +177,32 @@ export default function MisTareasTecnico() {
   };
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto px-1 pr-3 sm:pr-4">
-      <section className="space-y-3 pb-6">
-        <header className="flex items-start justify-between gap-3 border-b border-white/10 pb-3">
+    <div className="h-full min-h-0 overflow-y-auto px-1 pr-2 sm:pr-4">
+      <section className="space-y-4 pb-6">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--bg-border)] pb-3">
           <div>
-            <div className="flex items-center gap-2 text-orange-300">
-              <UserRoundCheck className="h-5 w-5" />
-              <span className="text-xs font-bold uppercase">Mi trabajo</span>
+            <div className="flex items-center gap-2 text-orange-500 font-extrabold text-xs uppercase tracking-wider">
+              <UserRoundCheck className="h-4 w-4" />
+              <span>Mi Trabajo Diario</span>
             </div>
-            <h1 className="mt-1 text-2xl font-black">Mis tareas</h1>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-[var(--text-primary)]">Mis Tareas Asignadas</h1>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <span className="max-w-40 truncate text-right text-xs font-semibold text-white/50 sm:max-w-none sm:text-sm">{user?.fullname}</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => void copiarLista()}
-                aria-label="Copiar tareas de hoy"
-                title="Copiar tareas de hoy"
-                className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-bold transition active:scale-95 ${estadoCopia === "copiado" ? "border-green-500/40 bg-green-500/15 text-green-300" : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"}`}>
-                {estadoCopia === "copiado" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                <span className="hidden sm:inline">{estadoCopia === "copiado" ? "Copiado" : estadoCopia === "error" ? "Error" : "Copiar"}</span>
-              </button>
-            </div>
-            <span className="sr-only" role="status" aria-live="polite">
-              {estadoCopia === "copiado" ? "Tareas de hoy copiadas" : estadoCopia === "error" ? "No se pudo copiar la lista" : ""}
-            </span>
+          
+          <div className="flex items-center justify-between sm:justify-end gap-3">
+            <span className="text-xs font-extrabold text-[var(--text-muted)]">{user?.fullname}</span>
+            <button
+              type="button"
+              onClick={() => void copiarLista()}
+              aria-label="Copiar tareas de hoy"
+              title="Copiar tareas de hoy"
+              className={`btn-secondary py-2 px-3 text-xs font-black transition ${
+                estadoCopia === "copiado"
+                  ? "bg-emerald-600 text-white border-emerald-600"
+                  : ""
+              }`}>
+              {estadoCopia === "copiado" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              <span>{estadoCopia === "copiado" ? "¡Lista Copiada!" : estadoCopia === "error" ? "Error" : "Copiar Tareas de Hoy"}</span>
+            </button>
           </div>
         </header>
 
@@ -212,49 +212,95 @@ export default function MisTareasTecnico() {
           const paginaActual = Math.min(paginas[seccion.key], totalPaginas);
           const inicioPagina = (paginaActual - 1) * TAREAS_POR_PAGINA;
           const tareasPaginadas = seccion.tareas.slice(inicioPagina, inicioPagina + TAREAS_POR_PAGINA);
+          
           return (
-            <section key={seccion.key} className="border-b border-white/10 pb-3 last:border-0">
+            <section key={seccion.key} className="border-b border-[var(--bg-border)] pb-4 last:border-0">
               <button
                 type="button"
                 onClick={() => alternarSeccion(seccion.key)}
                 aria-expanded={!cerrada}
-                className="mb-2 flex min-h-11 w-full items-center gap-2 rounded-lg px-1 text-left active:bg-white/5">
-                {seccion.alerta ? <AlertTriangle className="h-5 w-5 shrink-0 text-red-400" /> : <CalendarDays className="h-5 w-5 shrink-0 text-orange-300" />}
-                <h2 className={`flex-1 text-lg font-black ${seccion.alerta ? "text-red-300" : "text-white"}`}>{seccion.titulo}</h2>
-                <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-black text-white/60">{seccion.tareas.length}</span>
-                <ChevronDown className={`h-5 w-5 text-white/45 transition-transform ${cerrada ? "-rotate-90" : ""}`} />
+                className="mb-3 flex min-h-11 w-full items-center gap-2 rounded-xl p-2 text-left hover:bg-[var(--color-primary-l)] transition cursor-pointer">
+                {seccion.alerta ? (
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-red-500" />
+                ) : (
+                  <CalendarDays className="h-5 w-5 shrink-0 text-orange-500" />
+                )}
+                <h2 className={`flex-1 text-lg font-black ${seccion.alerta ? "text-red-500" : "text-[var(--text-primary)]"}`}>
+                  {seccion.titulo}
+                </h2>
+                <span className="rounded-full bg-[var(--bg-surface-2)] border border-[var(--bg-border)] px-2.5 py-0.5 text-xs font-black text-[var(--text-primary)]">
+                  {seccion.tareas.length}
+                </span>
+                <ChevronDown className={`h-5 w-5 text-[var(--text-muted)] transition-transform duration-200 ${cerrada ? "-rotate-90" : ""}`} />
               </button>
 
               {!cerrada && (seccion.tareas.length === 0 ? (
-                <p className="px-1 py-3 text-sm text-white/40">No hay tareas en este grupo.</p>
+                <p className="px-3 py-4 text-xs font-semibold text-[var(--text-muted)] italic bg-[var(--bg-surface-2)] rounded-xl border border-[var(--bg-border)]">
+                  No hay tareas programadas en este grupo.
+                </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {tareasPaginadas.map((tarea) => (
-                    <button
+                    <div
                       key={tarea.idcita}
-                      type="button"
                       onClick={() => navigate(`/inicio?dia=${tarea.dia}`, { state: { citaResaltada: String(tarea.idcita) } })}
-                      className={`grid min-h-11 w-full grid-cols-1 gap-3 rounded-lg border p-3 text-left transition active:bg-white/10 md:grid-cols-[100px_minmax(180px,1fr)_160px_minmax(180px,1fr)] md:items-center ${seccion.alerta ? "border-red-500/25 bg-red-500/[0.07]" : "border-white/10 bg-white/5"}`}>
-                      <span className="flex items-center justify-between gap-3 md:block">
-                        <span className="inline-flex items-center gap-2 text-sm font-black text-orange-200">
-                          <Clock className="h-4 w-4" />
-                          {tarea.hora_format || tarea.hora || "Sin hora"}
+                      style={{ borderLeftColor: tarea.color || '#ea580c', borderLeftWidth: '6px' }}
+                      className={`card-event w-full rounded-2xl border-2 border-[var(--card-border)] p-3.5 sm:p-4 text-left transition hover:-translate-y-0.5 cursor-pointer shadow-sm ${
+                        seccion.alerta ? "bg-red-500/[0.04] border-red-500/40" : ""
+                      }`}>
+                      
+                      {/* FILA 1: HORA + FECHA + BADGE ESTADO */}
+                      <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-[var(--bg-border)] mb-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-black text-orange-600 dark:text-orange-300 bg-orange-500/15 border border-orange-500/30 px-2.5 py-1 rounded-lg">
+                            <Clock className="h-3.5 w-3.5 shrink-0" />
+                            {tarea.hora_format || tarea.hora || "Sin hora"}
+                          </span>
+                          <span className="text-[11px] font-bold text-[var(--text-muted)] bg-[var(--bg-surface-2)] border border-[var(--bg-border)] px-2 py-0.5 rounded-md">
+                            {fechaCorta(tarea.dia)}
+                          </span>
+                        </div>
+
+                        <span
+                          className="rounded-full px-3 py-1 text-xs font-black text-white text-center shadow-xs"
+                          style={{ backgroundColor: tarea.color || '#ea580c' }}>
+                          {tarea.estado}
                         </span>
-                        <span className="text-xs font-bold text-white/45 md:mt-1 md:block">{fechaCorta(tarea.dia)}</span>
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block break-words font-black text-white">{tarea.nombre}</span>
-                        <span className="text-xs font-bold text-white/45">{tipoLabel(tarea.tipo)}</span>
-                      </span>
-                      <span className="justify-self-start rounded-full border px-2 py-1 text-[11px] font-black text-white md:justify-self-auto" style={{ borderColor: tarea.color, backgroundColor: `${tarea.color}55` }}>{tarea.estado}</span>
-                      <span className="min-w-0 space-y-1 text-xs text-white/55">
-                        <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 shrink-0" /><span className="break-all">{tarea.telefono || "Sin teléfono"}</span></span>
-                        <span className="flex items-start gap-1.5"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span className="break-words">{tarea.direccion || "Sin dirección"}</span></span>
-                      </span>
-                    </button>
+                      </div>
+
+                      {/* FILA 2: NOMBRE CLIENTE Y TIPO SERVICIO */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2.5">
+                        <h3 className="font-black text-base text-[var(--text-primary)] tracking-tight">
+                          {tarea.nombre}
+                        </h3>
+                        <span className="inline-flex items-center text-xs font-black text-orange-500 uppercase tracking-wider">
+                          {tipoLabel(tarea.tipo)}
+                        </span>
+                      </div>
+
+                      {/* FILA 3: TELÉFONO Y DIRECCIÓN CON ICONOS */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[var(--text-secondary)] font-semibold pt-2 border-t border-[var(--bg-border)]/60">
+                        {tarea.telefono && (
+                          <a
+                            href={`tel:${tarea.telefono}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-2 hover:text-orange-500 transition">
+                            <Phone className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                            <span className="break-all font-mono font-bold">{tarea.telefono}</span>
+                          </a>
+                        )}
+                        {tarea.direccion && (
+                          <div className="flex items-start gap-2">
+                            <MapPin className="h-3.5 w-3.5 text-orange-500 shrink-0 mt-0.5" />
+                            <span className="break-words leading-tight">{tarea.direccion}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   ))}
+                  
                   {totalPaginas > 1 && (
-                    <div className="flex flex-col gap-2 px-1 pt-1 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex flex-col gap-2 px-1 pt-2 text-xs text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between">
                       <span>
                         Mostrando {inicioPagina + 1}-{Math.min(inicioPagina + TAREAS_POR_PAGINA, seccion.tareas.length)} de {seccion.tareas.length}
                       </span>
@@ -264,10 +310,10 @@ export default function MisTareasTecnico() {
                           aria-label={`Página anterior de ${seccion.titulo}`}
                           disabled={paginaActual === 1}
                           onClick={() => cambiarPagina(seccion.key, paginaActual - 1)}
-                          className="rounded-lg border border-white/10 p-2 text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30">
+                          className="btn-icon p-1.5 disabled:opacity-30">
                           <ChevronLeft className="h-4 w-4" />
                         </button>
-                        <span className="min-w-24 text-center font-bold text-white/70">
+                        <span className="min-w-24 text-center font-bold text-[var(--text-primary)]">
                           Página {paginaActual} de {totalPaginas}
                         </span>
                         <button
@@ -275,7 +321,7 @@ export default function MisTareasTecnico() {
                           aria-label={`Página siguiente de ${seccion.titulo}`}
                           disabled={paginaActual === totalPaginas}
                           onClick={() => cambiarPagina(seccion.key, paginaActual + 1)}
-                          className="rounded-lg border border-white/10 p-2 text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30">
+                          className="btn-icon p-1.5 disabled:opacity-30">
                           <ChevronRight className="h-4 w-4" />
                         </button>
                       </div>
