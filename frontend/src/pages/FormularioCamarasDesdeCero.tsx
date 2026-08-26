@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { CircleDollarSign, SearchAlert, ClipboardList, Files, Loader2 } from 'lucide-react';
+import { CircleDollarSign, SearchAlert, ClipboardList, Files, Loader2, Save } from 'lucide-react';
 import { useAuth } from "../auth/AuthContext";
 import type { Usuarios } from "../types/auth";
 import DatePicker from "react-datepicker";
@@ -79,12 +79,11 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
 });
 
   const opcionClase = (activo: boolean) =>
-    `rounded-xl border px-3 py-2 text-sm font-bold cursor-pointer transition-all
-     ${
-       activo
-         ? "bg-orange-500 text-white border-orange-500"
-         : "bg-zinc-950/40 text-white border-white/10 hover:border-orange-500/50"
-     }`;
+    `rounded-lg border px-2.5 py-1.5 text-xs font-extrabold cursor-pointer transition-all ${
+      activo
+        ? "bg-orange-600 text-white border-orange-600 shadow-md"
+        : "bg-[var(--bg-surface-2)] text-[var(--text-primary)] border-[var(--bg-border)] hover:border-orange-500 hover:text-orange-500"
+    }`;
 
     const [presupuesto, setPresupuesto] = useState<Presupuesto | null>(null);
     const [openPresupuesto, setOpenPresupuesto] = useState(false);
@@ -280,265 +279,176 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
   return (
     <div className="flex flex-col gap-3 w-full">
       <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Nombre</label>
-              <input
-                type="text"
-                name="nombre"
-                placeholder="Nombre completo"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
-                value={formRegistro.nombre}
-                onChange={handleInputChange}
-              />
-            </div>
+        <label className="text-xs font-bold text-[var(--text-muted)]">Nombre</label>
+        <input
+          type="text"
+          name="nombre"
+          placeholder="Nombre completo"
+          className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] text-[var(--text-primary)] px-3 py-2 text-sm outline-none focus:border-orange-500 uppercase"
+          value={formRegistro.nombre}
+          onChange={handleInputChange}
+        />
+      </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Dirección</label>
-              <input
-                type="text"
-                name="direccion"
-                placeholder="Dirección"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
-                value={formRegistro.direccion}
-                onChange={handleInputChange}
-              />
-            </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-bold text-[var(--text-muted)]">Dirección</label>
+        <input
+          type="text"
+          name="direccion"
+          placeholder="Dirección"
+          className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] text-[var(--text-primary)] px-3 py-2 text-sm outline-none focus:border-orange-500 uppercase"
+          value={formRegistro.direccion}
+          onChange={handleInputChange}
+        />
+      </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Teléfono</label>
-              <input
-                type="tel"
-                name="telefono"
-                placeholder="(+1) 000-0000"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
-                value={formRegistro.telefono}
-                onChange={handleInputChange}
-                onBlur={handleBlur}
-              />
-              {alerta && (
-              <div className="text-red-500 text-xs flex items-center"><SearchAlert className="w-4 h-4 mr-1" />{alerta}</div>
-              )}
-            </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-bold text-[var(--text-muted)]">Teléfono</label>
+        <input
+          type="tel"
+          name="telefono"
+          placeholder="(+1) 000-0000"
+          className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] text-[var(--text-primary)] px-3 py-2 text-sm outline-none focus:border-orange-500"
+          value={formRegistro.telefono}
+          onChange={handleInputChange}
+          onBlur={handleBlur}
+        />
+        {alerta && (
+          <div className="text-red-500 text-xs flex items-center font-bold mt-1"><SearchAlert className="w-4 h-4 mr-1 shrink-0" />{alerta}</div>
+        )}
+      </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Email</label>
-              <input
-                type="email"
-                name="email"
-                placeholder="correo@email.com"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 lowercase"
-                value={formRegistro.email}
-                onChange={handleInputChange}
-              />
-            </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-bold text-[var(--text-muted)]">Email</label>
+        <input
+          type="email"
+          name="email"
+          placeholder="correo@email.com"
+          className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] text-[var(--text-primary)] px-3 py-2 text-sm outline-none focus:border-orange-500 lowercase"
+          value={formRegistro.email}
+          onChange={handleInputChange}
+        />
+      </div>
 
-            <div className="flex flex-col gap-1">
-              <textarea
-                name="notas"
-                placeholder="Notas..."
-                rows={5}
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
-              />
-            </div>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-bold text-[var(--text-muted)]">Notas</label>
+        <textarea
+          name="notas"
+          placeholder="Notas adicionales..."
+          rows={3}
+          className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] text-[var(--text-primary)] px-3 py-2 text-sm outline-none focus:border-orange-500 resize-none font-sans"
+          value={notas}
+          onChange={(e) => setNotas(e.target.value)}
+        />
+      </div>
+
       {!esInternet && (
         <>
-      <div>
-        <h2 className="text-sm font-extrabold tracking-tight flex items-center gap-1 mb-2">
-          <ClipboardList className="w-4 h-4" /><span>Datos de la instalación</span>
-        </h2>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-white/60">Lugar</label>
-          <div className="flex justify-between">
-            <div
-              onClick={() => handleRespuestaChange("lugar", "casa")}
-              className={opcionClase(respuestas.lugar == "casa")}>
-              Casa
-            </div>
-            <div
-              onClick={() => handleRespuestaChange("lugar", "negocio")}
-              className={opcionClase(respuestas.lugar == "negocio")}>
-              Negocio
-            </div>
-            <div
-              onClick={() => handleRespuestaChange("lugar", "traila")}
-              className={opcionClase(respuestas.lugar == "traila")}>
-              Tráila
-            </div>
-            <div
-              onClick={() => handleRespuestaChange("lugar", "foodtruck")}
-              className={opcionClase(respuestas.lugar == "foodtruck")}>
-              Foodtruck
-            </div>
-            <div
-              onClick={() => handleRespuestaChange("lugar", "apartamento")}
-              className={opcionClase(respuestas.lugar == "apartamento")}>
-              Apartamento
-            </div>
-          </div>
-        </div>
-        {respuestas.lugar == "foodtruck" && (
-          <div className="text-xs italic transition-all mt-1 text-white/60">
-            ACLARACIÓN: preguntar si cuenta con internet y monitor.{" "}
-            <strong className="text-red-500">
-              Sin internet no podemos proceder con la instalación.
-            </strong>
-          </div>
-        )}
-        {respuestas.lugar == "apartamento" && (
-          <div className="text-xs italic transition-all mt-1 text-white/60">
-            ACLARACIÓN: es necesario obtener el permiso del arrendador{" "}
-            <strong className="text-red-500">
-              para perforar el techo o las paredes
-            </strong>{" "}
-            antes de realizar cualquier instalación.
-          </div>
-        )}
-      </div>
-
-      <div className="flex justify-between">
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-white/60">Audio</label>
-          <div className="flex gap-1">
-            <div
-              onClick={() => handleRespuestaChange("audio", "si")}
-              className={opcionClase(respuestas.audio == "si")}>
-              Sí
-            </div>
-            <div
-              onClick={() => handleRespuestaChange("audio", "no")}
-              className={opcionClase(respuestas.audio == "no")}>
-              No
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-white/60">Área</label>
-          <div className="flex gap-1">
-            <div
-              onClick={() => handleRespuestaChange("area", "interior")}
-              className={opcionClase(respuestas.area == "interior")}>
-              Interior
-            </div>
-            <div
-              onClick={() => handleRespuestaChange("area", "exterior")}
-              className={opcionClase(respuestas.area == "exterior")}>
-              Exterior
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs text-white/60">Monitor</label>
-          <div className="flex gap-1">
-            <div
-              onClick={() => handleRespuestaChange("monitor", "si")}
-              className={opcionClase(respuestas.monitor == "si")}>
-              Sí
-            </div>
-            <div
-              onClick={() => handleRespuestaChange("monitor", "no")}
-              className={opcionClase(respuestas.monitor == "no")}>
-              No
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div className="flex justify-between">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-white/60">Ático</label>
-            <div className="flex gap-1">
-              <div
-                onClick={() => handleRespuestaChange("atico", "espacioso")}
-                className={opcionClase(respuestas.atico == "espacioso")}>
-                Espacioso
+          <div>
+            <h2 className="text-sm font-extrabold tracking-tight flex items-center gap-1.5 mb-2 border-b border-[var(--bg-border)] pb-1.5 text-orange-500">
+              <ClipboardList className="w-4 h-4" /><span>Datos de la instalación</span>
+            </h2>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-[var(--text-muted)]">Lugar</label>
+              <div className="flex flex-wrap gap-1.5">
+                <div onClick={() => handleRespuestaChange("lugar", "casa")} className={opcionClase(respuestas.lugar == "casa")}>Casa</div>
+                <div onClick={() => handleRespuestaChange("lugar", "negocio")} className={opcionClase(respuestas.lugar == "negocio")}>Negocio</div>
+                <div onClick={() => handleRespuestaChange("lugar", "traila")} className={opcionClase(respuestas.lugar == "traila")}>Tráila</div>
+                <div onClick={() => handleRespuestaChange("lugar", "foodtruck")} className={opcionClase(respuestas.lugar == "foodtruck")}>Foodtruck</div>
+                <div onClick={() => handleRespuestaChange("lugar", "apartamento")} className={opcionClase(respuestas.lugar == "apartamento")}>Apartamento</div>
               </div>
-              <div
-                onClick={() => handleRespuestaChange("atico", "espuma")}
-                className={opcionClase(respuestas.atico == "espuma")}>
-                Espuma (FOAM)
+            </div>
+            {respuestas.lugar == "foodtruck" && (
+              <div className="text-xs italic mt-1.5 text-[var(--text-muted)] bg-[var(--bg-surface-2)] p-2 rounded-lg border border-[var(--bg-border)]">
+                ACLARACIÓN: preguntar si cuenta con internet y monitor. <strong className="text-red-500">Sin internet no podemos proceder.</strong>
               </div>
-              <div
-                onClick={() => handleRespuestaChange("atico", "no tiene")}
-                className={opcionClase(respuestas.atico == "no tiene")}>
-                No tiene
+            )}
+            {respuestas.lugar == "apartamento" && (
+              <div className="text-xs italic mt-1.5 text-[var(--text-muted)] bg-[var(--bg-surface-2)] p-2 rounded-lg border border-[var(--bg-border)]">
+                ACLARACIÓN: es necesario obtener el permiso del arrendador <strong className="text-red-500">para perforar</strong> antes de realizar la instalación.
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap justify-between gap-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-[var(--text-muted)]">Audio</label>
+              <div className="flex gap-1">
+                <div onClick={() => handleRespuestaChange("audio", "si")} className={opcionClase(respuestas.audio == "si")}>Sí</div>
+                <div onClick={() => handleRespuestaChange("audio", "no")} className={opcionClase(respuestas.audio == "no")}>No</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-[var(--text-muted)]">Área</label>
+              <div className="flex gap-1">
+                <div onClick={() => handleRespuestaChange("area", "interior")} className={opcionClase(respuestas.area == "interior")}>Interior</div>
+                <div onClick={() => handleRespuestaChange("area", "exterior")} className={opcionClase(respuestas.area == "exterior")}>Exterior</div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-[var(--text-muted)]">Monitor</label>
+              <div className="flex gap-1">
+                <div onClick={() => handleRespuestaChange("monitor", "si")} className={opcionClase(respuestas.monitor == "si")}>Sí</div>
+                <div onClick={() => handleRespuestaChange("monitor", "no")} className={opcionClase(respuestas.monitor == "no")}>No</div>
               </div>
             </div>
           </div>
 
-        </div>
-        {respuestas.atico && (
-          <div className="text-xs italic transition-all mt-1 text-white/60">
-            ACLARACIÓN: con{" "}
-            <strong className="text-red-500">insulación normal</strong>{" "}
-            (fibra/lana), el cable puede pasarse sin romper paredes, lo que
-            facilita una instalación rápida y estándar. Con{" "}
-            <strong className="text-red-500">insulación de espuma</strong>,
-            bloquea el paso del cable, haciendo la instalación más compleja y
-            requiriendo perforaciones o canaletas externas.
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div className="flex justify-between">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-white/60">Estructura</label>
-            <div className="flex gap-1">
-              <div
-                onClick={() => handleRespuestaChange("estructura", "movil")}
-                className={opcionClase(respuestas.estructura == "movil")}>
-                Móvil
-              </div>
-              <div
-                onClick={() => handleRespuestaChange("estructura", "standard")}
-                className={opcionClase(respuestas.estructura == "standard")}>
-                Standard
-              </div>
-              <div
-                onClick={() => handleRespuestaChange("estructura", "casona")}
-                className={opcionClase(respuestas.estructura == "casona")}>
-                Casona
+          <div>
+            <div className="flex flex-wrap justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-[var(--text-muted)]">Ático</label>
+                <div className="flex flex-wrap gap-1">
+                  <div onClick={() => handleRespuestaChange("atico", "espacioso")} className={opcionClase(respuestas.atico == "espacioso")}>Espacioso</div>
+                  <div onClick={() => handleRespuestaChange("atico", "espuma")} className={opcionClase(respuestas.atico == "espuma")}>Espuma (FOAM)</div>
+                  <div onClick={() => handleRespuestaChange("atico", "no tiene")} className={opcionClase(respuestas.atico == "no tiene")}>No tiene</div>
+                </div>
               </div>
             </div>
+            {respuestas.atico && (
+              <div className="text-xs italic mt-1.5 text-[var(--text-muted)] bg-[var(--bg-surface-2)] p-2 rounded-lg border border-[var(--bg-border)]">
+                ACLARACIÓN: con <strong className="text-red-500">insulación normal</strong> se facilita la instalación. Con <strong className="text-red-500">insulación de espuma</strong>, requiere canaletas externas.
+              </div>
+            )}
           </div>
 
-        <div className="flex flex-col justify-end">
-            <button
-              onClick={() => setOpenPresupuesto(true)}
-              className="boton bg-green-600 hover:bg-green-800 cursor-pointer flex gap-1 items-center">
-              <CircleDollarSign className="h-4 w-4" />
-              Presupuesto
-            </button>
+          <div>
+            <div className="flex flex-wrap justify-between items-center gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-[var(--text-muted)]">Estructura</label>
+                <div className="flex flex-wrap gap-1">
+                  <div onClick={() => handleRespuestaChange("estructura", "movil")} className={opcionClase(respuestas.estructura == "movil")}>Móvil</div>
+                  <div onClick={() => handleRespuestaChange("estructura", "standard")} className={opcionClase(respuestas.estructura == "standard")}>Standard</div>
+                  <div onClick={() => handleRespuestaChange("estructura", "casona")} className={opcionClase(respuestas.estructura == "casona")}>Casona</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setOpenPresupuesto(true)}
+                className="btn-primary py-2 px-3 text-xs font-black self-end">
+                <CircleDollarSign className="h-4 w-4" />
+                Presupuesto
+              </button>
             </div>
 
-        </div>
-
-        {respuestas.estructura && (
-          <div className="text-xs italic transition-all mt-1 text-white/60">
-            ACLARACIÓN: en caso de que la casa sea nueva y{" "}
-            <strong className="text-red-500">no aparezca en el mapa</strong>,
-            pedir fotos de la misma{" "}
-            <strong className="text-red-500">
-              completa de frente, atrás y costados.
-            </strong>
+            {respuestas.estructura && (
+              <div className="text-xs italic mt-1.5 text-[var(--text-muted)] bg-[var(--bg-surface-2)] p-2 rounded-lg border border-[var(--bg-border)]">
+                ACLARACIÓN: si no aparece en el mapa, pedir fotos de la casa <strong className="text-red-500">frente, atrás y costados</strong>.
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
         </>
       )}
 
       {esInternet && (
         <div className="flex flex-col gap-1">
-          <label className="text-xs text-white/60">Estado de cita</label>
+          <label className="text-xs font-bold text-[var(--text-muted)]">Estado de Cita</label>
           <select
             value={estadoInternet}
             onChange={(e) => setEstadoInternet(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40">
+            className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] text-[var(--text-primary)] px-3 py-2 text-sm outline-none focus:border-orange-500">
             <option value="">Seleccionar estado</option>
             {citasEstados.map((estado) => (
               <option key={estado.id} value={estado.id}>
@@ -552,84 +462,91 @@ const [respuestas, setRespuestas] = useState<Preguntas>({
       {esInternet && (
         <button
           onClick={() => setOpenPresupuesto(true)}
-          className="boton bg-green-600 hover:bg-green-800 cursor-pointer flex gap-1 items-center justify-center">
+          className="btn-primary py-2 px-4 text-xs font-black justify-center w-full">
           <CircleDollarSign className="h-4 w-4" />
-          Presupuesto
+          Cotización / Presupuesto
         </button>
       )}
 
-        <div className="flex items-center justify-around gap-2">
-            <div className="w-48">
-              <label className="text-xs text-white/60">Fecha de visita</label>
-              <DatePicker
-                selected={dateKeyToDate(formRegistro.fecha)}
-                onChange={(date: Date | null) => {
-                  setFormRegistro((prev) => ({
-                    ...prev,
-                    fecha: date ? formatDateKey(date) : "",
-                  }));
-                }}
-                filterDate={isSelectableAgendaDate}
-                dayClassName={agendaDayClassName}
-                dateFormat="MM/dd/yyyy"
-                placeholderText="Seleccionar fecha"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer"
-                wrapperClassName="w-full"
-                calendarClassName="agenda-datepicker"
-              />
-            </div>
-            
-            <div className="w-32">
-              <label className="text-xs text-white/60">Horario</label>
-              <DatePicker
-                showTimeSelect
-                showTimeSelectOnly
-                timeIntervals={15}
-                timeCaption="Hora"
-                dateFormat="h:mm aa"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer"
-                selected={horaMostrar}
-                onChange={handleHoraChange}
-              />
-            </div>
-
-            <div className="w-32">
-              <label className="text-xs text-white/60">Archivos</label>
-              <label className="flex items-center justify-center w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm cursor-pointer hover:border-orange-500/40 transition gap-1">
-                <Files className="h-4 w-4" />Seleccionar
-                <input
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {if (e.target.files) {setFiles(Array.from(e.target.files));}}}
-                />
-              </label>
-            </div>
+      {/* FILA DE FECHA, HORA Y ARCHIVOS - 100% RESPONSIVA */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-[var(--bg-border)]">
+        <div>
+          <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">Fecha Visita</label>
+          <DatePicker
+            selected={dateKeyToDate(formRegistro.fecha)}
+            onChange={(date: Date | null) => {
+              setFormRegistro((prev) => ({
+                ...prev,
+                fecha: date ? formatDateKey(date) : "",
+              }));
+            }}
+            filterDate={isSelectableAgendaDate}
+            dayClassName={agendaDayClassName}
+            dateFormat="MM/dd/yyyy"
+            placeholderText="Seleccionar"
+            className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] text-[var(--text-primary)] px-2.5 py-2 text-xs font-bold outline-none focus:border-orange-500 cursor-pointer"
+            wrapperClassName="w-full"
+            calendarClassName="agenda-datepicker"
+          />
+        </div>
+        
+        <div>
+          <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">Horario</label>
+          <DatePicker
+            showTimeSelect
+            showTimeSelectOnly
+            timeIntervals={15}
+            timeCaption="Hora"
+            dateFormat="h:mm aa"
+            className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] text-[var(--text-primary)] px-2.5 py-2 text-xs font-bold outline-none focus:border-orange-500 cursor-pointer"
+            selected={horaMostrar}
+            onChange={handleHoraChange}
+          />
         </div>
 
-           {files.length > 0 && (
-              <div className="text-xs text-white/60">
-                {files.map((f, i) => (
-                  <div key={i}>📄 {f.name}</div>
-                ))}
-              </div>
-            )}
+        <div>
+          <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">Archivos</label>
+          <label className="flex items-center justify-center w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-surface-2)] text-[var(--text-primary)] px-2.5 py-2 text-xs font-bold cursor-pointer hover:border-orange-500 transition gap-1">
+            <Files className="h-4 w-4 text-orange-500" />Adjuntar
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {if (e.target.files) {setFiles(Array.from(e.target.files));}}}
+            />
+          </label>
+        </div>
+      </div>
+
+      {files.length > 0 && (
+        <div className="text-xs text-[var(--text-muted)] bg-[var(--bg-surface-2)] p-2 rounded-lg border border-[var(--bg-border)] space-y-1">
+          {files.map((f, i) => (
+            <div key={i} className="truncate">📄 {f.name}</div>
+          ))}
+        </div>
+      )}
 
       <div>
-        <label className="text-xs text-white/60">Asignar a</label>
-        <select className="capitalize bg-gray-700 text-white p-2 rounded-md cursor-pointer w-full" name="asignado" onChange={handleInputChange}>
-              <option key={user?.id} value={user?.id} selected>{user?.fullname}</option>
-              {users.filter(u => u.id !== user?.id && u.habilitado == true).map((u) => (
-                <option key={u.id} value={u.id}>{u.fullname}</option>
-              ))}
+        <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">Asignar A</label>
+        <select className="capitalize bg-[var(--bg-input)] border border-[var(--bg-border)] text-[var(--text-primary)] p-2 rounded-xl text-xs font-bold cursor-pointer w-full" name="asignado" onChange={handleInputChange}>
+          <option key={user?.id} value={user?.id} selected>{user?.fullname}</option>
+          {users.filter(u => u.id !== user?.id && u.habilitado == true).map((u) => (
+            <option key={u.id} value={u.id}>{u.fullname}</option>
+          ))}
         </select>
       </div>
 
-      {formRegistro.nombre && formRegistro.telefono && formRegistro.fecha && hora && (!esInternet || estadoInternet) && !telefonoDuplicado && !validandoTelefono && (
-        <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-orange-600 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60" disabled={loading} onClick={submitFormularioCamarasDesdeCero}>
-          {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Guardando...</> : "Guardar"}
-        </button>
-      )}
+      <button
+        type="button"
+        disabled={loading || !formRegistro.nombre || !formRegistro.telefono || !formRegistro.fecha || !hora || (esInternet && !estadoInternet) || telefonoDuplicado || validandoTelefono}
+        onClick={submitFormularioCamarasDesdeCero}
+        className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-sm font-black text-white hover:bg-orange-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 shadow-lg shadow-orange-600/20 transition w-full mt-2">
+        {loading ? (
+          <><Loader2 className="h-4 w-4 animate-spin" /><span>Guardando Registro...</span></>
+        ) : (
+          <><Save className="h-4 w-4" /><span>Guardar Registro de Cliente</span></>
+        )}
+      </button>
 
       {openPresupuesto && (
         <Cotizador

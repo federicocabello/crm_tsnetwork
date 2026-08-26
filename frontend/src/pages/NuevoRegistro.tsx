@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect } from "react";
+import { useState, useRef, useLayoutEffect, useEffect } from "react";
 import { useAuth } from "../auth/AuthContext";
 import type { Speech } from "../types/speech";
 import Loading from "../components/Loading";
@@ -6,7 +6,7 @@ import SortableSpeechCard from "../components/SortableSpeechCard";
 import FormularioCamarasDesdeCero from "../pages/FormularioCamarasDesdeCero";
 import FormularioCamarasTieneClienteNuevo from "../pages/FormularioCamarasTieneClienteNuevo";
 import FormularioCamarasTieneClienteExistente from "../pages/FormularioCamarasExistente";
-import { NotebookTabs, Cctv, Globe, Save, Pencil, X, SquarePlus, Trash2, FileVideoCamera, Video } from 'lucide-react';
+import { NotebookTabs, Cctv, Globe, Save, Pencil, X, SquarePlus, Trash2, FileVideoCamera, Video, Sparkles, MessageSquareCode, Layers } from 'lucide-react';
 
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import {
@@ -19,15 +19,9 @@ export default function NuevoRegistro() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const [loading, setLoading] = useState<boolean>(true);
   const { user } = useAuth();
-  const [selectedOption, setSelectedOption] = useState<
-    "camaras" | "internet" | null
-  >(null);
-  const [opcionCamaras, setOpcionCamaras] = useState<
-    "tiene" | "desdecero" | "tieneclientenuevo" | "tieneclienteexistente" | null
-  >(null);
-  const [opcionInternet, setOpcionInternet] = useState<
-    "clientenuevo" | "clienteexistente" | null
-  >(null);
+  const [selectedOption, setSelectedOption] = useState<"camaras" | "internet">("camaras");
+  const [opcionCamaras, setOpcionCamaras] = useState<"tiene" | "desdecero" | "tieneclientenuevo" | "tieneclienteexistente">("desdecero");
+  const [opcionInternet, setOpcionInternet] = useState<"clientenuevo" | "clienteexistente">("clientenuevo");
   const [speechItems, setSpeechItems] = useState<Speech[]>([]);
   const textareasRef = useRef<Record<string, HTMLTextAreaElement | null>>({});
 
@@ -39,14 +33,15 @@ export default function NuevoRegistro() {
 
   const [isEditing, setIsEditing] = useState(false);
 
+  useEffect(() => {
+    filtrarSpeech("camaras");
+  }, []);
+
   const handleSelection = (option: "camaras" | "internet") => {
-    setSelectedOption((prev) => {
-      const next = prev === option ? null : option;
-      if (next !== "camaras") setOpcionCamaras(null);
-      if (next !== "internet") setOpcionInternet(null);
-      if (next) filtrarSpeech(next);
-      return next;
-    });
+    setSelectedOption(option);
+    if (option === "camaras" && (!opcionCamaras || opcionCamaras === "tiene")) setOpcionCamaras("desdecero");
+    if (option === "internet" && !opcionInternet) setOpcionInternet("clientenuevo");
+    filtrarSpeech(option);
   };
 
   const filtrarSpeech = async (filtro: string) => {
@@ -120,15 +115,15 @@ export default function NuevoRegistro() {
     }
   };
 
-  const generateUniqueId = () => Math.floor(Math.random() * 1000000); // Ejemplo simple
+  const generateUniqueId = () => Math.floor(Math.random() * 1000000);
 
   const agregarSpeech = async () => {
     const nuevoSpeech: Speech = {
-      id: generateUniqueId(),  // Generar un ID único (puedes usar una función para eso)
-      titulo: "Titulo nuevo speech",
-      descripcion: "Descripción...",
-      img: "",  // Aquí puedes asignar la URL o nombre de la imagen
-      tipo: "default",  // Asignar un valor a 'tipo' como 'default' o cualquier otro tipo que uses
+      id: generateUniqueId(),
+      titulo: "Nuevo Título de Speech",
+      descripcion: "Escribe aquí los argumentos o respuestas de venta...",
+      img: "",
+      tipo: "default",
       orden: Math.max(...speechItems.map((s) => s.orden), 0) + 1,
     };
 
@@ -149,20 +144,17 @@ export default function NuevoRegistro() {
   }
 
   const removeItem = (id: number) => {
-    setSpeechItems((prev) => prev.filter((x) => x.id !== id));
-    setDeletedSpeech((prev) => [...prev, String(id)]);
+    const idOriginalStr = String(id);
+
+    setSpeechItems((prev) => prev.filter((item) => item.id !== id));
+
+    setDeletedSpeech((prev) =>
+      prev.includes(idOriginalStr) ? prev : [...prev, idOriginalStr],
+    );
   };
 
-  function formatBoldStars(text: string) {
-    if (!text) return "";
-    const escaped = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-
-    return escaped
-      .replace(/\*(.+?)\*/g, "<strong>$1</strong>")
-      .replace(/\n/g, "<br/>");
+  function formatBoldStars(text: string): string {
+    return text.replace(/\*(.*?)\*/g, "<strong>$1</strong>");
   }
 
   async function guardarCambios() {
@@ -170,13 +162,12 @@ export default function NuevoRegistro() {
     setSaving(true);
     try {
       const payload = {
-        seccion: selectedOption,
-        items: speechItems.map((s) => ({
-          id: s.id,
-          titulo: s.titulo,
-          descripcion: s.descripcion,
-          img: s.img ?? "",
-          orden: s.orden,
+        filtro: selectedOption,
+        speeches: speechItems.map((item, index) => ({
+          id: item.id,
+          titulo: item.titulo,
+          descripcion: item.descripcion,
+          orden: index + 1,
         })),
         deletedSpeech,
       };
@@ -202,232 +193,328 @@ export default function NuevoRegistro() {
     setSaving(false);
   }
 
+  const [vistaMobile, setVistaMobile] = useState<"formulario" | "speech">("formulario");
+
   return (
-    <div className="h-full min-h-0 flex gap-3">
-      <div className="cuadro w-1/4 shrink-0 cuadro min-h-0 overflow-y-auto">
-        <div className="flex justify-between items-center">
-          <h2 className="text-sm font-extrabold tracking-tight flex items-center gap-1">
-            <NotebookTabs className="w-4 h-4" />
-            <span>Nuevo registro</span>
-          </h2>
-
-          <div className="flex gap-3 items-center">
-            <button
-              onClick={() => handleSelection("camaras")}
-              className={`boton flex gap-1 justify-center items-center ${
-                selectedOption == "camaras"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-              }`}>
-              <Cctv className="w-4 h-4" />
-              Cámaras
-            </button>
-
-            <button
-              onClick={() => handleSelection("internet")}
-              className={`boton flex gap-1 justify-center items-center ${
-                selectedOption == "internet"
-                  ? "bg-green-500 text-white"
-                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-              }`}>
-              <Globe className="w-4 h-4" />
-              Internet
-            </button>
+    <div className="space-y-4 max-w-full overflow-x-hidden pb-16 lg:pb-0">
+      {/* ───────────────── TOP HERO HEADER CARD ───────────────── */}
+      <div className="cuadro rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-2 border-[var(--card-border)] shadow-md">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-600 text-white shadow-md shadow-orange-600/30">
+              <NotebookTabs className="w-5 h-5" />
+            </span>
+            <h1 className="text-xl font-black tracking-tight">Nuevo Registro de Cliente</h1>
           </div>
+          <p className="text-xs text-[var(--text-muted)] mt-1 font-medium">
+            Agenda nuevos servicios y consulta los guiones comerciales interactivos para llamadas.
+          </p>
         </div>
 
-        {selectedOption == "camaras" && (
-          <div className="flex my-3 gap-2">
-            <button
-              className={`boton w-full p-1! text-xs! border flex gap-2 items-center justify-center ${
-                opcionCamaras == "desdecero"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-              }`}
-              onClick={() => setOpcionCamaras("desdecero")}>
-              <FileVideoCamera className="w-5 h-5" />
-              <span>Instalación desde cero</span>
-            </button>
-            <button
-              className={`boton w-full p-1! text-xs! border flex gap-2 items-center justify-center ${
-                opcionCamaras == "tiene" ||
-                opcionCamaras == "tieneclientenuevo" ||
-                opcionCamaras == "tieneclienteexistente"
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-              }`}
-              onClick={() => setOpcionCamaras("tiene")}>
-              <Video className="w-5 h-5" />
-              <span>Ya tiene cámaras instaladas</span>
-            </button>
-          </div>
-        )}
+        {/* SERVICE SEGMENT SELECTOR */}
+        <div className="flex items-center gap-2 bg-[var(--bg-surface-2)] p-1.5 rounded-2xl border border-[var(--bg-border)] shrink-0 self-start md:self-auto w-full sm:w-auto">
+          <button
+            onClick={() => handleSelection("camaras")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              selectedOption === "camaras"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-[1.02]"
+                : "text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-500/10"
+            }`}>
+            <Cctv className="w-4 h-4" />
+            <span>Cámaras</span>
+          </button>
 
-        {(opcionCamaras == "tiene" || opcionCamaras == "tieneclientenuevo" || opcionCamaras == "tieneclienteexistente") && (
-          <div className="mt-3 flex justify-between items-center gap-2 mb-3">
-            <button className={`p-1! text-xs! w-full ${
-                  opcionCamaras == "tieneclientenuevo"
-                    ? "bg-green-600 text-white border"
-                    : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                }`} onClick={() => setOpcionCamaras("tieneclientenuevo")}>Cliente nuevo</button>
-            
-            <button className={`p-1! text-xs! w-full ${
-                  opcionCamaras == "tieneclienteexistente"
-                    ? "bg-green-600 text-white border"
-                    : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                }`} onClick={() => setOpcionCamaras("tieneclienteexistente")}>Cliente existente</button>
-          </div>
-        )}
-        {opcionCamaras == "desdecero" && selectedOption == "camaras" && (
-          <FormularioCamarasDesdeCero key="camaras-desde-cero" tipoRegistro="camaras" />
-        )}
-
-        {selectedOption == "internet" && (
-          <div className="mt-3 flex justify-between items-center gap-2 mb-3">
-            <button className={`p-1! text-xs! w-full ${
-                  opcionInternet == "clientenuevo"
-                    ? "bg-green-600 text-white border"
-                    : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                }`} onClick={() => setOpcionInternet("clientenuevo")}>Cliente nuevo</button>
-            
-            <button className={`p-1! text-xs! w-full ${
-                  opcionInternet == "clienteexistente"
-                    ? "bg-green-600 text-white border"
-                    : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                }`} onClick={() => setOpcionInternet("clienteexistente")}>Cliente existente</button>
-          </div>
-        )}
-
-        {selectedOption == "internet" && opcionInternet == "clientenuevo" && (
-          <FormularioCamarasDesdeCero key="internet-nuevo" tipoRegistro="internet" />
-        )}
-
-        {selectedOption == "internet" && opcionInternet == "clienteexistente" && (
-          <FormularioCamarasTieneClienteExistente key="internet-existente" tipoRegistro="internet" />
-        )}
-
-        {(opcionCamaras == "tieneclientenuevo") && (
-          <FormularioCamarasTieneClienteNuevo />
-        )}
-
-        {(opcionCamaras == "tieneclienteexistente") && (
-          <FormularioCamarasTieneClienteExistente tipoRegistro="camaras" />
-        )}
+          <button
+            onClick={() => handleSelection("internet")}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              selectedOption === "internet"
+                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 scale-[1.02]"
+                : "text-[var(--text-secondary)] hover:text-emerald-600 hover:bg-emerald-500/10"
+            }`}>
+            <Globe className="w-4 h-4" />
+            <span>Internet</span>
+          </button>
+        </div>
       </div>
 
-      {selectedOption &&
-        (loading ? (
-          <div className="w-full flex items-center justify-center">
-            <Loading />
+      {/* MOBILE TOGGLE SWITCHER (Only visible on mobile screens < lg when a service is selected) */}
+      {selectedOption && (
+        <div className="flex lg:hidden bg-[var(--bg-surface-2)] p-1 rounded-2xl border-2 border-[var(--card-border)] w-full shadow-sm">
+          <button
+            onClick={() => setVistaMobile("formulario")}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              vistaMobile === "formulario"
+                ? "bg-orange-600 text-white shadow-md shadow-orange-600/20"
+                : "text-[var(--text-muted)] hover:text-orange-500"
+            }`}>
+            <Layers className="w-4 h-4" />
+            <span>Formulario</span>
+          </button>
+          <button
+            onClick={() => setVistaMobile("speech")}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              vistaMobile === "speech"
+                ? "bg-orange-600 text-white shadow-md shadow-orange-600/20"
+                : "text-[var(--text-muted)] hover:text-orange-500"
+            }`}>
+            <MessageSquareCode className="w-4 h-4" />
+            <span>Guiones Comercial ({speechItems.length})</span>
+          </button>
+        </div>
+      )}
+
+      {/* ───────────────── MAIN TWO-COLUMN RESPONSIVE LAYOUT ───────────────── */}
+      <div className="flex flex-col lg:flex-row gap-4 w-full min-w-0">
+        
+        {/* LEFT COLUMN: FORM CONTAINER */}
+        <div className={`cuadro w-full lg:w-[420px] xl:w-[460px] shrink-0 border-2 border-[var(--card-border)] overflow-y-auto max-h-[calc(100vh-170px)] pr-1.5 scrollbar-thin ${
+          selectedOption && vistaMobile !== "formulario" ? "hidden lg:block" : "block"
+        }`}>
+          <div className="pb-3 mb-3 border-b border-[var(--bg-border)] flex items-center justify-between">
+            <span className="text-xs font-black uppercase tracking-wider text-orange-500 flex items-center gap-1.5">
+              <Layers className="w-4 h-4" />
+              <span>Opciones del Servicio</span>
+            </span>
+            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-[var(--bg-surface-2)] text-[var(--text-muted)] border border-[var(--bg-border)]">
+              {selectedOption ? selectedOption.toUpperCase() : "SELECCIONA SERVICIO"}
+            </span>
           </div>
-        ) : (
-          <div className="flex-1 min-h-0 overflow-y-auto pr-2">
-            <DndContext
-              collisionDetection={closestCenter}
-              onDragEnd={onDragEnd}>
-              <SortableContext
-                items={speechItems.map((s) => s.id)}
-                strategy={verticalListSortingStrategy}>
-                <div className="grid grid-cols-2 gap-2">
-                  {speechItems.map((item) => (
-                    <SortableSpeechCard
-                      key={item.id}
-                      item={item}
-                      isEditing={isEditing}>
-                      <input
-                        className="speech-titulo"
-                        value={item.titulo}
-                        disabled={!isEditing}
-                        onChange={(e) => {
-                          handleChangeTitulo(e, item.id);
-                        }}
-                      />
-                      {!isEditing ? (
-                        <div
-                          className="speech-descripcion whitespace-wrap leading-relaxed"
-                          dangerouslySetInnerHTML={{
-                            __html: formatBoldStars(item.descripcion),
-                          }}
-                        />
-                      ) : (
-                        <textarea
-                          ref={(el) => {
-                            textareasRef.current[item.id] = el;
-                            if (el) requestAnimationFrame(() => autoResize(el));
-                          }}
-                          className="speech-descripcion"
-                          value={item.descripcion}
-                          onChange={(e) => {
-                            handleChangeDescripcion(e, item.id);
-                            autoResize(e.currentTarget);
-                          }}
-                          rows={1}
-                        />
-                      )}
 
-                      <span
-                        hidden={!isEditing}
-                        className="transition-all mt-auto">
-                        <Trash2
-                          className="w-6 h-6 text-white/30 hover:text-red-500 drop-shadow-xs drop-shadow-white hover:drop-shadow-red-500 cursor-pointer transition-all mt-2 ml-auto"
-                          onClick={() => removeItem(item.id)}
-                        />
-                      </span>
-                    </SortableSpeechCard>
-                  ))}
+          {!selectedOption && (
+            <div className="py-8 text-center px-4 space-y-2">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-500 mx-auto">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-extrabold">Selecciona Cámaras o Internet</h3>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                Haz clic en uno de los botones superiores para desplegar los formularios de agendamiento y cotización.
+              </p>
+            </div>
+          )}
 
-                  {(user?.rol == "moderador" ||
-                    user?.rol == "administrador" ||
-                    user?.rol == "superadmin") &&
-                    isEditing && (
+          {selectedOption === "camaras" && (
+            <div className="flex flex-col gap-2 my-2">
+              <div className="grid grid-cols-2 gap-2 bg-[var(--bg-surface-2)] p-1 rounded-xl border border-[var(--bg-border)]">
+                <button
+                  className={`p-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                    opcionCamaras === "desdecero"
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "text-[var(--text-secondary)] hover:text-blue-600"
+                  }`}
+                  onClick={() => setOpcionCamaras("desdecero")}>
+                  <FileVideoCamera className="w-4 h-4 shrink-0" />
+                  <span>Desde cero</span>
+                </button>
+                <button
+                  className={`p-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                    opcionCamaras === "tiene" ||
+                    opcionCamaras === "tieneclientenuevo" ||
+                    opcionCamaras === "tieneclienteexistente"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "text-[var(--text-secondary)] hover:text-emerald-600"
+                  }`}
+                  onClick={() => setOpcionCamaras("tiene")}>
+                  <Video className="w-4 h-4 shrink-0" />
+                  <span>Ya tiene cámaras</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {(opcionCamaras === "tiene" || opcionCamaras === "tieneclientenuevo" || opcionCamaras === "tieneclienteexistente") && (
+            <div className="grid grid-cols-2 gap-2 my-2 bg-[var(--bg-surface-2)] p-1 rounded-xl border border-[var(--bg-border)]">
+              <button className={`p-2 rounded-lg text-xs font-bold transition ${
+                    opcionCamaras === "tieneclientenuevo"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "text-[var(--text-secondary)] hover:text-emerald-600"
+                  }`} onClick={() => setOpcionCamaras("tieneclientenuevo")}>Cliente nuevo</button>
+              
+              <button className={`p-2 rounded-lg text-xs font-bold transition ${
+                    opcionCamaras === "tieneclienteexistente"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "text-[var(--text-secondary)] hover:text-emerald-600"
+                  }`} onClick={() => setOpcionCamaras("tieneclienteexistente")}>Cliente existente</button>
+            </div>
+          )}
+
+          {opcionCamaras === "desdecero" && selectedOption === "camaras" && (
+            <FormularioCamarasDesdeCero key="camaras-desde-cero" tipoRegistro="camaras" />
+          )}
+
+          {selectedOption === "internet" && (
+            <div className="grid grid-cols-2 gap-2 my-2 bg-[var(--bg-surface-2)] p-1 rounded-xl border border-[var(--bg-border)]">
+              <button className={`p-2 rounded-lg text-xs font-bold transition ${
+                    opcionInternet === "clientenuevo"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "text-[var(--text-secondary)] hover:text-emerald-600"
+                  }`} onClick={() => setOpcionInternet("clientenuevo")}>Cliente nuevo</button>
+              
+              <button className={`p-2 rounded-lg text-xs font-bold transition ${
+                    opcionInternet === "clienteexistente"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "text-[var(--text-secondary)] hover:text-emerald-600"
+                  }`} onClick={() => setOpcionInternet("clienteexistente")}>Cliente existente</button>
+            </div>
+          )}
+
+          {selectedOption === "internet" && opcionInternet === "clientenuevo" && (
+            <FormularioCamarasDesdeCero key="internet-nuevo" tipoRegistro="internet" />
+          )}
+
+          {selectedOption === "internet" && opcionInternet === "clienteexistente" && (
+            <FormularioCamarasTieneClienteExistente key="internet-existente" tipoRegistro="internet" />
+          )}
+
+          {(opcionCamaras === "tieneclientenuevo") && (
+            <FormularioCamarasTieneClienteNuevo />
+          )}
+
+          {(opcionCamaras === "tieneclienteexistente") && (
+            <FormularioCamarasTieneClienteExistente tipoRegistro="camaras" />
+          )}
+        </div>
+
+        {/* RIGHT COLUMN: SPEECH CARDS INTERACTIVE GRID */}
+        <div className={`flex-1 min-w-0 overflow-y-auto max-h-[calc(100vh-170px)] pr-1.5 scrollbar-thin ${
+          selectedOption && vistaMobile !== "speech" ? "hidden lg:block" : "block"
+        }`}>
+          {!selectedOption ? (
+            <div className="cuadro border-2 border-dashed border-[var(--bg-border)] rounded-2xl p-10 text-center flex flex-col items-center justify-center space-y-3 min-h-[380px]">
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-orange-500/10 text-orange-500 shadow-inner">
+                <MessageSquareCode className="w-8 h-8" />
+              </div>
+              <h2 className="text-lg font-black tracking-tight">Guiones Comerciales y Speech de Venta</h2>
+              <p className="text-xs text-[var(--text-muted)] max-w-md leading-relaxed">
+                Selecciona <strong>Cámaras</strong> o <strong>Internet</strong> en la parte superior para desplegar los argumentos de venta, preguntas frecuentes y speech estructurados durante llamadas telefónicas.
+              </p>
+            </div>
+          ) : loading ? (
+            <div className="cuadro flex items-center justify-center py-20 min-h-[350px]">
+              <Loading />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-500 text-white text-xs font-black">
+                    <MessageSquareCode className="w-3.5 h-3.5" />
+                  </span>
+                  <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    Speech Comercial ({selectedOption.toUpperCase()}) — {speechItems.length} Cards
+                  </h2>
+                </div>
+                {isEditing && (
+                  <span className="text-xs font-bold text-orange-500 bg-orange-500/10 px-2.5 py-1 rounded-full border border-orange-500/30 animate-pulse">
+                    Modo Edición Activo
+                  </span>
+                )}
+              </div>
+
+              <DndContext
+                collisionDetection={closestCenter}
+                onDragEnd={onDragEnd}>
+                <SortableContext
+                  items={speechItems.map((s) => s.id)}
+                  strategy={verticalListSortingStrategy}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {speechItems.map((item) => (
+                      <SortableSpeechCard
+                        key={item.id}
+                        item={item}
+                        isEditing={isEditing}>
+                        
+                        {/* TITULO DE LA CARD */}
+                        <div className="mb-1">
+                          {isEditing ? (
+                            <input
+                              className="w-full font-black text-sm text-[var(--text-primary)] bg-[var(--bg-input)] border border-[var(--bg-border)] rounded-lg px-2.5 py-1.5 outline-none focus:border-orange-500 transition"
+                              value={item.titulo}
+                              onChange={(e) => handleChangeTitulo(e, item.id)}
+                            />
+                          ) : (
+                            <h3 className="font-extrabold text-sm text-[var(--text-primary)] tracking-tight">
+                              {item.titulo}
+                            </h3>
+                          )}
+                        </div>
+
+                        {/* DESCRIPCION DE LA CARD CON OVERFLOW Y MAX-HEIGHT */}
+                        {!isEditing ? (
+                          <div
+                            className="text-xs text-[var(--text-secondary)] leading-relaxed opacity-95 whitespace-pre-wrap max-h-52 overflow-y-auto pr-1 scrollbar-thin"
+                            dangerouslySetInnerHTML={{
+                              __html: formatBoldStars(item.descripcion),
+                            }}
+                          />
+                        ) : (
+                          <textarea
+                            ref={(el) => {
+                              textareasRef.current[item.id] = el;
+                              if (el) requestAnimationFrame(() => autoResize(el));
+                            }}
+                            className="w-full text-xs text-[var(--text-primary)] bg-[var(--bg-input)] border border-[var(--bg-border)] rounded-lg p-2.5 outline-none focus:border-orange-500 transition font-sans resize-none max-h-52 overflow-y-auto scrollbar-thin"
+                            value={item.descripcion}
+                            onChange={(e) => {
+                              handleChangeDescripcion(e, item.id);
+                              autoResize(e.currentTarget);
+                            }}
+                            rows={3}
+                          />
+                        )}
+
+                        {/* ACCION BORRAR (EN EDICION) */}
+                        {isEditing && (
+                          <div className="pt-2 mt-auto flex justify-end border-t border-[var(--bg-border)]">
+                            <button
+                              type="button"
+                              onClick={() => removeItem(item.id)}
+                              className="text-xs text-red-500 hover:text-white bg-red-500/10 hover:bg-red-600 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 font-bold">
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Eliminar</span>
+                            </button>
+                          </div>
+                        )}
+                      </SortableSpeechCard>
+                    ))}
+
+                    {/* BOTON AGREGAR CARD (SOLO EN MODO EDICION) */}
+                    {canEdit && isEditing && (
                       <div
-                        className="shadow-lg shadow-black/20 bg-zinc-900 rounded-2xl border border-white/10 hover:border-orange-500 p-4 flex items-center justify-center gap-1 cursor-pointer inset-shadow-sm hover:inset-shadow-orange-500 transition-all font-bold hover:text-orange-500"
+                        className="cuadro border-2 border-dashed border-orange-500/60 hover:border-orange-500 bg-orange-500/10 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01] min-h-[140px]"
                         onClick={() => agregarSpeech()}>
-                        <SquarePlus className="w-5 h-5" />
-                        <span className="text-normal">Nuevo speech</span>
+                        <SquarePlus className="w-7 h-7 text-orange-500" />
+                        <span className="text-sm font-black text-orange-500">Agregar Nuevo Speech</span>
                       </div>
                     )}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </div>
-        ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          )}
+        </div>
+      </div>
 
+      {/* ───────────────── FLOATING ACTION BAR (EDIT/SAVE) ───────────────── */}
       {canEdit && selectedOption && (
-        <div className="fixed bottom-2 right-8 flex flex-col gap-3 z-50">
-          
+        <div className="sticky bottom-0 left-0 right-0 sm:fixed sm:bottom-6 sm:right-6 sm:left-auto z-50 flex items-center justify-end gap-2.5 bg-[var(--card-bg)]/95 backdrop-blur-md border-t sm:border-2 border-[var(--card-border)] p-3 sm:p-2 sm:rounded-2xl shadow-2xl">
           <button
             onClick={() => cancelarEditor(isEditing)}
-            className={[
-              "rounded-2xl px-4 py-3 shadow-xl border border-white/10 backdrop-blur",
-              "flex items-center gap-2 font-extrabold cursor-pointer",
-              isEditing
-                ? "bg-orange-500 text-white hover:bg-orange-600"
-                : "bg-white/10 text-white hover:bg-white/15",
-            ].join(" ")}
+            className={`btn-secondary py-2.5 px-4 rounded-xl font-black text-xs transition shadow-md ${
+              isEditing ? "bg-orange-600 text-white border-orange-600" : ""
+            }`}
             title={isEditing ? "Salir del modo editor" : "Activar modo editor"}>
-            {isEditing ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Pencil className="w-5 h-5" />
-            )}
-            {isEditing ? "Cancelar" : "Editar"}
+            {isEditing ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
+            <span>{isEditing ? "Cancelar" : "Editar Guiones"}</span>
           </button>
 
           {isEditing && (
             <button
               onClick={guardarCambios}
               disabled={saving}
-              className={[
-                "rounded-2xl px-4 py-3 shadow-xl border border-white/10 backdrop-blur",
-                "flex items-center gap-2 font-extrabold cursor-pointer",
-                saving
-                  ? "bg-zinc-700 text-white/70 cursor-not-allowed"
-                  : "bg-green-600 text-white hover:bg-green-700",
-              ].join(" ")}
+              className="btn-primary py-2.5 px-4 rounded-xl font-black text-xs shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white"
               title="Guardar cambios">
-              <Save className="w-5 h-5" />
-              {saving ? "Guardando..." : "Guardar"}
+              <Save className="w-4 h-4" />
+              <span>{saving ? "Guardando..." : "Guardar Cambios"}</span>
             </button>
           )}
         </div>

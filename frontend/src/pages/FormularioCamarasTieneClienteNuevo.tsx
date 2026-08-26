@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { ClipboardList, Drill, Wrench, CircleDollarSign, SearchAlert, Files, Loader2 } from 'lucide-react';
+import { ClipboardList, Drill, Wrench, CircleDollarSign, SearchAlert, Files, Loader2, Save } from 'lucide-react';
 import type { Usuarios } from "../types/auth";
 import DatePicker from "react-datepicker";
 import Cotizador from "./Cotizador";
@@ -106,12 +106,11 @@ export default function FormularioCamarasTieneClienteNuevo() {
   }}
 
   const opcionClase = (activo: boolean) =>
-    `rounded-xl border px-3 py-2 text-sm font-bold cursor-pointer transition-all
-     ${
-       activo
-         ? "bg-orange-500 text-white border-orange-500"
-         : "bg-zinc-950/40 text-white border-white/10 hover:border-orange-500/50"
-     }`;
+    `rounded-lg border px-2.5 py-1.5 text-xs font-extrabold cursor-pointer transition-all ${
+      activo
+        ? "bg-orange-600 text-white border-orange-600 shadow-md"
+        : "bg-[var(--bg-surface-2)] text-[var(--text-primary)] border-[var(--bg-border)] hover:border-orange-500 hover:text-orange-500"
+    }`;
 
      const subirArchivos = async (idCita: number | string) => {
           if (files.length === 0) return;
@@ -410,78 +409,85 @@ export default function FormularioCamarasTieneClienteNuevo() {
             </div>
             )}
 
-                    <div className="flex items-center justify-around gap-2">
-            <div className="w-48">
-              <label className="text-xs text-white/60">Fecha de visita</label>
-              <DatePicker
-                selected={dateKeyToDate(formRegistro.fecha)}
-                onChange={(date: Date | null) => {
-                  setFormRegistro((prev) => ({
-                    ...prev,
-                    fecha: date ? formatDateKey(date) : "",
-                  }));
-                }}
-                filterDate={isSelectableAgendaDate}
-                dayClassName={agendaDayClassName}
-                dateFormat="MM/dd/yyyy"
-                placeholderText="Seleccionar fecha"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer"
-                wrapperClassName="w-full"
-                calendarClassName="agenda-datepicker"
-              />
-            </div>
-            
-            <div className="w-32">
-              <label className="text-xs text-white/60">Horario</label>
-              <DatePicker
-                showTimeSelect
-                showTimeSelectOnly
-                timeIntervals={15}
-                timeCaption="Hora"
-                dateFormat="h:mm aa"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer"
-                selected={horaMostrar}
-                onChange={handleHoraChange}
-              />
-            </div>
+        {/* FILA DE FECHA, HORA Y ARCHIVOS - 100% RESPONSIVA */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 border-t border-[var(--bg-border)]">
+          <div>
+            <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">Fecha Visita</label>
+            <DatePicker
+              selected={dateKeyToDate(formRegistro.fecha)}
+              onChange={(date: Date | null) => {
+                setFormRegistro((prev) => ({
+                  ...prev,
+                  fecha: date ? formatDateKey(date) : "",
+                }));
+              }}
+              filterDate={isSelectableAgendaDate}
+              dayClassName={agendaDayClassName}
+              dateFormat="MM/dd/yyyy"
+              placeholderText="Seleccionar"
+              className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] text-[var(--text-primary)] px-2.5 py-2 text-xs font-bold outline-none focus:border-orange-500 cursor-pointer"
+              wrapperClassName="w-full"
+              calendarClassName="agenda-datepicker"
+            />
+          </div>
+          
+          <div>
+            <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">Horario</label>
+            <DatePicker
+              showTimeSelect
+              showTimeSelectOnly
+              timeIntervals={15}
+              timeCaption="Hora"
+              dateFormat="h:mm aa"
+              className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] text-[var(--text-primary)] px-2.5 py-2 text-xs font-bold outline-none focus:border-orange-500 cursor-pointer"
+              selected={horaMostrar}
+              onChange={handleHoraChange}
+            />
+          </div>
 
-            <div className="w-32">
-              <label className="text-xs text-white/60">Archivos</label>
-              <label className="flex items-center justify-center w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm cursor-pointer hover:border-orange-500/40 transition gap-1">
-                <Files className="h-4 w-4" />Seleccionar
-                <input
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {if (e.target.files) {setFiles(Array.from(e.target.files));}}}
-                />
-              </label>
-            </div>
+          <div>
+            <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">Archivos</label>
+            <label className="flex items-center justify-center w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-surface-2)] text-[var(--text-primary)] px-2.5 py-2 text-xs font-bold cursor-pointer hover:border-orange-500 transition gap-1">
+              <Files className="h-4 w-4 text-orange-500" />Adjuntar
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {if (e.target.files) {setFiles(Array.from(e.target.files));}}}
+              />
+            </label>
+          </div>
         </div>
 
-           {files.length > 0 && (
-              <div className="text-xs text-white/60">
-                {files.map((f, i) => (
-                  <div key={i}>📄 {f.name}</div>
-                ))}
-              </div>
-            )}
-
-            <div>
-              <label className="text-xs text-white/60">Asignar a</label>
-              <select className="capitalize bg-gray-700 text-white p-2 rounded-md cursor-pointer w-full" name="asignado" onChange={handleInputChange}>
-                    <option key={user?.id} value={user?.id} selected>{user?.fullname}</option>
-                    {users.filter(u => u.id !== user?.id && u.habilitado == true).map((u) => (
-                      <option key={u.id} value={u.id}>{u.fullname}</option>
-                    ))}
-              </select>
-            </div>
-
-              {formRegistro.nombre && formRegistro.telefono && formRegistro.fecha && hora && opcionTipoInstalacion && !telefonoDuplicado && !validandoTelefono && (
-                <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-2 text-sm font-extrabold text-white hover:bg-orange-600 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60" disabled={loading} onClick={submitFormularioCamarasTiene}>
-                  {loading ? <><Loader2 className="h-4 w-4 animate-spin" />Guardando...</> : "Guardar"}
-                </button>
-              )}
-
+        {files.length > 0 && (
+          <div className="text-xs text-[var(--text-muted)] bg-[var(--bg-surface-2)] p-2 rounded-lg border border-[var(--bg-border)] space-y-1">
+            {files.map((f, i) => (
+              <div key={i} className="truncate">📄 {f.name}</div>
+            ))}
           </div>
         )}
+
+        <div>
+          <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">Asignar A</label>
+          <select className="capitalize bg-[var(--bg-input)] border border-[var(--bg-border)] text-[var(--text-primary)] p-2 rounded-xl text-xs font-bold cursor-pointer w-full" name="asignado" onChange={handleInputChange}>
+            <option key={user?.id} value={user?.id} selected>{user?.fullname}</option>
+            {users.filter(u => u.id !== user?.id && u.habilitado == true).map((u) => (
+              <option key={u.id} value={u.id}>{u.fullname}</option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          type="button"
+          disabled={loading || !formRegistro.nombre || !formRegistro.telefono || !formRegistro.fecha || !hora || !opcionTipoInstalacion || telefonoDuplicado || validandoTelefono}
+          onClick={submitFormularioCamarasTiene}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-sm font-black text-white hover:bg-orange-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40 shadow-lg shadow-orange-600/20 transition w-full mt-2">
+          {loading ? (
+            <><Loader2 className="h-4 w-4 animate-spin" /><span>Guardando Registro...</span></>
+          ) : (
+            <><Save className="h-4 w-4" /><span>Guardar Registro de Cliente</span></>
+          )}
+        </button>
+
+      </div>
+    )}

@@ -1,4 +1,4 @@
-﻿import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../auth/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -61,18 +61,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <div className="ml-16 h-full min-h-0 flex flex-col">
         {/* ─── Header ─────────────────────────────────────────── */}
         <header
-          className="sticky top-0 z-10 backdrop-blur-xl border-b"
+          className="sticky top-0 z-30 backdrop-blur-xl border-b"
           style={{
             background: "var(--header-bg)",
             borderColor: "var(--bg-border)",
           }}>
-          <div className="w-full px-4 py-2.5 flex items-center justify-between gap-3">
+          <div className="w-full px-3 py-2 flex items-center justify-between gap-2">
             {/* Left: clock + page title */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0">
               <WorldClock />
               {pageTitle && (
                 <span
-                  className="hidden sm:block text-xs font-semibold px-2 py-0.5 rounded-md"
+                  className="hidden md:block text-xs font-bold px-2 py-0.5 rounded-md"
                   style={{
                     background: "var(--color-primary-l)",
                     color: "var(--color-primary)",
@@ -86,14 +86,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <img
               src="/logo_tsnetwork.png"
               alt="TS Network"
-              className="hidden md:block w-28 opacity-90 drop-shadow-xl pointer-events-none"
+              className="hidden lg:block w-24 opacity-90 drop-shadow-md pointer-events-none shrink-0"
             />
 
             {/* Right: user info + theme toggle + logout */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {/* User info */}
               <div
-                className={`text-right leading-tight ${
+                className={`text-right leading-tight max-w-[110px] sm:max-w-none truncate ${
                   user?.rol === "tecnico"
                     ? "cursor-pointer hover:opacity-85 transition-all select-none"
                     : ""
@@ -106,10 +106,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     ? "Ir a mi perfil de capacitacion"
                     : undefined
                 }>
-                <div className="text-sm font-semibold">{user?.fullname}</div>
+                <div className="text-xs sm:text-sm font-extrabold truncate">{user?.fullname}</div>
                 <span
                   className={[
-                    "inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide",
+                    "hidden sm:inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide",
                     "animate-role-glow",
                     roleBadgeClass(user?.rol),
                   ].join(" ")}>
@@ -127,15 +127,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     ? "Cambiar a tema claro"
                     : "Cambiar a tema oscuro"
                 }
-                className="btn-icon">
+                className="btn-icon shrink-0 p-2">
                 {theme === "dark" ? (
-                  <Sun className="h-4 w-4" />
+                  <Sun className="h-4 w-4 text-amber-400" />
                 ) : (
-                  <Moon className="h-4 w-4" />
+                  <Moon className="h-4 w-4 text-indigo-500" />
                 )}
               </button>
 
-              {/* Logout */}
+              {/* Logout button */}
               <button
                 id="logout-btn"
                 onClick={() => {
@@ -143,17 +143,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   nav("/login");
                 }}
                 title="Cerrar sesion"
-                className="btn-danger flex items-center gap-1.5">
-                <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Salir</span>
+                className="btn-danger flex items-center justify-center gap-1 py-1.5 px-2.5 sm:px-3 text-xs font-black shrink-0 z-20 cursor-pointer shadow-sm">
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span className="inline">Salir</span>
               </button>
             </div>
           </div>
         </header>
 
         {/* ─── Main content ─────────────────────────────────── */}
-        <main className="relative flex-1 min-h-0 overflow-hidden pl-4 pt-4 pb-4">
-          <div className="relative h-full min-h-0">{children}</div>
+        <main className="relative flex-1 min-h-0 overflow-y-auto p-3 sm:p-5 md:p-6">
+          <div className="relative w-full pb-20">{children}</div>
         </main>
       </div>
     </div>

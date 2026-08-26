@@ -1,4 +1,4 @@
-﻿@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
@@ -105,7 +105,7 @@ h3 { font-size: 0.95rem; font-weight: 600; }
   }
 
   /* Badge background overlays for Light Mode */
-  .bg-purple-500\/10, .bg-purple-500\/15, .bg-purple-500\/20, .bg-purple-500\/\[0.08\] {
+  .bg-purple-500\/5, .bg-purple-500\/10, .bg-purple-500\/15, .bg-purple-500\/20 {
     background-color: #f3e8ff !important;
     border-color: #a855f7 !important;
     color: #581c87 !important;
