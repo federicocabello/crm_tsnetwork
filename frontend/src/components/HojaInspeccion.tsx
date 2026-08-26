@@ -313,7 +313,7 @@ export default function HojaInspeccion({
     }
   };
 
-  const puedeDescargarPdf = Boolean(firmaUrl && items.length > 0);
+  const puedeDescargarPdf = Boolean(items.length > 0);
   const fotoClienteDownloadName = `foto_cliente_cita_${idCita}.jpg`;
 
   const escapePdfHtml = (value: string | number) =>
@@ -342,9 +342,9 @@ export default function HojaInspeccion({
   const shouldHideProductInPdf = (productName: string) =>
     hiddenPdfProductNames.has(normalizePdfProductName(productName));
   const handleDownloadPdf = () => {
-    if (!firmaUrl || items.length === 0) {
+    if (items.length === 0) {
       alert(
-        "Para descargar el PDF, la hoja debe tener productos y firma guardados.",
+        "Para descargar el PDF, la hoja debe tener al menos un producto.",
       );
       return;
     }
@@ -391,14 +391,14 @@ export default function HojaInspeccion({
             * { box-sizing: border-box; }
             body {
               margin: 0;
-              padding: 40px;
+              padding: 0;
               font-family: Arial, Helvetica, sans-serif;
               color: #111827;
               background: #ffffff;
               font-size: 12px;
               line-height: 1.35;
             }
-            .page { position: relative; min-height: 100vh; }
+            .page { position: relative; }
             .header {
               display: flex;
               align-items: center;
@@ -478,10 +478,10 @@ export default function HojaInspeccion({
             }
             td { border-top: 1px solid #e5e7eb; padding: 9px 10px; vertical-align: top; }
             tbody tr:nth-child(even) { background: #f9fafb; }
-            .idx { width: 42px; text-align: center; color: #6b7280; }
-            .qty { width: 140px; text-align: center; font-weight: 800; color: #111827; }
+            .idx { width: 36px; text-align: center; color: #6b7280; }
+            .qty { width: 90px; text-align: center; font-weight: 800; color: #111827; }
             .product { font-weight: 700; color: #111827; }
-            .detail { color: #4b5563; }
+            .detail { width: 180px; color: #4b5563; }
             .mapa {
               border: 1px solid #d1d5db;
               background: #f9fafb;
@@ -564,7 +564,7 @@ export default function HojaInspeccion({
                   <tr>
                     <th class="idx">#</th>
                     <th>Material</th>
-                    <th class="qty">Cantidad de material</th>
+                    <th class="qty">Cantidad</th>
                     <th>Detalle</th>
                   </tr>
                 </thead>
@@ -574,6 +574,7 @@ export default function HojaInspeccion({
 
             ${mapaSection}
 
+            ${firmaUrl ? `
             <section class="final-signature">
               <h2>Firma de conformidad</h2>
               <div class="signature-layout">
@@ -582,7 +583,7 @@ export default function HojaInspeccion({
                   <div class="signature-line">Firma del cliente</div>
                 </div>
               </div>
-            </section>
+            </section>` : ""}
           </main>
           <script>setTimeout(function(){window.focus();window.print();},600);</script>
         </body>
@@ -833,6 +834,17 @@ export default function HojaInspeccion({
                   if (!file) {
                     setDibujoUrl(null);
                     setMapaEliminado(true);
+                  } else {
+                    // Convert to data URL so the PDF can use it even before saving
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      const result = e.target?.result;
+                      if (typeof result === "string") {
+                        setDibujoUrl(result);
+                        setMapaEliminado(false);
+                      }
+                    };
+                    reader.readAsDataURL(file);
                   }
                 }}
                 readOnly={false}
@@ -930,7 +942,7 @@ export default function HojaInspeccion({
               title={
                 puedeDescargarPdf
                   ? "Descargar PDF"
-                  : "Requiere productos y firma guardados"
+                  : "Requiere al menos un producto"
               }
               className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
               <Download className="w-4 h-4" />
