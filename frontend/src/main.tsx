@@ -4,6 +4,7 @@ import "./index.css";
 
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 
 import Login from "./components/Login";
 import Inicio from "./pages/Inicio";
@@ -24,8 +25,9 @@ import TareasResumen from "./pages/TareasResumen";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <AuthProvider>
-      <BrowserRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           {/* Login */}
           <Route path="/login" element={<Login />} />
@@ -146,7 +148,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/" element={<Navigate to="/inicio" replace />} />
           <Route path="*" element={<Navigate to="/inicio" replace />} />
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   </React.StrictMode>,
 );

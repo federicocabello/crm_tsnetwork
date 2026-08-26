@@ -1,7 +1,9 @@
-import { useNavigate } from "react-router-dom";
+﻿import { useNavigate, useLocation } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import { useAuth } from "../auth/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import WorldClock from "./WorldClock";
+import { Sun, Moon, LogOut } from "lucide-react";
 
 function roleBadgeClass(role?: string) {
   switch (role) {
@@ -30,34 +32,84 @@ function RoleIcon() {
   );
 }
 
+const PAGE_TITLES: Record<string, string> = {
+  "/inicio": "Inicio",
+  "/nuevo-registro": "Nuevo Registro",
+  "/inventario": "Inventario",
+  "/pagos": "Pagos",
+  "/registros": "Registros",
+  "/tareas-programadas": "Tareas",
+  "/mis-tareas": "Mis Tareas",
+  "/configuracion": "Configuracion",
+  "/perfil-tecnico": "Mi Perfil",
+};
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const nav = useNavigate();
+  const location = useLocation();
+
+  const pageTitle = PAGE_TITLES[location.pathname] ?? "";
 
   return (
-    <div className="h-screen overflow-hidden bg-zinc-950 text-white">
+    <div
+      className="h-screen overflow-hidden"
+      style={{ background: "var(--bg-base)", color: "var(--text-primary)" }}>
       <Sidebar />
 
       <div className="ml-16 h-full min-h-0 flex flex-col">
-        <header className="sticky top-0 z-10 border-b border-white/10 bg-white/5 backdrop-blur">
-          <div className="w-full px-4 py-3 flex items-center justify-between gap-3">
-            <WorldClock />
+        {/* ─── Header ─────────────────────────────────────────── */}
+        <header
+          className="sticky top-0 z-10 backdrop-blur-xl border-b"
+          style={{
+            background: "var(--header-bg)",
+            borderColor: "var(--bg-border)",
+          }}>
+          <div className="w-full px-4 py-2.5 flex items-center justify-between gap-3">
+            {/* Left: clock + page title */}
+            <div className="flex items-center gap-3">
+              <WorldClock />
+              {pageTitle && (
+                <span
+                  className="hidden sm:block text-xs font-semibold px-2 py-0.5 rounded-md"
+                  style={{
+                    background: "var(--color-primary-l)",
+                    color: "var(--color-primary)",
+                  }}>
+                  {pageTitle}
+                </span>
+              )}
+            </div>
+
+            {/* Center: logo */}
             <img
               src="/logo_tsnetwork.png"
-              alt="Login illustration"
-              className={`hidden md:block w-32 opacity-90 drop-shadow-xl pointer-events-none`}
+              alt="TS Network"
+              className="hidden md:block w-28 opacity-90 drop-shadow-xl pointer-events-none"
             />
-            <div className="flex items-center gap-3">
-              <div
-                className={`text-right leading-tight ${user?.rol === "tecnico" ? "cursor-pointer hover:opacity-85 transition-all select-none" : ""}`}
-                onClick={() => user?.rol === "tecnico" && nav("/perfil-tecnico")}
-                title={user?.rol === "tecnico" ? "Ir a mi perfil de capacitación" : undefined}
-              >
-                <div className="text-sm font-semibold">{user?.fullname}</div>
 
+            {/* Right: user info + theme toggle + logout */}
+            <div className="flex items-center gap-2">
+              {/* User info */}
+              <div
+                className={`text-right leading-tight ${
+                  user?.rol === "tecnico"
+                    ? "cursor-pointer hover:opacity-85 transition-all select-none"
+                    : ""
+                }`}
+                onClick={() =>
+                  user?.rol === "tecnico" && nav("/perfil-tecnico")
+                }
+                title={
+                  user?.rol === "tecnico"
+                    ? "Ir a mi perfil de capacitacion"
+                    : undefined
+                }>
+                <div className="text-sm font-semibold">{user?.fullname}</div>
                 <span
                   className={[
-                    "inline-flex items-center mt-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide",
+                    "inline-flex items-center mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide",
                     "animate-role-glow",
                     roleBadgeClass(user?.rol),
                   ].join(" ")}>
@@ -66,28 +118,41 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </span>
               </div>
 
+              {/* Theme toggle */}
               <button
+                id="theme-toggle"
+                onClick={toggleTheme}
+                title={
+                  theme === "dark"
+                    ? "Cambiar a tema claro"
+                    : "Cambiar a tema oscuro"
+                }
+                className="btn-icon">
+                {theme === "dark" ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </button>
+
+              {/* Logout */}
+              <button
+                id="logout-btn"
                 onClick={() => {
                   logout();
                   nav("/login");
                 }}
-                className="boton border-white/10 bg-red-600  hover:bg-red-700 transition-all">
-                Salir
+                title="Cerrar sesion"
+                className="btn-danger flex items-center gap-1.5">
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Salir</span>
               </button>
             </div>
           </div>
         </header>
 
+        {/* ─── Main content ─────────────────────────────────── */}
         <main className="relative flex-1 min-h-0 overflow-hidden pl-4 pt-4 pb-4">
-          <div className="absolute inset-0 pointer-events-none">
-            <img
-              src="/gif_fondo_1.gif"
-              alt="Telecom background"
-              className="h-full w-full object-cover opacity-10"
-              hidden
-            />
-          </div>
-          {/* bg-zinc-900 p-4 border border-white/10 shadow-lg shadow-black/20 */}
           <div className="relative h-full min-h-0">{children}</div>
         </main>
       </div>
