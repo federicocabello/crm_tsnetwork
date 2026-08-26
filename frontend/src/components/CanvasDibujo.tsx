@@ -208,6 +208,7 @@ export default function CanvasDibujo({
 
   // Convert canvas to file and send to parent
   const exportCanvas = () => {
+    if (loadingImage) return; // Don't export while background image is still loading
     const canvas = canvasRef.current;
     if (!canvas) return;
 
