@@ -5,12 +5,14 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
 
   // El target del proxy siempre debe ser una URL absoluta válida
-  const backendUrl = env.VITE_BACKEND_URL || "http://localhost:5005";
+  const backendUrl = env.VITE_BACKEND_URL || "http://127.0.0.1:5000";
 
   return {
     plugins: [react()],
     server: {
-      port: Number(env.VITE_FRONTEND_PORT) || 5177,
+      host: "127.0.0.1",
+      port: Number(env.VITE_FRONTEND_PORT) || 5176,
+      strictPort: false,
       proxy: {
         "/api": {
           target: backendUrl,

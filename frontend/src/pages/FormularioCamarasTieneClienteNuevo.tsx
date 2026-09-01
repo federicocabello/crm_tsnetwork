@@ -17,11 +17,7 @@ export default function FormularioCamarasTieneClienteNuevo() {
     const [users, setUsers] = useState<Usuarios[]>([]);
     const [opcionTipoInstalacion, setOpcionTipoInstalacion] = useState<"instalacion" | "soporte" | null>(null);
 
-    type Presupuesto = Record<number, {
-  cantidad: number;
-  costo: string;
-  precioFinal: string;
-}>
+    type Presupuesto = { productos: Record<number, { cantidad: number; costo: string; precioFinal: string }>; descuento: number }
 
     type Formulario = {
       nombre: string;

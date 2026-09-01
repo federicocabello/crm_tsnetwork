@@ -501,6 +501,7 @@ def inicio():
                         auth.fullname AS fullname,
                         citas.tipo AS tipo,
                         citas.estado AS idestado,
+                        COALESCE(citas.eliminado, 0) AS eliminado,
                         COALESCE(citas.soporte_finalizado, 0) AS soporte_finalizado,
                         citas_estados.estado AS estado,
                         citas_estados.color AS color,
@@ -916,11 +917,11 @@ def nuevo_registro_guardar():
 
     presupuesto = data.get("presupuesto")
     if presupuesto:
-        cursor.execute("INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalación')", (id_cita,))
+        cursor.execute("INSERT INTO hojas (cita, tipo, descuento) VALUES (%s, 'instalación', %s)", (id_cita, max(float(presupuesto.get("descuento", 0) or 0), 0) if isinstance(presupuesto, dict) else 0))
         id_hoja = cursor.lastrowid
         
         productos_insert = []
-        for producto, info in presupuesto.items():
+        for producto, info in presupuesto.get("productos", presupuesto).items():
             productos_insert.append((
                 id_hoja,
                 int(producto),
@@ -935,6 +936,7 @@ def nuevo_registro_guardar():
             """,
             productos_insert
         )
+        guardar_version_cotizacion(cursor, id_hoja, current_user, "Cotización creada")
     mysql.connection.commit()
     cursor.close()
     return jsonify({"status": "ok", "id_cita": id_cita}), 200
@@ -980,11 +982,11 @@ def nuevo_registro_camaras_tiene_nuevo():
         
         presupuesto = data.get("presupuesto")
         if presupuesto:
-            cursor.execute("INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalación')", (id_cita,))
+            cursor.execute("INSERT INTO hojas (cita, tipo, descuento) VALUES (%s, 'instalación', %s)", (id_cita, max(float(presupuesto.get("descuento", 0) or 0), 0) if isinstance(presupuesto, dict) else 0))
             id_hoja = cursor.lastrowid
             
             productos_insert = []
-            for producto, info in presupuesto.items():
+            for producto, info in presupuesto.get("productos", presupuesto).items():
                 productos_insert.append((
                     id_hoja,
                     int(producto),
@@ -999,6 +1001,7 @@ def nuevo_registro_camaras_tiene_nuevo():
                 """,
                 productos_insert
             )
+            guardar_version_cotizacion(cursor, id_hoja, current_user, "Cotización creada")
             
     mysql.connection.commit()
     cursor.close()
@@ -1056,11 +1059,11 @@ def nuevo_registro_camaras_tiene_existente():
     
         presupuesto = data.get("presupuesto")
         if presupuesto:
-            cursor.execute("INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalación')", (id_cita,))
+            cursor.execute("INSERT INTO hojas (cita, tipo, descuento) VALUES (%s, 'instalación', %s)", (id_cita, max(float(presupuesto.get("descuento", 0) or 0), 0) if isinstance(presupuesto, dict) else 0))
             id_hoja = cursor.lastrowid
             
             productos_insert = []
-            for producto, info in presupuesto.items():
+            for producto, info in presupuesto.get("productos", presupuesto).items():
                 productos_insert.append((
                     id_hoja,
                     int(producto),
@@ -1075,6 +1078,7 @@ def nuevo_registro_camaras_tiene_existente():
                 """,
                 productos_insert
             )
+            guardar_version_cotizacion(cursor, id_hoja, current_user, "Cotización creada")
     mysql.connection.commit()
     cursor.close()
 
@@ -1268,6 +1272,75 @@ def eliminar_producto(id_producto):
     finally:
         cursor.close()
 
+def usuario_id_cotizacion():
+    claims = get_jwt()
+    usuario = claims.get("user") or get_jwt_identity()
+    if isinstance(usuario, dict):
+        return usuario.get("id")
+    try:
+        return int(usuario) if usuario is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def guardar_version_cotizacion(cursor, id_hoja, creado_por=None, comentario=None):
+    cursor.execute(
+        """
+        SELECT
+            hp.producto,
+            p.descrip AS nombre_producto,
+            hp.cantidad,
+            hp.precio_final
+        FROM hojas_productos hp
+        JOIN productos p ON p.id = hp.producto
+        WHERE hp.hoja = %s
+        ORDER BY hp.id
+        """,
+        (id_hoja,),
+    )
+    productos = cursor.fetchall()
+    if not productos:
+        return None
+
+    cursor.execute("SELECT COALESCE(descuento, 0) AS descuento FROM hojas WHERE id = %s", (id_hoja,))
+    hoja = cursor.fetchone() or {}
+    descuento = max(float(hoja.get("descuento") or 0), 0)
+    subtotal = sum(float(item.get("precio_final") or 0) for item in productos)
+    total = max(subtotal - descuento, 0)
+
+    cursor.execute(
+        "SELECT COALESCE(MAX(version), 0) + 1 AS siguiente FROM cotizaciones_versiones WHERE hoja_id = %s",
+        (id_hoja,),
+    )
+    version = int(cursor.fetchone()["siguiente"])
+    cursor.execute(
+        """
+        INSERT INTO cotizaciones_versiones
+            (hoja_id, version, subtotal, descuento, total, creado_por, comentario)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """,
+        (id_hoja, version, subtotal, descuento, total, creado_por, comentario),
+    )
+    id_version = cursor.lastrowid
+    cursor.executemany(
+        """
+        INSERT INTO cotizaciones_versiones_productos
+            (version_id, producto_id, nombre_producto, cantidad, precio_final)
+        VALUES (%s, %s, %s, %s, %s)
+        """,
+        [
+            (
+                id_version,
+                item["producto"],
+                item["nombre_producto"],
+                int(item["cantidad"] or 0),
+                float(item["precio_final"] or 0),
+            )
+            for item in productos
+        ],
+    )
+    return version
+
 @app.get("/api/cotizacion/<int:idCotizacion>")
 def get_cotizacion(idCotizacion):
     cursor = mysql.connection.cursor()
@@ -1317,6 +1390,7 @@ def get_cotizacion(idCotizacion):
             h.firma_instalacion,
             h.firma_foto_instalacion,
             h.notas,
+            COALESCE(h.descuento, 0) AS descuento,
             c.tipo AS cita_tipo,
             DATE_FORMAT(c.dia, '%Y-%m-%d') AS cita_fecha,
             c.telefono,
@@ -1343,6 +1417,7 @@ def get_cotizacion(idCotizacion):
         "firma_instalacion": firma_instalacion,
         "firma_foto_instalacion": firma_foto_instalacion,
         "notas": notas,
+        "descuento": float(hoja_info.get("descuento") or 0) if hoja_info else 0,
         "cita_tipo": hoja_info.get("cita_tipo") if hoja_info else None,
         "cliente": {
             "nombre": hoja_info.get("cliente_nombre") if hoja_info else "",
@@ -1352,13 +1427,76 @@ def get_cotizacion(idCotizacion):
         "cita_fecha": hoja_info.get("cita_fecha") if hoja_info else None,
     }), 200
     
+@app.get("/api/cotizaciones/<int:id_hoja>/historial")
+@jwt_required()
+def historial_cotizacion(id_hoja):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT
+                cv.id,
+                cv.version,
+                cv.subtotal,
+                cv.descuento,
+                cv.total,
+                cv.comentario,
+                DATE_FORMAT(cv.creado_en, '%%m/%%d/%%Y %%h:%%i %%p') AS creado_en,
+                COALESCE(a.fullname, 'Usuario no disponible') AS creado_por
+            FROM cotizaciones_versiones cv
+            LEFT JOIN auth a ON a.id = cv.creado_por
+            WHERE cv.hoja_id = %s
+            ORDER BY cv.version DESC
+            """,
+            (id_hoja,),
+        )
+        versiones = cursor.fetchall()
+        for version in versiones:
+            cursor.execute(
+                """
+                SELECT producto_id, nombre_producto, cantidad, precio_final
+                FROM cotizaciones_versiones_productos
+                WHERE version_id = %s
+                ORDER BY id
+                """,
+                (version["id"],),
+            )
+            version["productos"] = cursor.fetchall()
+        return jsonify({"versiones": versiones}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
 @app.put("/api/cotizaciones/<int:id_hoja>")
+@jwt_required()
 def actualizar_cotizacion(id_hoja):
     data = request.get_json(silent=True) or {}
     productos = data.get("productos", {})
+    descuento = max(float(data.get("descuento", 0) or 0), 0)
+    creado_por = usuario_id_cotizacion()
+
+    if not isinstance(productos, dict):
+        return jsonify({"error": "El formato de productos no es válido"}), 400
+
+    productos_insert = []
+    for producto, info in productos.items():
+        if not isinstance(info, dict):
+            continue
+        cantidad = int(info.get("cantidad", 0) or 0)
+        if cantidad <= 0:
+            continue
+        productos_insert.append((
+            id_hoja,
+            int(producto),
+            cantidad,
+            float(info.get("precioFinal", 0) or 0),
+        ))
+
+    if not productos_insert:
+        return jsonify({"error": "La cotización debe tener al menos un producto"}), 400
 
     cursor = mysql.connection.cursor()
-
     try:
         cursor.execute(
             """
@@ -1366,54 +1504,43 @@ def actualizar_cotizacion(id_hoja):
             FROM hojas
             JOIN citas ON citas.id = hojas.cita
             WHERE hojas.id = %s
+            FOR UPDATE
             """,
-            (id_hoja,)
+            (id_hoja,),
         )
         hoja = cursor.fetchone()
-
         if not hoja:
-            return jsonify({"error": "Cotizacion no encontrada"}), 404
-
+            return jsonify({"error": "Cotización no encontrada"}), 404
         if int(hoja["estado"]) == 9:
-            return jsonify({
-                "error": "No se puede modificar una cotizacion de una instalacion confirmada"
-            }), 409
+            return jsonify({"error": "No se puede modificar una cotización confirmada"}), 409
 
         cursor.execute(
-            "DELETE FROM hojas_productos WHERE hoja = %s",
-            (id_hoja,)
+            "SELECT COUNT(*) AS cantidad FROM cotizaciones_versiones WHERE hoja_id = %s",
+            (id_hoja,),
         )
+        if int(cursor.fetchone()["cantidad"] or 0) == 0:
+            guardar_version_cotizacion(cursor, id_hoja, creado_por, "Estado inicial")
 
-        productos_insert = []
-
-        for producto, info in productos.items():
-            cantidad = int(info.get("cantidad", 0) or 0)
-
-            if cantidad <= 0:
-                continue
-
-            productos_insert.append((
-                id_hoja,
-                int(producto),
-                cantidad,
-                float(info.get("precioFinal", 0) or 0)
-            ))
-
-        if productos_insert:
-            cursor.executemany("""
-                INSERT INTO hojas_productos 
-                    (hoja, producto, cantidad, precio_final)
-                VALUES (%s, %s, %s, %s)
-            """, productos_insert)
-
+        cursor.execute("DELETE FROM hojas_productos WHERE hoja = %s", (id_hoja,))
+        cursor.executemany(
+            """
+            INSERT INTO hojas_productos (hoja, producto, cantidad, precio_final)
+            VALUES (%s, %s, %s, %s)
+            """,
+            productos_insert,
+        )
+        cursor.execute("UPDATE hojas SET descuento = %s WHERE id = %s", (descuento, id_hoja))
+        version = guardar_version_cotizacion(cursor, id_hoja, creado_por, "Actualización")
         mysql.connection.commit()
-
-        return jsonify({"msg": "Cotización actualizada correctamente"}), 200
-
+        return jsonify({
+            "msg": "Cotización actualizada correctamente",
+            "productos_guardados": len(productos_insert),
+            "version": version,
+            "descuento": descuento,
+        }), 200
     except Exception as e:
         mysql.connection.rollback()
         return jsonify({"error": str(e)}), 500
-
     finally:
         cursor.close()
 
@@ -1583,7 +1710,8 @@ def get_cotizacion_detallada(idCotizacion):
                 h.firma_instalacion,
                 h.firma_foto_instalacion,
                 h.notas,
-                c.tipo AS cita_tipo,
+            COALESCE(h.descuento, 0) AS descuento,
+            c.tipo AS cita_tipo,
                 DATE_FORMAT(c.dia, '%Y-%m-%d') AS cita_fecha,
                 c.telefono,
                 c.domicilio,
@@ -1674,6 +1802,7 @@ def get_cotizacion_detallada(idCotizacion):
             "firma_instalacion": hoja_info.get("firma_instalacion"),
             "firma_foto_instalacion": hoja_info.get("firma_foto_instalacion"),
             "notas": hoja_info.get("notas"),
+            "descuento": float(hoja_info.get("descuento") or 0),
             "inspeccion_items": inspeccion_items,
             "cita_tipo": hoja_info.get("cita_tipo"),
             "cliente": {
@@ -1958,51 +2087,45 @@ def agenda_editar_cita():
     return jsonify(), 200
 
 @app.post("/api/cotizacion/nueva")
+@jwt_required()
 def crear_cotizacion():
     data = request.get_json(silent=True) or {}
-
     id_cita = data.get("cita")
     productos = data.get("productos", {})
+    descuento = max(float(data.get("descuento", 0) or 0), 0)
+    creado_por = usuario_id_cotizacion()
+
+    if not id_cita or not isinstance(productos, dict):
+        return jsonify({"error": "Datos de cotización incompletos"}), 400
 
     cursor = mysql.connection.cursor()
-
     try:
-        # 🔹 crear hoja
         cursor.execute(
-            "INSERT INTO hojas (cita, tipo) VALUES (%s, 'instalacion')",
-            (id_cita,)
+            "INSERT INTO hojas (cita, tipo, descuento) VALUES (%s, 'instalacion', %s)",
+            (id_cita, descuento),
         )
         id_hoja = cursor.lastrowid
-
         productos_insert = []
-
         for producto, info in productos.items():
+            if not isinstance(info, dict):
+                continue
             cantidad = int(info.get("cantidad", 0) or 0)
-
             if cantidad <= 0:
                 continue
+            productos_insert.append((id_hoja, int(producto), cantidad, float(info.get("precioFinal", 0) or 0)))
+        if not productos_insert:
+            return jsonify({"error": "La cotización debe tener al menos un producto"}), 400
 
-            productos_insert.append((
-                id_hoja,
-                int(producto),
-                cantidad,
-                float(info.get("precioFinal", 0) or 0)
-            ))
-
-        if productos_insert:
-            cursor.executemany("""
-                INSERT INTO hojas_productos (hoja, producto, cantidad, precio_final)
-                VALUES (%s, %s, %s, %s)
-            """, productos_insert)
-
+        cursor.executemany(
+            "INSERT INTO hojas_productos (hoja, producto, cantidad, precio_final) VALUES (%s, %s, %s, %s)",
+            productos_insert,
+        )
+        version = guardar_version_cotizacion(cursor, id_hoja, creado_por, "Cotización creada")
         mysql.connection.commit()
-
-        return jsonify({"msg": "Cotización creada"}), 200
-
+        return jsonify({"msg": "Cotización creada", "id": id_hoja, "version": version}), 201
     except Exception as e:
         mysql.connection.rollback()
         return jsonify({"error": str(e)}), 500
-
     finally:
         cursor.close()
 
@@ -2135,6 +2258,7 @@ def obtener_datos_cliente(id_cliente):
                 DATE_FORMAT(citas.hora, '%%H:%%i') AS hora_24,
                 citas.estado AS idestado,
                 citas.asignado AS idasignado,
+                COALESCE(citas.eliminado, 0) AS eliminado,
                 COALESCE(deuda_cita.total, 0) AS deuda_cita,
                 COALESCE(pagado_cita.total, 0) AS pagado_cita
             FROM citas
@@ -2167,7 +2291,7 @@ def obtener_datos_cliente(id_cliente):
         citas = cursor.fetchall()
         cursor.execute("SELECT id, fullname FROM auth WHERE habilitado = 1 ORDER BY fullname;")
         users = cursor.fetchall()
-        cursor.execute("SELECT id, estado FROM citas_estados ORDER BY estado;")
+        cursor.execute("SELECT id, estado, color FROM citas_estados ORDER BY estado;")
         estados = cursor.fetchall()
         cursor.execute("""
             SELECT COALESCE(SUM(pc.monto), 0) AS deuda_total
@@ -2181,6 +2305,33 @@ def obtener_datos_cliente(id_cliente):
         return jsonify({"cliente": cliente, "citas": citas, "users": users, "estados": estados, "deuda_total": deuda_total}), 200
     except Exception as e:
         print("Error interno:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.put("/api/clientes/<int:id_cliente>/nombre")
+@jwt_required()
+def actualizar_nombre_cliente(id_cliente):
+    data = request.get_json(silent=True) or {}
+    nombre = (data.get("nombre") or "").strip().upper()
+
+    if not nombre:
+        return jsonify({"error": "Nombre requerido"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT id FROM clientes WHERE id = %s", (id_cliente,))
+        if not cursor.fetchone():
+            return jsonify({"error": "Cliente no encontrado"}), 404
+
+        cursor.execute(
+            "UPDATE clientes SET nombre = %s WHERE id = %s",
+            (nombre, id_cliente),
+        )
+        mysql.connection.commit()
+        return jsonify({"nombre": nombre}), 200
+    except Exception as e:
+        mysql.connection.rollback()
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
@@ -2212,6 +2363,31 @@ def actualizar_email_cliente(id_cliente):
     finally:
         cursor.close()
 
+@app.patch("/api/citas/<int:id_cita>/eliminar")
+@jwt_required()
+def eliminar_cita(id_cita):
+    claims = get_jwt()
+    usuario = claims.get("user") or {}
+    if usuario.get("rol") != "superadmin":
+        return jsonify({"error": "No autorizado"}), 403
+
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            "UPDATE citas SET eliminado = 1 WHERE id = %s AND COALESCE(eliminado, 0) = 0",
+            (id_cita,),
+        )
+        if cursor.rowcount == 0:
+            cursor.execute("SELECT id FROM citas WHERE id = %s", (id_cita,))
+            if not cursor.fetchone():
+                return jsonify({"error": "Cita no encontrada"}), 404
+        mysql.connection.commit()
+        return jsonify({"msg": "Cita deshabilitada correctamente"}), 200
+    except Exception as error:
+        mysql.connection.rollback()
+        return jsonify({"error": str(error)}), 500
+    finally:
+        cursor.close()
 @app.put("/api/citas/actualizar/<int:id_cita>")
 def actualizar_cita(id_cita):
     data = request.get_json(silent=True) or {}
@@ -3212,5 +3388,5 @@ def servir_frontend(path):
     return response
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=int(os.getenv("FLASK_PORT", "5000")))
 

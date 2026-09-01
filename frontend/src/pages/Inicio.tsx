@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { Usuarios } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getToken } from "../lib/api";
+import { api, getToken } from "../lib/api";
 import {
   FilePlusCorner,
   Cctv,
@@ -23,6 +25,7 @@ import {
   CircleCheck,
   X,
   FileText,
+  Trash2,
   StickyNote,
   ChevronDown,
   CalendarClock,
@@ -42,6 +45,10 @@ import Loading from "../components/Loading";
 import ModalConfirm from "../components/ModalConfirm";
 import FormatearNumero from "../components/FormatearNumero";
 
+function AgendaTimepickerPortal({ children }: { children?: ReactNode }) {
+  return createPortal(children, document.body);
+}
+
 type AgendaItem = {
   idcita: string;
   idcliente: number;
@@ -54,6 +61,7 @@ type AgendaItem = {
   fullname: string;
   tipo: string;
   idestado: string;
+  eliminado?: number;
   soporte_finalizado?: number;
   estado: string;
   color: string;
@@ -346,6 +354,7 @@ export default function Inicio() {
     return items
       .filter((i) => {
         if (i.dia !== selectedDay) return false;
+        if (Number(i.eliminado) === 1 && user?.rol !== "superadmin") return false;
         if (user?.rol === "tecnico" && Number(i.idagente) !== Number(user?.id)) return false;
         return true;
       })
@@ -365,7 +374,6 @@ export default function Inicio() {
   [selectedDay, tareasProgramadas, user],
   );
 
-  const [citasEstados, setCitasEstados] = useState<CitasEstados[]>([]);
 
   type InicioResponse = {
     usuarios: Usuarios[];
@@ -412,7 +420,7 @@ export default function Inicio() {
         setUsers(data.usuarios);
         setItems(citasConDetalles);
         setTareasProgramadas(data.tareas_programadas ?? []);
-        setCitasEstados(data.citas_estados);
+
         setCuotasAlertas(data.cuotas_alertas ?? []);
         setLoading(false);
       } else {
@@ -457,6 +465,21 @@ export default function Inicio() {
     setOpenModalConfirm(true);
   }
 
+  async function eliminarCita(idCita: string) {
+    if (user?.rol !== "superadmin") return;
+    const confirmar = window.confirm(
+      "¿Deshabilitar esta cita? Quedará visible solamente para superadmin.",
+    );
+    if (!confirmar) return;
+
+    try {
+      await api(`/api/citas/${idCita}/eliminar`, { method: "PATCH" });
+      await cargarInicio();
+    } catch (error) {
+      console.error("Error deshabilitando la cita:", error);
+      alert("No se pudo deshabilitar la cita.");
+    }
+  }
   async function handleConfirmInstalacion() {
     if (!idHojaConfirmar) {
       setOpenModalConfirm(false);
@@ -609,24 +632,6 @@ export default function Inicio() {
       }
     } catch (err) {
       console.error("Error de conexión al cambiar hora:", err);
-    }
-  };
-
-  const cambiarEstado = async (idcita: string, nuevoEstado: string) => {
-    try {
-      const res = await fetch(`${API_URL}/api/agenda/cambiar-estado`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idcita, nuevoEstado }),
-      });
-
-      if (res.ok) {
-        cargarInicio();
-      } else {
-        console.error("Error al cambiar el estado. Código:", res.status);
-      }
-    } catch (err) {
-      console.error("Error de conexión al cambiar estado:", err);
     }
   };
 
@@ -850,31 +855,31 @@ export default function Inicio() {
       <div className="flex min-h-0 w-full flex-col gap-3 xl:flex-row">
       <div className="w-full shrink-0 xl:h-full xl:w-1/4 xl:overflow-y-auto xl:pr-1">
         <div className="w-full cuadro">
-          <div className="flex flex-col gap-3 text-center mb-3">
-            <div className="text-lg sm:text-xl font-extrabold tracking-tight capitalize">
+          <div className="mb-2 text-center">
+            <div className="text-sm font-extrabold capitalize sm:text-base">
               {formatHeader(selectedDay)}
             </div>
           </div>
 
-          <div className="flex items-center justify-around gap-2 flex-wrap">
+          <div className="grid grid-cols-[auto_auto_auto_minmax(0,1fr)] items-center gap-1">
             <button
               onClick={goPrev}
-              className="btn-secondary text-xs font-bold sm:text-sm">
+              className="btn-secondary whitespace-nowrap !px-2 !py-1.5 text-[10px] font-bold">
               ← Anterior
             </button>
             <button
               onClick={goToday}
-              className="btn-primary text-xs font-extrabold sm:text-sm">
+              className="btn-primary whitespace-nowrap !px-2 !py-1.5 text-[10px] font-extrabold">
               Hoy
             </button>
             <button
               onClick={goNext}
-              className="btn-secondary text-xs font-bold sm:text-sm">
+              className="btn-secondary whitespace-nowrap !px-2 !py-1.5 text-[10px] font-bold">
               Siguiente →
             </button>
 
-            <div className="flex min-w-0 items-center gap-2 rounded-xl border border-[var(--bg-border)] bg-[var(--bg-surface-2)] px-3 py-2">
-              <span className="text-xs text-muted">Ir a</span>
+            <div className="flex min-w-0 items-center gap-1 rounded-lg border border-[var(--bg-border)] bg-[var(--bg-surface-2)] px-2 py-1.5">
+              <span className="shrink-0 text-[10px] text-muted">Ir a</span>
               <DatePicker
                 selected={fromDateKey(selectedDay)}
                 onChange={(date: Date | null) => {
@@ -887,7 +892,7 @@ export default function Inicio() {
                   isSundayDate(date) ? "datepicker-sunday-blocked" : ""
                 }
                 dateFormat="MM/dd/yyyy"
-                className="w-24 bg-transparent text-sm font-bold text-orange-500 outline-none sm:w-28 cursor-pointer"
+                className="min-w-0 w-full cursor-pointer !border-0 bg-transparent text-[11px] font-bold text-orange-500 !outline-none !ring-0 focus:!border-0 focus:!outline-none focus:!ring-0"
               />
             </div>
           </div>
@@ -1167,15 +1172,15 @@ export default function Inicio() {
 
                     {grupo.items.length > 0 && (
                       <div
-                        className={`${grupo.scroll ? "max-h-36 overflow-y-auto" : ""} rounded-lg border border-white/10`}>
+                        className={`${grupo.scroll ? "max-h-36 overflow-y-auto pr-1" : ""} space-y-1.5`}>
                         {grupo.items.map((cuota) => (
                           <button
                             key={cuota.idcuota}
                             onClick={() =>
                               navigate(`/clientes/${cuota.idcliente}`)
                             }
-                            className="w-full border-b border-[var(--bg-border)] bg-[var(--bg-surface-2)] px-3 py-2 text-left text-xs transition hover:bg-[var(--color-primary-l)] last:border-b-0">
-                            <div className="flex min-w-0 items-center justify-between gap-2">
+                            className="w-full rounded-md border border-[var(--bg-border)] bg-[var(--bg-surface-2)] px-2.5 py-1.5 text-left text-[11px] leading-tight transition hover:bg-[var(--color-primary-l)]">
+                            <div className="flex min-w-0 items-start justify-between gap-2">
                               <span className="truncate font-bold text-[var(--text-primary)]">
                                 {cuota.cliente}
                               </span>
@@ -1183,7 +1188,7 @@ export default function Inicio() {
                                 <FormatearNumero numero={Number(cuota.monto)} />
                               </span>
                             </div>
-                            <div className="mt-0.5 flex flex-wrap items-center justify-between gap-2 opacity-70">
+                            <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10px] leading-tight opacity-70">
                               <span>{formatShortDate(cuota.vencimiento)}</span>
                               <span>
                                 {Number(cuota.dias) < 0
@@ -1239,19 +1244,16 @@ export default function Inicio() {
         <div className="mt-3 flex-1 space-y-4 overflow-y-auto pr-0 xl:min-h-0 xl:pr-2">
           {/* ───────────────── SECCIÓN: TAREAS PROGRAMADAS RECURRENTES ───────────────── */}
           {tareasProgramadasDelDia.length > 0 && (
-            <div className="space-y-2 rounded-2xl border border-purple-300/80 dark:border-purple-800/60 bg-purple-500/[0.04] dark:bg-purple-950/20 p-3">
-              <div className="flex items-center justify-between px-1 pb-1">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 px-1 pb-1">
                 <div className="flex items-center gap-2">
                   <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-600 text-white font-extrabold text-xs shadow-sm">
                     <Repeat2 className="h-3.5 w-3.5" />
                   </span>
-                  <span className="text-xs font-black uppercase tracking-wider text-purple-900 dark:text-purple-300">
+                  <span className="text-xs font-black uppercase tracking-wider text-purple-400">
                     Tareas Programadas Recurrentes ({tareasProgramadasDelDia.length})
                   </span>
                 </div>
-                <span className="rounded-full bg-purple-500/15 border border-purple-400/30 px-2 py-0.5 text-[10px] font-extrabold text-purple-800 dark:text-purple-200">
-                  Mantenimiento / Rutina
-                </span>
               </div>
 
               {tareasProgramadasDelDia.map((tarea) => (
@@ -1298,7 +1300,7 @@ export default function Inicio() {
               <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-500 text-white font-extrabold text-xs shadow-sm">
                 <CalendarClock className="h-3.5 w-3.5" />
               </span>
-              <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+              <span className="text-xs font-black uppercase tracking-wider text-[var(--text-primary)]">
                 Citas y Atenciones a Clientes del Día ({dayItems.length})
               </span>
             </div>
@@ -1314,7 +1316,27 @@ export default function Inicio() {
             )
           ) : (
             dayItems.map((it) =>
-              user?.rol === "tecnico" ? (
+              Number(it.eliminado) === 1 ? (
+                <div
+                  key={it.idcita}
+                  className="card-event cursor-not-allowed border-zinc-500/40 bg-zinc-800/60 opacity-65 grayscale"
+                  style={{ borderLeftColor: "#71717a", borderLeftWidth: "5px" }}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs font-black text-red-300">
+                          CITA ELIMINADA
+                        </span>
+                        <span className="text-sm font-bold text-white/70">{it.hora_format}</span>
+                      </div>
+                      <p className="mt-2 font-bold text-white/70">{it.nombre}</p>
+                      <p className="text-sm text-white/45">{it.direccion || "Sin domicilio"}</p>
+                    </div>
+                    <span className="text-xs font-semibold text-white/40">Deshabilitada</span>
+                  </div>
+                </div>
+              ) : user?.rol === "tecnico" ? (
                 /* ────────── TARJETA SOLO LECTURA (técnico) ────────── */
                 <div
                   key={it.idcita}
@@ -1327,16 +1349,6 @@ export default function Inicio() {
                         {/* Badge de hora (solo lectura) */}
                         <span className="inline-flex items-center rounded-full border border-orange-500/30 bg-orange-500/15 px-2.5 py-1 text-xs font-black text-orange-700 dark:text-orange-300 w-20 justify-center">
                           {it.hora_format}
-                        </span>
-
-                        {/* Badge de estado (solo lectura) */}
-                        <span
-                          className="rounded-full text-xs font-bold py-0.5 px-2 text-center border text-white"
-                          style={{
-                            backgroundColor: it.color,
-                            borderColor: darkenColor(it.color, 0.5),
-                          }}>
-                          {it.estado}
                         </span>
 
                         {(it.tipo == "camarasdesdecero" ||
@@ -1374,20 +1386,27 @@ export default function Inicio() {
                         )}
                       </div>
 
-                      <div className="shrink-0 lg:text-right">
+                      <div className="flex shrink-0 items-center justify-end gap-2 lg:text-right">
+                        {esCitaSoporte(it) && Number(it.soporte_finalizado) === 1 ? (
+                          <div className="inline-flex items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-extrabold text-emerald-300">
+                            <CircleCheck className="h-4 w-4" />
+                            SOPORTE FINALIZADO
+                          </div>
+                        ) : (
                         <select
                           value={String(it.idagente)}
                           onChange={(e) => void cambiarAsignado(it.idcita, e.target.value)}
                           onClick={(e) => e.stopPropagation()}
                           aria-label={`Asignado a ${it.fullname}`}
                           title="Cambiar agente asignado"
-                          className="max-w-44 cursor-pointer bg-transparent text-right text-xs italic font-semibold opacity-80 outline-none">
+                          className="w-60 max-w-full cursor-pointer !border-0 bg-transparent text-right text-xs italic font-semibold text-gray-400 !outline-none !ring-0 focus:!border-0 focus:!outline-none focus:!ring-0">
                           {users.map((agente) => (
                             <option key={agente.id} value={agente.id} className="bg-white text-black">
                               Asignado a {agente.fullname}
                             </option>
                           ))}
                         </select>
+                        )}
                       </div>
                     </div>
 
@@ -1439,11 +1458,7 @@ export default function Inicio() {
                           ))}
 
                         {esCitaSoporte(it) &&
-                          (Number(it.soporte_finalizado) === 1 ? (
-                            <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-200">
-                              Soporte finalizado
-                            </span>
-                          ) : (
+                          (Number(it.soporte_finalizado) === 1 ? null : (
                             <button
                               type="button"
                               disabled={soportesFinalizando.has(it.idcita)}
@@ -1562,41 +1577,13 @@ export default function Inicio() {
                           timeCaption="Hora"
                           dateFormat="h:mm aa"
                           calendarClassName="agenda-timepicker"
+                          popperClassName="agenda-timepicker-popper"
+                          popperContainer={AgendaTimepickerPortal}
                           className="inline-flex items-center rounded-full border border-zinc-300 bg-white px-2 py-1 text-xs font-bold text-black text-center w-20 cursor-pointer"
                           title="Cambiar hora"
                           selected={hora}
                           onChange={handleHoraChange.bind(null, it.idcita)}
                         />
-                        <select
-                          value={it.idestado}
-                          disabled={it.idestado == "9" ? true : false}
-                          className="rounded-full text-xs font-bold py-0.5 px-2 cursor-pointer text-center border text-white"
-                          style={{
-                            backgroundColor: it.color,
-                            borderColor: darkenColor(it.color, 0.5),
-                          }}
-                          title="Cambiar estado"
-                          onChange={(e) =>
-                            cambiarEstado(it.idcita, e.target.value)
-                          }>
-                          <option
-                            value={it.idestado}
-                            className="font-bold bg-white text-black">
-                            {it.estado}
-                          </option>
-                          {citasEstados
-                            .filter((estado) => estado.id !== it.idestado)
-                            .filter((estado) => estado.estado !== "YA INSTALÓ")
-                            .map((estado) => (
-                              <option
-                                key={estado.id}
-                                value={estado.id}
-                                className="font-bold bg-white text-black">
-                                {estado.estado}
-                              </option>
-                            ))}
-                        </select>
-
                         {(it.tipo == "camarasdesdecero" ||
                           it.tipo == "camaras-tiene-nuevo-instalacion" ||
                           it.tipo == "camaras-tiene-existente-instalacion") && (
@@ -1632,20 +1619,41 @@ export default function Inicio() {
                         )}
                       </div>
 
-                      <div className="shrink-0 lg:text-right">
+                      <div className="flex shrink-0 items-center justify-end gap-2 lg:text-right">
+                        {user?.rol === "superadmin" && (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void eliminarCita(it.idcita);
+                            }}
+                            className="inline-flex !h-9 !w-9 !min-w-9 shrink-0 items-center justify-center rounded-lg border border-red-500/60 bg-red-500/15 !p-0 text-red-500 transition hover:bg-red-500/25"
+                            title="Deshabilitar cita"
+                            aria-label="Deshabilitar cita"
+                          >
+                            <Trash2 className="!h-5 !w-5 shrink-0" size={20} strokeWidth={2.5} aria-hidden="true" />
+                          </button>
+                        )}
+                        {esCitaSoporte(it) && Number(it.soporte_finalizado) === 1 ? (
+                          <div className="inline-flex items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-extrabold text-emerald-300">
+                            <CircleCheck className="h-4 w-4" />
+                            SOPORTE FINALIZADO
+                          </div>
+                        ) : (
                         <select
                           value={String(it.idagente)}
                           onChange={(e) => void cambiarAsignado(it.idcita, e.target.value)}
                           onClick={(e) => e.stopPropagation()}
                           aria-label={`Asignado a ${it.fullname}`}
                           title="Cambiar agente asignado"
-                          className="max-w-44 cursor-pointer bg-transparent text-right text-xs italic text-white/60 outline-none">
+                          className="w-60 max-w-full cursor-pointer !border-0 bg-transparent text-right text-xs italic text-gray-400 !outline-none !ring-0 focus:!border-0 focus:!outline-none focus:!ring-0">
                           {users.map((agente) => (
                             <option key={agente.id} value={agente.id} className="bg-white text-black">
                               Asignado a {agente.fullname}
                             </option>
                           ))}
                         </select>
+                        )}
                       </div>
                     </div>
 
@@ -1778,18 +1786,13 @@ export default function Inicio() {
                           )}
                           <button
                             onClick={() => abrirEditar(it)}
-                            className="boton flex shrink-0 items-center justify-center border py-0.5! ml-0 hover:bg-white hover:text-black italic sm:ml-1">
+                            className="boton ml-0 flex shrink-0 items-center justify-center border !border-orange-400/60 !bg-orange-500/15 py-0.5! font-bold !text-orange-300 shadow-sm shadow-orange-500/15 transition hover:!border-orange-300 hover:!bg-orange-500/30 hover:!text-white sm:ml-1">
                             <Pencil className="h-3 w-3" />
                             Editar registro
                           </button>
                         </div>
                         {esCitaSoporte(it) ? (
-                          Number(it.soporte_finalizado) === 1 ? (
-                            <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-3 py-1 text-xs font-extrabold text-emerald-200">
-                              <CircleCheck className="mr-1 inline h-3.5 w-3.5" />
-                              Soporte finalizado
-                            </span>
-                          ) : (
+                          Number(it.soporte_finalizado) === 1 ? null : (
                             <button
                               type="button"
                               disabled={soportesFinalizando.has(it.idcita)}

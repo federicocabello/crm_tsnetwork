@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import type { Role } from "../types/auth";
 import { useAuth } from "../auth/AuthContext";
@@ -105,16 +105,7 @@ export default function Sidebar() {
         background: "var(--sidebar-bg)",
         borderColor: "var(--sidebar-border)",
       }}>
-      {/* Logo mark at top */}
-      <div className="flex h-14 items-center justify-center border-b" style={{ borderColor: "var(--sidebar-border)" }}>
-        <div
-          className="h-8 w-8 rounded-lg flex items-center justify-center text-white text-xs font-black"
-          style={{ background: "var(--color-primary)" }}>
-          TS
-        </div>
-      </div>
-
-      <nav className="flex flex-col gap-1 p-2 mt-1">
+      <nav className="flex h-full flex-col gap-2 px-2 py-3">
         {items.map((it) => {
           const Icon = it.icon;
           const alertaStock = it.path === "/inventario" && cantidadStockBajo > 0;
