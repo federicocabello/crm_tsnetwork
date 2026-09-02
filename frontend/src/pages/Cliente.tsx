@@ -1,14 +1,24 @@
-<<<<<<< Updated upstream
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useEffect, useState } from "react";
-import { Mail, User, CalendarFold, Cctv, Wrench, TriangleAlert, Clock, House, ClipboardPlus, Globe, Drill, Trash2, Pencil, ArrowLeft, FileDown } from "lucide-react";
-=======
-import { useParams, useNavigate } from "react-router-dom";
-//import { useAuth } from "../auth/AuthContext";
-import { useEffect, useState } from "react";
-import { Mail, User, CalendarFold, Cctv, Wrench, TriangleAlert, List, Clock, House, ClipboardPlus, Globe, Drill, ChevronLeft } from "lucide-react";
->>>>>>> Stashed changes
+import {
+  Mail,
+  User,
+  CalendarFold,
+  Cctv,
+  Wrench,
+  TriangleAlert,
+  List,
+  Clock,
+  House,
+  ClipboardPlus,
+  Globe,
+  Drill,
+  Trash2,
+  Pencil,
+  FileDown,
+  ChevronLeft,
+} from "lucide-react";
 import { darkenColor } from "../utils/colores";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -41,7 +51,6 @@ type Cita = {
   pagado_cita?: number;
 };
 
-
 type Cliente = {
   idcliente: number;
   nombre: string;
@@ -50,12 +59,8 @@ type Cliente = {
 
 export default function Cliente() {
   const { idCliente } = useParams<{ idCliente: string }>();
-<<<<<<< Updated upstream
-  const { user } = useAuth();
-=======
   const navigate = useNavigate();
-  //const { user } = useAuth();
->>>>>>> Stashed changes
+  const { user } = useAuth();
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<Usuarios[]>([]);
@@ -187,6 +192,7 @@ export default function Cliente() {
       alert("No se pudo deshabilitar la cita.");
     }
   };
+
   const actualizarCita = async () => {
     if (isSundayKey(fecha)) {
       alert("No se pueden reprogramar citas los domingos.");
@@ -262,6 +268,7 @@ export default function Cliente() {
       alert("Error de conexión con el backend.");
     }
   };
+
   const agregarEmailCliente = async () => {
     if (!cliente) return;
 
@@ -293,7 +300,6 @@ export default function Cliente() {
   };
 
   const citaActual = citas.find((cita) => cita.idcita === citaSeleccionada) ?? null;
-  const estadoActual = estados.find((item) => String(item.id) === String(estado));
 
   const volverAlListado = () => {
     setCitaSeleccionada(0);
@@ -364,256 +370,6 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
   return (
     <div className="w-full space-y-5 max-w-7xl mx-auto">
       {loading && <Loading />}
-<<<<<<< Updated upstream
-      <div className="w-full" hidden={loading || citaSeleccionada > 0}>
-        <div className="bg-zinc-900 p-4 rounded-xl border border-white/10 shadow-md mb-4 flex justify-between items-center">
-          <div>
-            <div className="flex items-center gap-2 text-2xl font-bold text-orange-500">
-              <User className="h-6 w-6 shrink-0" />
-              <span>{cliente?.nombre}</span>
-              <button
-                type="button"
-                onClick={modificarNombreCliente}
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white/45 transition hover:bg-white/10 hover:text-orange-300"
-                title="Modificar nombre"
-                aria-label="Modificar nombre del cliente"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-            </div>
-            {cliente?.email ? (
-              <div className="text-white/60 flex gap-1 text-sm items-center">
-                <Mail className="h-4 w-4" />{cliente.email}
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={agregarEmailCliente}
-                className="mt-1 inline-flex items-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-200 transition hover:bg-orange-500/20"
-              >
-                <Mail className="h-4 w-4" />
-                Agregar email
-              </button>
-            )}
-          </div>
-
-          <div
-            className={`text-white px-3 py-1 rounded-lg font-bold border-2 flex flex-col items-center justify-center
-            ${deudaTotal > 0
-                ? "bg-yellow-600 border-yellow-700"
-                : "bg-green-600 border-green-700"
-              }
-          `}
-          >
-            {deudaTotal > 0 ? (
-              <>
-                <div className="text-xs">DEUDA TOTAL</div>
-                <div className="text-2xl"><FormatearNumero numero={deudaTotal} /></div>
-              </>
-            ) : (
-              <div className="text-sm font-bold">SIN DEUDAS</div>
-            )}
-          </div>
-
-        </div>
-
-        <div>
-          {citas.length === 0 ? (
-            <div className="text-white/60">Este cliente no tiene citas registradas.</div>
-          ) : (
-            <div
-              className="flex max-h-[min(680px,calc(100vh-220px))] flex-col gap-3 overflow-y-auto pr-1"
-            >
-              {citas.map((cita) => (
-                <div key={cita.idcita} className={`bg-zinc-900 border rounded-xl p-4 shadow transition-all
-                    ${Number(cita.eliminado) === 1 ? "cursor-not-allowed opacity-60 grayscale border-zinc-600/40" : "cursor-pointer"}
-                    ${cita.idcita === citaSeleccionada
-                    ? "border-orange-500 shadow-orange-500 hover:shadow-orange-500"
-                    : "border-white/10 hover:border-orange-500 hover:shadow-xs"
-                  }`} onClick={() => Number(cita.eliminado) !== 1 && setearCitaSeleccionada(cita)}>
-                  <div className="flex min-w-0 flex-col gap-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-white font-bold">
-                      {Number(cita.eliminado) === 1 ? (
-                        <div className="rounded-full border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs font-black text-red-300">
-                          CITA ELIMINADA
-                        </div>
-                      ) : user?.rol === "superadmin" ? (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void eliminarCita(cita.idcita);
-                          }}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20"
-                          title="Deshabilitar cita"
-                          aria-label="Deshabilitar cita"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      ) : null}                      <div className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-1 text-xs font-bold text-cyan-200 text-center">
-                        <CalendarFold className="h-4 w-4" />{cita.dia}
-                      </div>
-                      <div className="flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-1 text-xs font-bold text-orange-200 text-center">
-                        <Clock className="h-4 w-4" />{cita.hora}
-                      </div>
-
-                      {esInternet(cita.tipo) && (
-                        <div className="rounded-full text-xs font-bold py-1 px-2 text-center border-2 border-orange-700 bg-orange-500 flex justify-center items-center gap-1">
-                          <Globe className="h-4 w-4" />
-                          <span>INTERNET</span>
-                        </div>
-                      )}
-
-                      {esCamaras(cita.tipo) && (
-                        <div className="rounded-full text-xs font-bold py-1 px-2 text-center border-2 border-blue-700 bg-blue-500 flex justify-center items-center gap-1">
-                          <Cctv className="h-4 w-4" />
-                          <span>CAMARAS</span>
-                        </div>
-                      )}
-
-                      {esInstalacion(cita.tipo) && (
-                        <div className="rounded-full text-xs font-bold py-1 px-2 text-center border-2 border-indigo-700 bg-indigo-500 flex justify-center items-center gap-1">
-                          <Drill className="h-4 w-4" />
-                          <span>INSTALACION</span>
-                        </div>
-                      )}
-
-                      {esSoporte(cita.tipo) && (
-                        <div className="rounded-full text-xs font-bold py-1 px-2 text-center border-2 border-green-700 bg-green-500 flex justify-center items-center gap-1">
-                          <Wrench className="h-4 w-4" />
-                          <span>SOPORTE</span>
-                        </div>
-                      )}
-                      <div className="rounded-full text-xs font-bold py-1 px-2 cursor-pointer text-center border-2 flex justify-center items-center gap-1" style={{ backgroundColor: cita.color, borderColor: darkenColor(cita.color, 0.5), }}>
-                        {cita.estado}
-                      </div>
-
-
-                      {Number(cita.deuda_cita || 0) > 0 && (
-                        <div className="rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2 py-1 text-xs font-bold text-yellow-200">
-                          Debe <FormatearNumero numero={Number(cita.deuda_cita || 0)} />
-                        </div>
-                      )}
-                      {Number(cita.pagado_cita || 0) > 0 && (
-                        <div className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-1 text-xs font-bold text-emerald-200">
-                          PAGADO <FormatearNumero numero={Number(cita.pagado_cita || 0)} />
-                        </div>
-                      )}
-                      {(cita.tipo == "camaras-tiene-nuevo-instalacion" || cita.tipo == "camaras-tiene-existente-instalacion") && (
-                        <div className="text-xs text-yellow-500 font-bold italic flex items-center gap-1">
-                          <TriangleAlert className="h-4 w-4" />Ya tiene camaras instaladas
-                        </div>
-                      )}
-                    </div>
-                    {cita.domicilio.trim() && (
-                      <div className="min-w-0 text-white text-sm flex gap-1 items-start font-bold italic">
-                        <House className="h-4 w-4 shrink-0" />
-                        <span className="min-w-0 flex-1 break-words leading-snug">{cita.domicilio}</span>
-                      </div>
-                    )}
-
-                    {cita.notas.trim() && (
-                      <div className="min-w-0 text-white/50 text-sm">
-                        <p className="line-clamp-2 break-words whitespace-pre-wrap"><strong>Notas:</strong> {cita.notas}</p>
-                        {cita.notas.length > 90 && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setearCitaSeleccionada(cita);
-                            }}
-                            className="mt-1 text-xs font-bold text-orange-300 hover:text-orange-200"
-                          >
-                            Ver mas...
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    <div className="mt-auto">
-                      <hr className="text-white/10" />
-                      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-white/60">
-                        <span className="min-w-0 truncate italic">
-                          Asignado a <strong>{cita.asignado}</strong>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {citaSeleccionada > 0 && citaActual && (
-        <div className="w-full min-w-0 space-y-4">
-          <section className="rounded-xl border border-white/10 bg-zinc-900 p-4 shadow-md">
-            <button type="button" onClick={volverAlListado} className="mb-4 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-white/70 transition hover:bg-white/10 hover:text-white"><ArrowLeft className="h-4 w-4" /> Volver a las citas</button>
-            <div className="grid gap-4 lg:grid-cols-[minmax(300px,0.9fr)_minmax(0,1.4fr)]">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex min-w-0 items-center gap-2 text-2xl font-bold text-orange-500"><User className="h-6 w-6 shrink-0" /><span className="break-words">{cliente?.nombre}</span><button type="button" onClick={modificarNombreCliente} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/50 hover:bg-white/10 hover:text-orange-300" title="Editar nombre"><Pencil className="h-4 w-4" /></button></div>
-                  <div className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-bold text-white ${deudaTotal > 0 ? "border-yellow-700 bg-yellow-600" : "border-green-700 bg-green-600"}`}><span>{deudaTotal > 0 ? "DEUDA TOTAL" : "SIN DEUDAS"}</span>{deudaTotal > 0 && <FormatearNumero numero={deudaTotal} />}</div>
-                </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <div><label className="mb-1 block text-xs font-semibold text-white/55">Reprogramar fecha</label><DatePicker selected={dateKeyToDate(fecha)} onChange={(date: Date | null) => setFecha(date ? formatDateKey(date) : "")} filterDate={isSelectableAgendaDate} dayClassName={agendaDayClassName} dateFormat="MM/dd/yyyy" placeholderText="Seleccionar fecha" className="w-full rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/50" wrapperClassName="w-full" calendarClassName="agenda-datepicker" /></div>
-                  <div><label className="mb-1 block text-xs font-semibold text-white/55">Reprogramar hora</label><DatePicker showTimeSelect showTimeSelectOnly timeIntervals={15} timeCaption="Hora" dateFormat="h:mm aa" calendarClassName="agenda-timepicker" className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-black outline-none focus:border-orange-500" selected={hora ?? undefined} onChange={(date: Date | null) => { if (!date) return; setHora(date); setHorario(`${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`); }} /></div>
-                </div>
-                <div className="mt-3 text-sm text-white/65">{cliente?.email ? <span className="inline-flex items-center gap-2"><Mail className="h-4 w-4 text-orange-300" />{cliente.email}</span> : <button type="button" onClick={agregarEmailCliente} className="inline-flex items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-2 text-xs font-bold text-orange-200 hover:bg-orange-500/20"><Mail className="h-4 w-4" />Agregar email</button>}</div>
-              </div>
-              <div className="grid min-w-0 content-start gap-3 sm:grid-cols-2">
-                <div><label className="mb-1 block text-xs font-semibold text-white/55">Telefono</label><input value={telefono} onChange={(event) => setTelefono(event.target.value)} className="w-full rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/50" /></div>
-                <div><label className="mb-1 block text-xs font-semibold text-white/55">Estado</label><select value={estado} onChange={(event) => setEstado(event.target.value)} className="w-full cursor-pointer rounded-lg border-2 px-3 py-2 text-sm font-bold text-white outline-none" style={{ backgroundColor: estadoActual?.color || "#3f3f46", borderColor: darkenColor(estadoActual?.color || "#3f3f46", 0.5) }}>{estados.map((item) => <option key={item.id} value={item.id} className="bg-white text-black">{item.estado}</option>)}</select></div>
-                <div><label className="mb-1 block text-xs font-semibold text-white/55">Direccion</label><input value={direccion} onChange={(event) => setDireccion(event.target.value)} className="w-full rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm uppercase text-white outline-none focus:border-orange-500/50" /></div>
-                <div><label className="mb-1 block text-xs font-semibold text-white/55">Asignado a</label><select value={asignado} onChange={(event) => setAsignado(event.target.value)} className="w-full rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/50">{users.map((usuario) => <option key={usuario.id} value={usuario.id}>{usuario.fullname}</option>)}</select></div>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-orange-500/20 bg-zinc-900 p-4">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <label className="text-sm font-bold text-orange-200">Nota de la cita</label>
-              <button type="button" onClick={() => actualizarCita()} className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-600">Guardar cambios</button>
-            </div>
-            <textarea value={notas} onChange={(event) => setNotas(event.target.value)} placeholder="Notas importantes de la cita" className="field-sizing-content min-h-28 w-full resize-none rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-3 text-sm text-white outline-none focus:border-orange-500/50" />
-          </section>
-          {idPago === null ? (
-            !mostrarPlanPagos ? (
-              <div className="bg-cyan-600 border-2 border-cyan-700 rounded-xl p-2 transition-all w-48 mb-4 flex items-center justify-center gap-1 cursor-pointer hover:bg-cyan-700 hover:border-cyan-800" onClick={() => setMostrarPlanPagos(true)}>
-                <ClipboardPlus className="h-4 w-4" />
-                <span className="text-sm">Agregar plan de pagos</span>
-              </div>
-            ) : (
-              <div className="mb-4 w-full">
-                <PlanDePagos idCliente={idCliente || ""} idCita={citaSeleccionada} onGuardado={() => {
-                  const citaActual = citas.find((c) => c.idcita === citaSeleccionada);
-                  if (citaActual) setearCitaSeleccionada(citaActual);
-                  cargarInicioCliente();
-                  setMostrarPlanPagos(false);
-                }} />
-              </div>
-            )
-          ) : (
-              <VerPlanDePagos
-                idPago={idPago}
-                idCita={citaSeleccionada}
-                total={totalPlan}
-                enganche={enganchePlan}
-                metodoEnganche={metodoEnganchePlan}
-                idMetodoEnganche={idMetodoEnganchePlan}
-                cuotas={cuotas}
-                headerAction={
-                  <button type="button" onClick={exportarPlanPdf} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-3 py-2 text-xs font-bold text-orange-200 transition hover:bg-orange-500/20">
-                    <FileDown className="h-4 w-4" /><span className="hidden sm:inline">Exportar PDF</span>
-                  </button>
-                }
-                onActualizado={() => {
-                  // Refrescar cuotas y deuda después de guardar
-                  const citaActual = citas.find((c) => c.idcita === citaSeleccionada);
-                  if (citaActual) setearCitaSeleccionada(citaActual);
-                  cargarInicioCliente();
-=======
       {!loading && (
         <>
           {/* Header del Cliente */}
@@ -623,11 +379,10 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                 type="button"
                 onClick={() => {
                   if (citaSeleccionada > 0) {
-                    setCitaSeleccionada(0);
+                    volverAlListado();
                   } else {
                     navigate(-1);
                   }
->>>>>>> Stashed changes
                 }}
                 className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-800/80 px-3.5 py-2 text-xs font-bold text-white hover:bg-zinc-700/80 hover:-translate-x-0.5 transition-all shadow-md cursor-pointer active:scale-95"
               >
@@ -635,16 +390,19 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                 <span>Volver</span>
               </button>
 
-<<<<<<< Updated upstream
-
-
-
-        </div>
-=======
               <div className="space-y-0.5">
                 <div className="text-2xl font-black tracking-tight text-orange-400 flex items-center gap-2">
                   <User className="h-6 w-6 text-orange-500" />
                   <span>{cliente?.nombre}</span>
+                  <button
+                    type="button"
+                    onClick={modificarNombreCliente}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/10 hover:text-orange-300 cursor-pointer"
+                    title="Modificar nombre"
+                    aria-label="Modificar nombre del cliente"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
                 </div>
                 {cliente?.email ? (
                   <div className="text-white/60 flex gap-1.5 text-xs items-center font-medium">
@@ -694,15 +452,38 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                   {citas.map((cita) => (
                     <div
                       key={cita.idcita}
-                      className={`bg-zinc-900/90 border rounded-2xl p-4 shadow-md transition-all cursor-pointer hover:scale-[1.005] ${
+                      className={`bg-zinc-900/90 border rounded-2xl p-4 shadow-md transition-all ${
+                        Number(cita.eliminado) === 1
+                          ? "cursor-not-allowed opacity-60 grayscale border-zinc-600/40"
+                          : "cursor-pointer hover:scale-[1.005]"
+                      } ${
                         cita.idcita === citaSeleccionada
                           ? "border-orange-500 shadow-orange-500/10 bg-zinc-900"
                           : "border-white/10 hover:border-orange-500/50 hover:shadow-lg"
                       }`}
-                      onClick={() => setearCitaSeleccionada(cita)}
+                      onClick={() => Number(cita.eliminado) !== 1 && setearCitaSeleccionada(cita)}
                     >
                       <div className="flex min-w-0 flex-col gap-3">
                         <div className="flex flex-wrap items-center justify-between gap-2 text-white font-bold">
+                          {Number(cita.eliminado) === 1 ? (
+                            <div className="rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-xs font-black text-red-300">
+                              CITA ELIMINADA
+                            </div>
+                          ) : user?.rol === "superadmin" ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void eliminarCita(cita.idcita);
+                              }}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20 cursor-pointer"
+                              title="Deshabilitar cita"
+                              aria-label="Deshabilitar cita"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          ) : null}
+
                           <div className="flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-200">
                             <CalendarFold className="h-3.5 w-3.5" />
                             <span>{cita.dia}</span>
@@ -831,6 +612,16 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                   metodoEnganche={metodoEnganchePlan}
                   idMetodoEnganche={idMetodoEnganchePlan}
                   cuotas={cuotas}
+                  headerAction={
+                    <button
+                      type="button"
+                      onClick={exportarPlanPdf}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-orange-400/40 bg-orange-500/10 px-3 py-1.5 text-xs font-bold text-orange-200 transition hover:bg-orange-500/20 cursor-pointer"
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Exportar PDF</span>
+                    </button>
+                  }
                   onActualizado={() => {
                     const citaActual = citas.find((c) => c.idcita === citaSeleccionada);
                     if (citaActual) setearCitaSeleccionada(citaActual);
@@ -987,7 +778,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                         <div className="flex items-center gap-3">
                           <button
                             type="button"
-                            onClick={() => setCitaSeleccionada(0)}
+                            onClick={volverAlListado}
                             className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
                           >
                             Volver
@@ -1008,10 +799,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
             </div>
           )}
         </>
->>>>>>> Stashed changes
       )}
     </div>
   );
 }
-
-

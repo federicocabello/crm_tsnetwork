@@ -9,6 +9,8 @@ import {
   CheckCircle,
   Circle,
   Save,
+  ChevronDown,
+  ChevronUp,
   Plus,
   Upload,
   Download,
@@ -95,6 +97,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
   const [idMetodoEngancheSeleccionado, setIdMetodoEngancheSeleccionado] = useState<number>(Number(idMetodoEnganche || 0));
   const [error, setError] = useState("");
   const [avisoCuotaPagada, setAvisoCuotaPagada] = useState("");
+  const [expandido, setExpandido] = useState(true);
   const [confirmacionVisible, setConfirmacionVisible] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -326,38 +329,23 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
       <div className="rounded-2xl border border-white/10 bg-zinc-900 shadow-lg shadow-black/20 overflow-hidden">
 
         {/* Header del plan */}
-<<<<<<< Updated upstream
-        <div className="flex w-full items-center justify-between px-5 py-4">
-          <div className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-orange-400" />
-            <span className="text-base font-bold text-white">Plan de Pagos</span>
-            <span className="ml-1 text-xs text-white/40">{cuotasPagadas}/{cuotas.length} pagadas</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 sm:flex">
-              <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/10">
-                <div className="h-full rounded-full bg-orange-500" style={{ width: `${cuotas.length > 0 ? (cuotasPagadas / cuotas.length) * 100 : 0}%` }} />
-              </div>
-              <span className="text-xs text-white/40">{cuotas.length > 0 ? Math.round((cuotasPagadas / cuotas.length) * 100) : 0}%</span>
-            </div>
-            {headerAction}
-=======
-        <button
-          onClick={() => setExpandido((p) => !p)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.03] transition-colors cursor-pointer"
-        >
-          <div className="flex items-center gap-3">
+        <div className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.03] transition-colors">
+          <button
+            type="button"
+            onClick={() => setExpandido((p) => !p)}
+            className="flex items-center gap-3 text-left cursor-pointer flex-1"
+          >
             <div className="p-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
               <CreditCard className="h-5 w-5" />
             </div>
-            <div className="text-left">
+            <div>
               <span className="text-base font-bold text-white tracking-wide block">Plan de Pagos</span>
               <span className="text-xs text-white/50">
                 {cuotasPagadas} de {cuotas.length} cuotas pagadas
               </span>
             </div>
-          </div>
-          <div className="flex items-center gap-4">
+          </button>
+          <div className="flex items-center gap-3">
             {/* Barra de progreso */}
             <div className="hidden sm:flex items-center gap-3">
               <div className="w-36 h-2 rounded-full bg-zinc-950 overflow-hidden border border-white/10 p-0.5">
@@ -370,23 +358,21 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                 {cuotas.length > 0 ? Math.round((cuotasPagadas / cuotas.length) * 100) : 0}%
               </span>
             </div>
-            {expandido ? (
-              <ChevronUp className="h-5 w-5 text-white/40" />
-            ) : (
-              <ChevronDown className="h-5 w-5 text-white/40" />
-            )}
->>>>>>> Stashed changes
+            {headerAction}
+            <button
+              type="button"
+              onClick={() => setExpandido((p) => !p)}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition cursor-pointer"
+            >
+              {expandido ? (
+                <ChevronUp className="h-5 w-5" />
+              ) : (
+                <ChevronDown className="h-5 w-5" />
+              )}
+            </button>
           </div>
         </div>
 
-<<<<<<< Updated upstream
-          <>            {/* Resumen financiero */}
-            <div className="flex flex-wrap gap-3 px-5 pb-4 border-b border-white/10">
-              <div className="flex items-center gap-2 rounded-xl bg-black/20 border border-white/10 px-3 py-1.5 text-xs">
-                <DollarSign className="h-3 w-3 text-white/40" />
-                <span className="text-white/40">Total:</span>
-                <span className="text-white font-bold"><FormatearNumero numero={totalConEnganche || totalGuardado} /></span>
-=======
         {expandido && (
           <>
             {/* Resumen financiero */}
@@ -396,7 +382,6 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                   <DollarSign className="h-3.5 w-3.5 text-white/40" /> Total Plan
                 </span>
                 <span className="text-white font-black text-sm"><FormatearNumero numero={totalConEnganche || totalGuardado} /></span>
->>>>>>> Stashed changes
               </div>
 
               <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2.5 text-xs shadow-inner">
@@ -442,13 +427,8 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
               </div>
             )}
 
-<<<<<<< Updated upstream
-            {/* Filas de cuotas */}
-            <div className="divide-y divide-white/5">
-=======
             {/* Lista de Cuotas (Diseño en Tarjetas limpias) */}
             <div className="space-y-3 px-5 py-4">
->>>>>>> Stashed changes
               {cuotas.map((cuota, index) => {
                 const montoConInteres = cuota.monto;
                 const fechaPago = formatFechaPago(cuota.fechapago);
@@ -712,7 +692,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
               </button>
             </div>
           </>
-        
+        )}
         {confirmacionVisible && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
             <div className="w-full max-w-sm rounded-2xl border border-green-500/30 bg-zinc-950 p-6 text-center shadow-2xl shadow-black/50">
