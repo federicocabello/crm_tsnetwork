@@ -25,7 +25,7 @@ export default function WorldClock() {
       <div className="hidden sm:flex items-center gap-1.5">
         <span className="fi fi-ar text-xs"></span>
         <div className="leading-tight">
-          <div className="text-[10px] uppercase font-extrabold text-[var(--text-muted)]">AR</div>
+          <div className="text-[10px] uppercase font-extrabold text-[var(--text-muted)]">ARGENTINA</div>
           <div className="text-xs font-black text-[var(--text-primary)]">
             {formatTime(argentina)}
           </div>

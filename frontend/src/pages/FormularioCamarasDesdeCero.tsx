@@ -29,11 +29,7 @@ export default function FormularioCamarasDesdeCero({ tipoRegistro = "camaras" }:
   const [users, setUsers] = useState<Usuarios[]>([]);
   const [citasEstados, setCitasEstados] = useState<EstadoCita[]>([]);
 
-  type Presupuesto = Record<number, {
-  cantidad: number;
-  costo: string;
-  precioFinal: string;
-}>
+  type Presupuesto = { productos: Record<number, { cantidad: number; costo: string; precioFinal: string }>; descuento: number }
 
 type SiNo = "si" | "no" | null;
 

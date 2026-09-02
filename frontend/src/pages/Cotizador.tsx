@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileDown } from "lucide-react";
+import { FileDown, History, X } from "lucide-react";
+import { api } from "../lib/api";
 
 interface Producto {
   id: number;
@@ -27,7 +28,7 @@ interface ClienteCotizacion {
 interface Props {
   onClose: (arg0: boolean) => void;
   setCotizacion?: (data: any) => void;
-  cotizacionInicial?: Record<number, RowData> | null;
+  cotizacionInicial?: { productos: Record<number, RowData>; descuento: number } | Record<number, RowData> | null;
   idCotizacion?: number | null;
   modo?: "nuevo" | "editar";
   onSaved?: () => void;
@@ -52,10 +53,15 @@ export default function Cotizador({
   const API_URL = import.meta.env.VITE_API_BASE_URL;
 
   const [data, setData] = useState<Producto[]>([]);
-  const [rows, setRows] = useState<Record<number, RowData>>(() => cotizacionInicial ?? {});
+  const [rows, setRows] = useState<Record<number, RowData>>(() => cotizacionInicial && "productos" in cotizacionInicial ? cotizacionInicial.productos : cotizacionInicial ?? {});
   const [search, setSearch] = useState("");
   const [clienteCotizacion, setClienteCotizacion] = useState<ClienteCotizacion | null>(null);
   const [fechaCita, setFechaCita] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [descuento, setDescuento] = useState(() => cotizacionInicial && "productos" in cotizacionInicial ? Math.max(Number(cotizacionInicial.descuento) || 0, 0) : 0);
+  const [mostrarHistorial, setMostrarHistorial] = useState(false);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const [versiones, setVersiones] = useState<Array<{ id: number; version: number; subtotal: number; descuento: number; total: number; creado_por: string; creado_en: string; comentario?: string; productos: Array<{ producto_id: number | null; nombre_producto: string; cantidad: number; precio_final: number }> }>>([]);
 
   const roundUp = (num: number) => Math.ceil(num * 100) / 100;
 
@@ -94,55 +100,47 @@ export default function Cotizador({
   };
 
 async function sendCotizacion() {
-  if (bloqueada) return;
+  if (bloqueada || guardando) return;
 
-  if (modo === "nuevo") {
-    // Caso 1: cotizador usado dentro de formulario, antes de crear cita
-    if (!idCita) {
-      setCotizacion?.(rows);
-      onClose(false);
-      return;
-    }
+  const productos = Object.fromEntries(
+    Object.entries(rows).filter(([, row]) => Number(row.cantidad) > 0),
+  );
 
-    // Caso 2: cotizador desde agenda, cita ya existe en DB
-    try {
-      const res = await fetch(`${API_URL}/api/cotizacion/nueva`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cita: idCita,
-          productos: rows,
-        }),
-      });
-
-      if (res.ok) {
-        onSaved?.();
-        onClose(false);
-      } else {
-        console.error("Error al crear cotización:", res.status);
-      }
-    } catch (error) {
-      console.error("Error de conexión creando cotización:", error);
-    }
-
+  if (Object.keys(productos).length === 0) {
+    alert("Agregá al menos un producto con una cantidad mayor a cero.");
     return;
   }
 
+  if (modo === "nuevo" && !idCita) {
+    setCotizacion?.({ productos, descuento });
+    onClose(false);
+    return;
+  }
+
+  setGuardando(true);
   try {
-    const res = await fetch(`${API_URL}/api/cotizaciones/${idCotizacion}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productos: rows }),
+    const esNueva = modo === "nuevo";
+    const url = esNueva
+      ? `${API_URL}/api/cotizacion/nueva`
+      : `${API_URL}/api/cotizaciones/${idCotizacion}`;
+    const body = esNueva
+      ? { cita: idCita, productos, descuento }
+      : { productos, descuento };
+
+    await api(url.replace(API_URL || "", ""), {
+      method: esNueva ? "POST" : "PUT",
+      body: JSON.stringify(body),
     });
 
-    if (res.ok) {
-      onSaved?.();
-      onClose(false);
-    } else {
-      console.error("Error al guardar cotización:", res.status);
-    }
+    await Promise.resolve(onSaved?.());
+    alert(esNueva ? "Cotización guardada correctamente." : "Cotización actualizada correctamente.");
+    onClose(false);
   } catch (error) {
-    console.error("Error de conexión guardando cotización:", error);
+    const mensaje = error instanceof Error ? error.message : "No se pudo guardar la cotización.";
+    console.error("Error guardando cotización:", error);
+    alert(mensaje);
+  } finally {
+    setGuardando(false);
   }
 }
 
@@ -177,6 +175,7 @@ useEffect(() => {
       const cotizacion = await res.json();
       setClienteCotizacion(cotizacion.cliente ?? null);
       setFechaCita(cotizacion.cita_fecha ?? null);
+      setDescuento(Math.max(Number(cotizacion.descuento) || 0, 0));
 
       const rowsCargadas: Record<number, RowData> = {};
 
@@ -239,7 +238,7 @@ useEffect(() => {
     );
   }, [data, search, bloqueada, rows, categoriaServicio]);
 
-  const totalGeneral = useMemo(() => {
+  const subtotalGeneral = useMemo(() => {
     const total = Object.values(rows).reduce((acc, row) => {
       return acc + (parseFloat(row.precioFinal) || 0);
     }, 0);
@@ -247,6 +246,24 @@ useEffect(() => {
     return total.toFixed(2);
   }, [rows]);
 
+  const totalGeneral = Math.max(Number(subtotalGeneral) - descuento, 0).toFixed(2);
+
+  const cargarHistorial = async () => {
+    if (!idCotizacion) return;
+    setCargandoHistorial(true);
+    try {
+      const resultado = await api<{ versiones: typeof versiones }>(
+        `/api/cotizaciones/${idCotizacion}/historial`,
+      );
+      setVersiones(resultado.versiones || []);
+      setMostrarHistorial(true);
+    } catch (error) {
+      console.error("Error cargando historial:", error);
+      alert("No se pudo cargar el historial de la cotización.");
+    } finally {
+      setCargandoHistorial(false);
+    }
+  };
   const exportarPdf = () => {
     const articulos = Object.entries(rows)
       .filter(([, row]) => row.cantidad > 0)
@@ -294,14 +311,14 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:32p
 .client h2{margin:0 0 12px;font-size:14px;text-transform:uppercase;color:#71717a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;font-size:14px}.address{grid-column:1/-1}
 table{width:100%;border-collapse:collapse}th{padding:12px 14px;color:#fff;background:#27272a;text-align:left;font-size:13px;text-transform:uppercase}
 td{padding:14px;border-bottom:1px solid #e4e4e7;font-size:14px}.price{width:190px;text-align:right;white-space:nowrap}
-.total{display:flex;justify-content:flex-end;margin-top:22px}.total div{min-width:300px;padding:16px 18px;color:#fff;background:#27272a;display:flex;justify-content:space-between;font-size:19px;font-weight:700}
+.total{display:flex;justify-content:flex-end;margin-top:22px}.summary{min-width:300px;padding:16px 18px;color:#fff;background:#27272a}.summary p{display:flex;justify-content:space-between;margin:5px 0;font-size:14px}.summary .net{padding-top:9px;border-top:1px solid #52525b;font-size:19px;font-weight:700}
 footer{margin-top:70px;padding-top:18px;border-top:1px solid #d4d4d8;color:#71717a;font-size:11px;text-align:center}
 @page{size:A4;margin:0}@media print{.page{max-width:none;min-height:auto}}
 </style></head><body><main class="page">
 <header><img class="logo" src="${logo}" alt="TS Network"><div><h1>Cotización</h1><div class="number">N.º ${numero}</div><div class="meta">Emisión: ${new Date().toLocaleDateString("es-AR")}</div><div class="meta">Visita: ${visita}</div></div></header>
 <section class="client"><h2>Datos del cliente</h2><div class="grid"><div><strong>Cliente:</strong> ${escape(clienteCotizacion?.nombre) || "-"}</div><div><strong>Teléfono:</strong> ${escape(clienteCotizacion?.telefono) || "-"}</div><div><strong>Email:</strong> ${escape(clienteCotizacion?.email) || "-"}</div><div class="address"><strong>Domicilio:</strong> ${escape(clienteCotizacion?.direccion) || "-"}</div></div></section>
 <table><thead><tr><th>Artículos incluidos</th></tr></thead><tbody>${filas}</tbody></table>
-<div class="total"><div><span>Total</span><span>${money(Number(totalGeneral))}</span></div></div>
+<div class="total"><div class="summary"><p><span>Subtotal</span><span>${money(Number(subtotalGeneral))}</span></p><p><span>Descuento</span><span>-${money(descuento)}</span></p><p class="net"><span>Total</span><span>${money(Number(totalGeneral))}</span></p></div></div>
 <footer>Documento de cotización comercial. Precios y disponibilidad sujetos a confirmación.</footer>
 </main><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));<\/script></body></html>`);
     ventana.document.close();
@@ -415,7 +432,7 @@ footer{margin-top:70px;padding-top:18px;border-top:1px solid #d4d4d8;color:#7171
                             className="w-24 rounded-xl border border-white/10 bg-white px-3 py-2 text-center text-sm font-bold text-black outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                             type="number"
                             min={0}
-                            disabled={bloqueada}
+                            disabled={bloqueada || guardando}
                             value={row?.cantidad ?? ""}
                             title={
                               bloqueada
@@ -453,18 +470,21 @@ footer{margin-top:70px;padding-top:18px;border-top:1px solid #d4d4d8;color:#7171
         {/* Footer */}
         <div className="shrink-0 border-t border-white/10 bg-zinc-900/80 px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-white/40">
-                Total general
-              </p>
-              <p className="text-3xl font-black text-white">${totalGeneral}</p>
+            <div className="flex flex-wrap items-end gap-4">
+              <div><p className="text-xs uppercase tracking-wide text-white/40">Subtotal</p><p className="text-sm font-bold text-white/65">${subtotalGeneral}</p></div>
+              <label className="block">
+                <span className="mb-1 block text-xs uppercase tracking-wide text-white/40">Descuento</span>
+                <input type="number" min={0} step={1} disabled={bloqueada || guardando} value={descuento} onChange={(event) => setDescuento(Math.max(Number(event.target.value) || 0, 0))} className="w-28 rounded-lg border border-white/15 bg-white px-3 py-1.5 text-right text-sm font-bold text-black" />
+              </label>
+              <div><p className="text-xs uppercase tracking-wide text-white/40">Total general</p><p className="text-3xl font-black text-white">${totalGeneral}</p></div>
             </div>
 
             <div className="flex flex-wrap justify-end gap-2">
               {modo === "editar" && idCotizacion && (
-                <button type="button" onClick={exportarPdf} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20">
-                <FileDown className="h-4 w-4" /> Exportar a PDF
-                </button>
+                <>
+                  <button type="button" onClick={cargarHistorial} disabled={cargandoHistorial} className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"><History className="h-4 w-4" />{cargandoHistorial ? "Cargando..." : "Historial"}</button>
+                  <button type="button" onClick={exportarPdf} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20"><FileDown className="h-4 w-4" /> Exportar a PDF</button>
+                </>
               )}
               <button
                 onClick={() => onClose(false)}
@@ -475,19 +495,40 @@ footer{margin-top:70px;padding-top:18px;border-top:1px solid #d4d4d8;color:#7171
 
               <button
                 onClick={sendCotizacion}
-                disabled={bloqueada}
+                disabled={bloqueada || guardando}
                 className={`rounded-xl px-6 py-3 text-sm font-black text-white shadow-lg transition ${
-                  bloqueada
+                  (bloqueada || guardando)
                     ? "cursor-not-allowed bg-zinc-700 text-white/45 shadow-none"
                     : "bg-orange-600 shadow-orange-600/20 hover:bg-orange-700"
                 }`}
               >
-                {bloqueada ? "Cotizacion confirmada" : "Guardar cotización"}
+                {bloqueada ? "Cotizacion confirmada" : guardando ? "Guardando..." : "Guardar cotización"}
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {mostrarHistorial && (
+        <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/75 p-3" onClick={() => setMostrarHistorial(false)}>
+          <div className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-xl border border-white/15 bg-zinc-900 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <div><h2 className="font-black text-white">Historial de cotización</h2><p className="text-xs text-white/45">Cada versión es de solo lectura.</p></div>
+              <button type="button" onClick={() => setMostrarHistorial(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/60 hover:bg-white/10 hover:text-white" title="Cerrar"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="max-h-[calc(85vh-4rem)] space-y-3 overflow-y-auto p-4">
+              {versiones.length === 0 ? <p className="text-sm text-white/50">Todavía no hay versiones registradas.</p> : versiones.map((version) => (
+                <details key={version.id} className="rounded-lg border border-white/10 bg-white/5 p-3">
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex flex-wrap items-center justify-between gap-2"><div><strong className="text-orange-300">Versión {version.version}</strong><p className="text-xs text-white/50">{version.creado_en} · {version.creado_por}</p></div><div className="text-right text-sm"><p className="text-white/50">Descuento: ${Number(version.descuento).toFixed(2)}</p><strong className="text-white">Total: ${Number(version.total).toFixed(2)}</strong></div></div>
+                  </summary>
+                  <div className="mt-3 divide-y divide-white/10 border-t border-white/10 pt-2">{version.productos.map((producto, index) => <div key={`${version.id}-${producto.producto_id ?? index}`} className="flex justify-between gap-3 py-2 text-sm"><span className="text-white/80">{producto.nombre_producto}</span><span className="shrink-0 text-white/50">Cant. {producto.cantidad}</span></div>)}</div>
+                </details>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -42,11 +42,7 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
   const { user } = useAuth();
   const navigate = useNavigate();
 
-        type Presupuesto = Record<number, {
-  cantidad: number;
-  costo: string;
-  precioFinal: string;
-}>
+        type Presupuesto = { productos: Record<number, { cantidad: number; costo: string; precioFinal: string }>; descuento: number }
   
       type Formulario = {
         fecha: string,

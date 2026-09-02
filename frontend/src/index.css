@@ -153,11 +153,14 @@ h3 { font-size: 0.95rem; font-weight: 600; }
   box-shadow: var(--shadow) !important;
   border-radius: 1rem;
   padding: 1rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: outline-color 0.2s ease;
+  outline: 1px solid transparent;
+  outline-offset: -1px;
 }
 .card-event:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px -4px rgba(249, 115, 22, 0.3) !important;
+  transform: none;
+  box-shadow: var(--shadow) !important;
+  outline-color: color-mix(in srgb, var(--card-border) 65%, white 35%);
 }
 
 /* Inner Client Info Box (Permanent Solid 1.5px Border) */
@@ -225,6 +228,7 @@ input::placeholder, textarea::placeholder { color: var(--text-muted); }
 ::-webkit-scrollbar-track { background: transparent; }
 html { scrollbar-width: thin; scrollbar-color: rgba(249,115,22,0.35) transparent; }
 
+.agenda-timepicker-popper { z-index: 10000 !important; }
 .agenda-timepicker .react-datepicker__time-container,
 .agenda-timepicker .react-datepicker__time,
 .agenda-timepicker .react-datepicker__time-box,

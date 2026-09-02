@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import Loading from "../components/Loading";
 import FormatearNumero from "../components/FormatearNumero";
 
@@ -10,8 +11,6 @@ import {
   CheckCircle,
   Circle,
   Save,
-  ChevronDown,
-  ChevronUp,
   Plus,
   Upload,
   Download,
@@ -46,6 +45,7 @@ type Props = {
   idMetodoEnganche?: number;
   cuotas: Cuota[];
   onActualizado?: () => void;   // callback para refrescar Cliente.tsx
+  headerAction?: ReactNode;
 };
 
 function formatVencimiento(raw: string | null): string {
@@ -91,13 +91,12 @@ function normalizarCuotas(cuotas: Cuota[]): Cuota[] {
   }));
 }
 
-export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMetodoEnganche = 0, cuotas: cuotasIniciales, onActualizado }: Props) {
+export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMetodoEnganche = 0, cuotas: cuotasIniciales, onActualizado, headerAction }: Props) {
   const [cuotas, setCuotas] = useState<Cuota[]>(normalizarCuotas(cuotasIniciales));
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([]);
   const [idMetodoEngancheSeleccionado, setIdMetodoEngancheSeleccionado] = useState<number>(Number(idMetodoEnganche || 0));
   const [error, setError] = useState("");
   const [avisoCuotaPagada, setAvisoCuotaPagada] = useState("");
-  const [expandido, setExpandido] = useState(true);
   const [confirmacionVisible, setConfirmacionVisible] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -329,41 +328,24 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
       <div className="rounded-2xl border border-white/10 bg-zinc-900 shadow-lg shadow-black/20 overflow-hidden">
 
         {/* Header del plan */}
-        <button
-          onClick={() => setExpandido((p) => !p)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.03] transition-colors"
-        >
+        <div className="flex w-full items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-orange-400" />
             <span className="text-base font-bold text-white">Plan de Pagos</span>
-            <span className="text-xs text-white/40 ml-1">
-              {cuotasPagadas}/{cuotas.length} pagadas
-            </span>
+            <span className="ml-1 text-xs text-white/40">{cuotasPagadas}/{cuotas.length} pagadas</span>
           </div>
           <div className="flex items-center gap-3">
-            {/* Barra de progreso */}
-            <div className="hidden sm:flex items-center gap-2">
-              <div className="w-32 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-orange-500 transition-all duration-500"
-                  style={{ width: `${cuotas.length > 0 ? (cuotasPagadas / cuotas.length) * 100 : 0}%` }}
-                />
+            <div className="hidden items-center gap-2 sm:flex">
+              <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/10">
+                <div className="h-full rounded-full bg-orange-500" style={{ width: `${cuotas.length > 0 ? (cuotasPagadas / cuotas.length) * 100 : 0}%` }} />
               </div>
-              <span className="text-xs text-white/40">
-                {cuotas.length > 0 ? Math.round((cuotasPagadas / cuotas.length) * 100) : 0}%
-              </span>
+              <span className="text-xs text-white/40">{cuotas.length > 0 ? Math.round((cuotasPagadas / cuotas.length) * 100) : 0}%</span>
             </div>
-            {expandido ? (
-              <ChevronUp className="h-4 w-4 text-white/40" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-white/40" />
-            )}
+            {headerAction}
           </div>
-        </button>
+        </div>
 
-        {expandido && (
-          <>
-            {/* Resumen financiero */}
+          <>            {/* Resumen financiero */}
             <div className="flex flex-wrap gap-3 px-5 pb-4 border-b border-white/10">
               <div className="flex items-center gap-2 rounded-xl bg-black/20 border border-white/10 px-3 py-1.5 text-xs">
                 <DollarSign className="h-3 w-3 text-white/40" />
@@ -428,7 +410,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
             </div>
 
             {/* Filas de cuotas */}
-            <div className="divide-y divide-white/5 max-h-80 overflow-y-auto">
+            <div className="divide-y divide-white/5">
               {cuotas.map((cuota, index) => {
                 const montoConInteres = cuota.monto;
                 const fechaPago = formatFechaPago(cuota.fechapago);
@@ -649,7 +631,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
               </button>
             </div>
           </>
-        )}
+        
         {confirmacionVisible && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
             <div className="w-full max-w-sm rounded-2xl border border-green-500/30 bg-zinc-950 p-6 text-center shadow-2xl shadow-black/50">
