@@ -1,7 +1,14 @@
+<<<<<<< Updated upstream
 import { useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useEffect, useState } from "react";
 import { Mail, User, CalendarFold, Cctv, Wrench, TriangleAlert, Clock, House, ClipboardPlus, Globe, Drill, Trash2, Pencil, ArrowLeft, FileDown } from "lucide-react";
+=======
+import { useParams, useNavigate } from "react-router-dom";
+//import { useAuth } from "../auth/AuthContext";
+import { useEffect, useState } from "react";
+import { Mail, User, CalendarFold, Cctv, Wrench, TriangleAlert, List, Clock, House, ClipboardPlus, Globe, Drill, ChevronLeft } from "lucide-react";
+>>>>>>> Stashed changes
 import { darkenColor } from "../utils/colores";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -43,7 +50,12 @@ type Cliente = {
 
 export default function Cliente() {
   const { idCliente } = useParams<{ idCliente: string }>();
+<<<<<<< Updated upstream
   const { user } = useAuth();
+=======
+  const navigate = useNavigate();
+  //const { user } = useAuth();
+>>>>>>> Stashed changes
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<Usuarios[]>([]);
@@ -350,8 +362,9 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
   const [mostrarPlanPagos, setMostrarPlanPagos] = useState(false);
 
   return (
-    <div className="flex gap-4 items-start">
+    <div className="w-full space-y-5 max-w-7xl mx-auto">
       {loading && <Loading />}
+<<<<<<< Updated upstream
       <div className="w-full" hidden={loading || citaSeleccionada > 0}>
         <div className="bg-zinc-900 p-4 rounded-xl border border-white/10 shadow-md mb-4 flex justify-between items-center">
           <div>
@@ -600,16 +613,403 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                   const citaActual = citas.find((c) => c.idcita === citaSeleccionada);
                   if (citaActual) setearCitaSeleccionada(citaActual);
                   cargarInicioCliente();
+=======
+      {!loading && (
+        <>
+          {/* Header del Cliente */}
+          <div className="bg-gradient-to-r from-zinc-900 via-zinc-900/95 to-zinc-900/90 p-5 rounded-2xl border border-white/10 shadow-xl backdrop-blur-md flex flex-wrap justify-between items-center gap-4 hover:border-orange-500/20 transition-all">
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  if (citaSeleccionada > 0) {
+                    setCitaSeleccionada(0);
+                  } else {
+                    navigate(-1);
+                  }
+>>>>>>> Stashed changes
                 }}
-              />
-          )}
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-800/80 px-3.5 py-2 text-xs font-bold text-white hover:bg-zinc-700/80 hover:-translate-x-0.5 transition-all shadow-md cursor-pointer active:scale-95"
+              >
+                <ChevronLeft className="h-4 w-4 text-orange-400" />
+                <span>Volver</span>
+              </button>
 
+<<<<<<< Updated upstream
 
 
 
         </div>
-      )}
+=======
+              <div className="space-y-0.5">
+                <div className="text-2xl font-black tracking-tight text-orange-400 flex items-center gap-2">
+                  <User className="h-6 w-6 text-orange-500" />
+                  <span>{cliente?.nombre}</span>
+                </div>
+                {cliente?.email ? (
+                  <div className="text-white/60 flex gap-1.5 text-xs items-center font-medium">
+                    <Mail className="h-3.5 w-3.5 text-white/40" />
+                    <span>{cliente.email}</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={agregarEmailCliente}
+                    className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-xs font-bold text-orange-200 transition hover:bg-orange-500/20 cursor-pointer"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    <span>Agregar email</span>
+                  </button>
+                )}
+              </div>
+            </div>
 
+            <div
+              className={`px-4 py-2 rounded-xl font-bold border flex flex-col items-center justify-center shadow-lg transition-all ${
+                deudaTotal > 0
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-amber-500/5"
+                  : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-emerald-500/5"
+              }`}
+            >
+              {deudaTotal > 0 ? (
+                <>
+                  <div className="text-[10px] uppercase font-bold tracking-widest text-amber-400/80">DEUDA TOTAL</div>
+                  <div className="text-2xl font-black tracking-tight"><FormatearNumero numero={deudaTotal} /></div>
+                </>
+              ) : (
+                <div className="text-xs font-extrabold tracking-wider uppercase px-2 py-1 text-emerald-400">SIN DEUDAS</div>
+              )}
+            </div>
+          </div>
+
+          {/* Vista cuando no hay cita seleccionada (Lista de citas) */}
+          {citaSeleccionada === 0 ? (
+            <div className="space-y-3">
+              {citas.length === 0 ? (
+                <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-8 text-center text-white/50 font-medium">
+                  Este cliente no tiene citas registradas.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {citas.map((cita) => (
+                    <div
+                      key={cita.idcita}
+                      className={`bg-zinc-900/90 border rounded-2xl p-4 shadow-md transition-all cursor-pointer hover:scale-[1.005] ${
+                        cita.idcita === citaSeleccionada
+                          ? "border-orange-500 shadow-orange-500/10 bg-zinc-900"
+                          : "border-white/10 hover:border-orange-500/50 hover:shadow-lg"
+                      }`}
+                      onClick={() => setearCitaSeleccionada(cita)}
+                    >
+                      <div className="flex min-w-0 flex-col gap-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-white font-bold">
+                          <div className="flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-200">
+                            <CalendarFold className="h-3.5 w-3.5" />
+                            <span>{cita.dia}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-200">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>{cita.hora}</span>
+                          </div>
+
+                          {esInternet(cita.tipo) && (
+                            <div className="rounded-full text-xs font-bold py-1 px-3 border border-orange-500/40 bg-orange-500/20 text-orange-200 flex items-center gap-1.5">
+                              <Globe className="h-3.5 w-3.5" />
+                              <span>INTERNET</span>
+                            </div>
+                          )}
+
+                          {esCamaras(cita.tipo) && (
+                            <div className="rounded-full text-xs font-bold py-1 px-3 border border-blue-500/40 bg-blue-500/20 text-blue-200 flex items-center gap-1.5">
+                              <Cctv className="h-3.5 w-3.5" />
+                              <span>CAMARAS</span>
+                            </div>
+                          )}
+
+                          {esInstalacion(cita.tipo) && (
+                            <div className="rounded-full text-xs font-bold py-1 px-3 border border-indigo-500/40 bg-indigo-500/20 text-indigo-200 flex items-center gap-1.5">
+                              <Drill className="h-3.5 w-3.5" />
+                              <span>INSTALACION</span>
+                            </div>
+                          )}
+
+                          {esSoporte(cita.tipo) && (
+                            <div className="rounded-full text-xs font-bold py-1 px-3 border border-emerald-500/40 bg-emerald-500/20 text-emerald-200 flex items-center gap-1.5">
+                              <Wrench className="h-3.5 w-3.5" />
+                              <span>SOPORTE</span>
+                            </div>
+                          )}
+                          <div
+                            className="rounded-full text-xs font-bold py-1 px-3 text-center border shadow-xs"
+                            style={{
+                              backgroundColor: cita.color,
+                              borderColor: darkenColor(cita.color, 0.4),
+                            }}
+                          >
+                            {cita.estado}
+                          </div>
+
+                          {Number(cita.deuda_cita || 0) > 0 && (
+                            <div className="rounded-full border border-amber-500/30 bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-200">
+                              Debe <FormatearNumero numero={Number(cita.deuda_cita || 0)} />
+                            </div>
+                          )}
+                          {Number(cita.pagado_cita || 0) > 0 && (
+                            <div className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-200">
+                              PAGADO <FormatearNumero numero={Number(cita.pagado_cita || 0)} />
+                            </div>
+                          )}
+                          {(cita.tipo == "camaras-tiene-nuevo-instalacion" ||
+                            cita.tipo == "camaras-tiene-existente-instalacion") && (
+                            <div className="text-xs text-amber-400 font-bold italic flex items-center gap-1">
+                              <TriangleAlert className="h-3.5 w-3.5" />
+                              <span>Ya tiene cámaras instaladas</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {cita.domicilio.trim() && (
+                          <div className="min-w-0 text-white/90 text-sm flex gap-2 items-start font-semibold">
+                            <House className="h-4 w-4 shrink-0 text-orange-400 mt-0.5" />
+                            <span className="min-w-0 flex-1 break-words leading-snug">{cita.domicilio}</span>
+                          </div>
+                        )}
+
+                        {cita.notas.trim() && (
+                          <div className="min-w-0 text-white/60 text-xs bg-black/20 p-2.5 rounded-xl border border-white/5">
+                            <p className="line-clamp-2 break-words whitespace-pre-wrap">
+                              <strong className="text-white/80">Notas:</strong> {cita.notas}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-white/50">
+                          <span className="truncate italic">
+                            Asignado a <strong className="text-white/80">{cita.asignado}</strong>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Vista de Columna Única cuando hay Cita Seleccionada */
+            <div className="w-full space-y-5">
+              {/* Sección de Plan de Pagos */}
+              {idPago === null ? (
+                !mostrarPlanPagos ? (
+                  <button
+                    type="button"
+                    className="bg-cyan-600/90 border border-cyan-500/40 rounded-xl px-4 py-2.5 transition-all hover:bg-cyan-600 text-white font-bold flex items-center gap-2 shadow-lg shadow-cyan-950/40 cursor-pointer active:scale-95"
+                    onClick={() => setMostrarPlanPagos(true)}
+                  >
+                    <ClipboardPlus className="h-4 w-4" />
+                    <span className="text-sm">Agregar plan de pagos</span>
+                  </button>
+                ) : (
+                  <div className="w-full">
+                    <PlanDePagos
+                      idCliente={idCliente || ""}
+                      idCita={citaSeleccionada}
+                      onGuardado={() => {
+                        const citaActual = citas.find((c) => c.idcita === citaSeleccionada);
+                        if (citaActual) setearCitaSeleccionada(citaActual);
+                        cargarInicioCliente();
+                        setMostrarPlanPagos(false);
+                      }}
+                    />
+                  </div>
+                )
+              ) : (
+                <VerPlanDePagos
+                  idPago={idPago}
+                  idCita={citaSeleccionada}
+                  total={totalPlan}
+                  enganche={enganchePlan}
+                  metodoEnganche={metodoEnganchePlan}
+                  idMetodoEnganche={idMetodoEnganchePlan}
+                  cuotas={cuotas}
+                  onActualizado={() => {
+                    const citaActual = citas.find((c) => c.idcita === citaSeleccionada);
+                    if (citaActual) setearCitaSeleccionada(citaActual);
+                    cargarInicioCliente();
+                  }}
+                />
+              )}
+
+              {/* Formulario Detalles de la Cita */}
+              <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5 shadow-xl transition-all space-y-4">
+                <div className="flex items-center gap-2 pb-3 border-b border-white/10">
+                  <List className="h-5 w-5 text-orange-400" />
+                  <h2 className="text-lg font-bold text-white tracking-wide">Detalles de la cita</h2>
+                </div>
+
+                {citas
+                  .filter((cita) => cita.idcita === citaSeleccionada)
+                  .map((cita) => (
+                    <div key={cita.idcita} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
+                              Teléfono
+                            </label>
+                            <input
+                              name="telefono"
+                              value={telefono}
+                              onChange={(e) => setTelefono(e.target.value)}
+                              className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
+                              Dirección
+                            </label>
+                            <input
+                              name="direccion"
+                              value={direccion}
+                              onChange={(e) => setDireccion(e.target.value)}
+                              className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/20 uppercase transition-all"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
+                              Asignar a
+                            </label>
+                            <select
+                              className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/20 capitalize transition-all cursor-pointer"
+                              value={asignado}
+                              onChange={(e) => setAsignado(e.target.value)}
+                            >
+                              <option key={cita.idasignado} value={cita.idasignado}>
+                                {cita.asignado}
+                              </option>
+                              {users
+                                .filter((u) => u.id !== cita.idasignado)
+                                .map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.fullname}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
+                              Estado
+                            </label>
+                            <select
+                              className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/20 capitalize transition-all cursor-pointer"
+                              value={estado}
+                              onChange={(e) => setEstado(e.target.value)}
+                            >
+                              <option key={cita.idestado} value={cita.idestado}>
+                                {cita.estado}
+                              </option>
+                              {estados
+                                .filter((e) => e.id !== cita.idestado)
+                                .map((est) => (
+                                  <option key={est.id} value={est.id}>
+                                    {est.estado}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
+                          Notas
+                        </label>
+                        <textarea
+                          name="notas"
+                          value={notas}
+                          onChange={(e) => setNotas(e.target.value)}
+                          rows={6}
+                          className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/20 transition-all resize-y"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-white/10">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div>
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
+                              Fecha
+                            </label>
+                            <DatePicker
+                              selected={dateKeyToDate(fecha)}
+                              onChange={(date: Date | null) =>
+                                setFecha(date ? formatDateKey(date) : "")
+                              }
+                              filterDate={isSelectableAgendaDate}
+                              dayClassName={agendaDayClassName}
+                              dateFormat="MM/dd/yyyy"
+                              placeholderText="Seleccionar fecha"
+                              className="rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-all"
+                              wrapperClassName="w-full"
+                              calendarClassName="agenda-datepicker"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
+                              Hora
+                            </label>
+                            <DatePicker
+                              showTimeSelect
+                              showTimeSelectOnly
+                              timeIntervals={15}
+                              timeCaption="Hora"
+                              dateFormat="h:mm aa"
+                              calendarClassName="agenda-timepicker"
+                              className="w-32 rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-all"
+                              title="Cambiar hora"
+                              selected={hora ?? undefined}
+                              onChange={(date: Date | null) => {
+                                if (!date) return;
+                                setHora(date);
+                                const formattedTime = `${date.getHours()}:${String(
+                                  date.getMinutes()
+                                ).padStart(2, "0")}`;
+                                setHorario(formattedTime);
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setCitaSeleccionada(0)}
+                            className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
+                          >
+                            Volver
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => actualizarCita()}
+                            className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 px-5 py-2 text-xs font-bold text-white transition-all shadow-md shadow-orange-950/40 cursor-pointer active:scale-95"
+                          >
+                            Guardar cambios
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </>
+>>>>>>> Stashed changes
+      )}
     </div>
   );
 }

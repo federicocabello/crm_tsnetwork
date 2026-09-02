@@ -357,7 +357,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
             <div className="col-span-4 flex items-center gap-1"><Calendar className="h-3 w-3" /> Vencimiento</div>
           </div>
 
-          <div className="divide-y divide-white/5 max-h-72 overflow-y-auto">
+          <div className="divide-y divide-white/5">
             {cuotas.map((cuota, index) => {
               const montoConInteres = cuota.monto + (cuota.monto * cuota.interes) / 100;
               return (
@@ -404,10 +404,13 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
                   </div>
 
                   {cuota.interes > 0 && (
-                    <div className="col-span-12 pl-8 -mt-1 mb-0.5">
-                      <span className="text-xs text-orange-600 font-bold">
-                        = <FormatearNumero numero={montoConInteres} /> con interes
-                      </span>
+                    <div className="col-span-12 grid grid-cols-12 gap-2 mt-1">
+                      <div className="col-span-1"></div>
+                      <div className="col-span-11">
+                        <span className="text-xs text-orange-400 font-bold">
+                          = <FormatearNumero numero={montoConInteres} /> con interés
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
