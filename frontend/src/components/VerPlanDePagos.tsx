@@ -5,8 +5,6 @@ import FormatearNumero from "../components/FormatearNumero";
 
 import {
   CreditCard,
-  Calendar,
-  Percent,
   DollarSign,
   CheckCircle,
   Circle,
@@ -328,6 +326,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
       <div className="rounded-2xl border border-white/10 bg-zinc-900 shadow-lg shadow-black/20 overflow-hidden">
 
         {/* Header del plan */}
+<<<<<<< Updated upstream
         <div className="flex w-full items-center justify-between px-5 py-4">
           <div className="flex items-center gap-2">
             <CreditCard className="h-5 w-5 text-orange-400" />
@@ -342,196 +341,267 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
               <span className="text-xs text-white/40">{cuotas.length > 0 ? Math.round((cuotasPagadas / cuotas.length) * 100) : 0}%</span>
             </div>
             {headerAction}
+=======
+        <button
+          onClick={() => setExpandido((p) => !p)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.03] transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <div className="text-left">
+              <span className="text-base font-bold text-white tracking-wide block">Plan de Pagos</span>
+              <span className="text-xs text-white/50">
+                {cuotasPagadas} de {cuotas.length} cuotas pagadas
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            {/* Barra de progreso */}
+            <div className="hidden sm:flex items-center gap-3">
+              <div className="w-36 h-2 rounded-full bg-zinc-950 overflow-hidden border border-white/10 p-0.5">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-500 shadow-sm"
+                  style={{ width: `${cuotas.length > 0 ? (cuotasPagadas / cuotas.length) * 100 : 0}%` }}
+                />
+              </div>
+              <span className="text-xs font-bold text-orange-400">
+                {cuotas.length > 0 ? Math.round((cuotasPagadas / cuotas.length) * 100) : 0}%
+              </span>
+            </div>
+            {expandido ? (
+              <ChevronUp className="h-5 w-5 text-white/40" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-white/40" />
+            )}
+>>>>>>> Stashed changes
           </div>
         </div>
 
+<<<<<<< Updated upstream
           <>            {/* Resumen financiero */}
             <div className="flex flex-wrap gap-3 px-5 pb-4 border-b border-white/10">
               <div className="flex items-center gap-2 rounded-xl bg-black/20 border border-white/10 px-3 py-1.5 text-xs">
                 <DollarSign className="h-3 w-3 text-white/40" />
                 <span className="text-white/40">Total:</span>
                 <span className="text-white font-bold"><FormatearNumero numero={totalConEnganche || totalGuardado} /></span>
+=======
+        {expandido && (
+          <>
+            {/* Resumen financiero */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 px-5 pb-4 border-b border-white/10">
+              <div className="flex items-center justify-between rounded-xl bg-zinc-950/60 border border-white/10 px-3.5 py-2.5 text-xs shadow-inner">
+                <span className="text-white/50 font-medium flex items-center gap-1.5">
+                  <DollarSign className="h-3.5 w-3.5 text-white/40" /> Total Plan
+                </span>
+                <span className="text-white font-black text-sm"><FormatearNumero numero={totalConEnganche || totalGuardado} /></span>
+>>>>>>> Stashed changes
               </div>
-              {enganchePlan > 0 ? (
-                <div className="flex items-center gap-2 rounded-xl bg-green-500/10 border border-green-500/20 px-3 py-1.5 text-xs">
-                  <CheckCircle className="h-3 w-3 text-green-400" />
-                  <span className="text-white/40">Enganche:</span>
-                  <span className="text-green-400 font-bold"><FormatearNumero numero={enganchePlan} /></span>
-                  <select
-                    value={idMetodoEngancheSeleccionado || ""}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => setIdMetodoEngancheSeleccionado(Number(e.target.value || 0))}
-                    className="rounded-lg border border-green-500/20 bg-zinc-950/60 px-2 py-0.5 text-xs font-semibold text-green-100 outline-none focus:border-green-400/60"
-                    title="Cambiar metodo del enganche"
-                  >
-                    <option value="">Metodo no registrado</option>
-                    {metodosPago.map((metodo) => (
-                      <option key={metodo.id} value={metodo.id}>
-                        {metodo.metodo}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-3 py-1.5 text-xs">
-                  <Circle className="h-3 w-3 text-white/30" />
-                  <span className="font-semibold text-white/45">No entregó ningun enganche</span>
-                </div>
-              )}
-              <div className="flex items-center gap-2 rounded-xl bg-green-500/10 border border-green-500/20 px-3 py-1.5 text-xs">
-                <CheckCircle className="h-3 w-3 text-green-400" />
-                <span className="text-white/40">Pagado cuotas:</span>
-                <span className="text-green-400 font-bold"><FormatearNumero numero={montoPagado} /></span>
+
+              <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2.5 text-xs shadow-inner">
+                <span className="text-emerald-300/80 font-medium flex items-center gap-1.5">
+                  <CheckCircle className="h-3.5 w-3.5 text-emerald-400" /> Enganche
+                </span>
+                <span className="text-emerald-400 font-black text-sm"><FormatearNumero numero={enganchePlan} /></span>
               </div>
-              <div className="flex items-center gap-2 rounded-xl bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 text-xs">
-                <Circle className="h-3 w-3 text-orange-400" />
-                <span className="text-white/40">Pendiente:</span>
-                <span className="text-orange-400 font-bold"><FormatearNumero numero={montoPendiente} /></span>
+
+              <div className="flex items-center justify-between rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-2.5 text-xs shadow-inner">
+                <span className="text-emerald-300/80 font-medium flex items-center gap-1.5">
+                  <CheckCircle className="h-3.5 w-3.5 text-emerald-400" /> Pagado Cuotas
+                </span>
+                <span className="text-emerald-400 font-black text-sm"><FormatearNumero numero={montoPagado} /></span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl bg-amber-500/10 border border-amber-500/20 px-3.5 py-2.5 text-xs shadow-inner">
+                <span className="text-amber-300/80 font-medium flex items-center gap-1.5">
+                  <Circle className="h-3.5 w-3.5 text-amber-400" /> Pendiente
+                </span>
+                <span className="text-amber-400 font-black text-sm"><FormatearNumero numero={montoPendiente} /></span>
               </div>
             </div>
 
-            {/* Encabezados de la tabla */}
-            <div className="grid grid-cols-12 gap-2 px-4 py-2.5 text-xs font-bold tracking-wide text-white/30 uppercase border-b border-white/5">
-              <div className="col-span-1">#</div>
-              <div className="col-span-1 flex items-center justify-center">
-                <CheckCircle className="h-3 w-3" />
+            {/* Selector para método de enganche */}
+            {enganchePlan > 0 && (
+              <div className="flex items-center justify-end gap-2 px-5 mt-3 text-xs sm:text-sm">
+                <span className="text-white/60 font-semibold">Método del enganche:</span>
+                <select
+                  value={idMetodoEngancheSeleccionado || ""}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => setIdMetodoEngancheSeleccionado(Number(e.target.value || 0))}
+                  className="rounded-xl border border-emerald-500/30 bg-zinc-950 px-3 py-1 text-xs sm:text-sm font-bold text-emerald-400 outline-none focus:border-emerald-400 cursor-pointer transition-all shadow-xs"
+                  title="Cambiar método del enganche"
+                >
+                  <option value="">Método no registrado</option>
+                  {metodosPago.map((metodo) => (
+                    <option key={metodo.id} value={metodo.id}>
+                      {metodo.metodo}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="col-span-3 flex items-center gap-1">
-                <DollarSign className="h-3 w-3" /> Monto Final
-              </div>
-              <div className="col-span-2 flex items-center gap-1">
-                <Percent className="h-3 w-3" /> Interés
-              </div>
-              <div className="col-span-3 flex items-center gap-1">
-                <Calendar className="h-3 w-3" /> Vencimiento
-              </div>
-              <div className="col-span-1 text-right">Total</div>
-              <div className="col-span-1 text-center">Acción</div>
-            </div>
+            )}
 
+<<<<<<< Updated upstream
             {/* Filas de cuotas */}
             <div className="divide-y divide-white/5">
+=======
+            {/* Lista de Cuotas (Diseño en Tarjetas limpias) */}
+            <div className="space-y-3 px-5 py-4">
+>>>>>>> Stashed changes
               {cuotas.map((cuota, index) => {
                 const montoConInteres = cuota.monto;
                 const fechaPago = formatFechaPago(cuota.fechapago);
-                const tieneMetodo = Boolean(cuota.idmetodo);
+
                 return (
                   <div
                     key={`${cuota.idcuota}-${index}`}
-                    className={`grid grid-cols-12 gap-2 items-center px-4 py-2.5 transition-colors ${cuota.pagado ? "bg-green-500/5" : "hover:bg-white/[0.02]"
-                      }`}
+                    className={`rounded-2xl border transition-all p-4 space-y-3 shadow-md ${
+                      cuota.pagado
+                        ? "bg-emerald-500/[0.03] border-emerald-500/20"
+                        : "bg-zinc-950/70 border-white/10 hover:border-orange-500/30"
+                    }`}
                   >
-                    {/* N° */}
-                    <div className="col-span-1">
-                      <span
-                        className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${cuota.pagado
-                          ? "bg-green-500/20 text-green-400"
-                          : "bg-orange-500/20 text-orange-400"
+                    {/* Header de la cuota */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/5">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-black tracking-wider ${
+                            cuota.pagado
+                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                              : "bg-orange-500/20 text-orange-400 border border-orange-500/30"
                           }`}
-                      >
-                        {index + 1}
-                      </span>
-                    </div>
+                        >
+                          CUOTA #{index + 1}
+                        </span>
 
-                    {/* Toggle pagado */}
-                    <div className="col-span-1 flex justify-center">
-                      <button
-                        title={cuotaEstaBloqueada(cuota) ? "Esta cuota pagada ya no se puede modificar" : cuota.pagado ? "Marcar como pendiente" : "Marcar como pagada"}
-                        onClick={() => handleTogglePagado(index)}
-                        disabled={cuotaEstaBloqueada(cuota)}
-                        className={`transition-transform ${cuotaEstaBloqueada(cuota) ? "cursor-not-allowed opacity-60" : "hover:scale-110"}`}
-                      >
-                        {cuota.pagado ? (
-                          <CheckCircle className="h-5 w-5 text-green-400" />
-                        ) : (
-                          <Circle className="h-5 w-5 text-white/20 hover:text-white/50" />
+                        <button
+                          type="button"
+                          title={
+                            cuotaEstaBloqueada(cuota)
+                              ? "Esta cuota pagada ya no se puede modificar"
+                              : cuota.pagado
+                              ? "Marcar como pendiente"
+                              : "Marcar como pagada"
+                          }
+                          onClick={() => handleTogglePagado(index)}
+                          disabled={cuotaEstaBloqueada(cuota)}
+                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                            cuotaEstaBloqueada(cuota)
+                              ? "cursor-not-allowed opacity-60 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : cuota.pagado
+                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 cursor-pointer"
+                              : "bg-zinc-800 text-white/60 border border-white/10 hover:text-white hover:bg-zinc-700 cursor-pointer"
+                          }`}
+                        >
+                          {cuota.pagado ? (
+                            <>
+                              <CheckCircle className="h-4 w-4 text-emerald-400" />
+                              <span>Pagado</span>
+                            </>
+                          ) : (
+                            <>
+                              <Circle className="h-4 w-4 text-white/30" />
+                              <span>Marcar como pagado</span>
+                            </>
+                          )}
+                        </button>
+
+                        {cuota.pagado && fechaPago && (
+                          <span className="text-xs font-semibold text-emerald-400/90 italic">
+                            (Pagado el {fechaPago})
+                          </span>
                         )}
-                      </button>
-                    </div>
+                      </div>
 
-                    {/* Monto base */}
-                    <div className="col-span-3 relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30 text-xs">$</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={cuota.monto || ""}
-                        placeholder="0.00"
-                        onChange={(e) => handleCuotaChange(index, "monto", Number(e.target.value))}
-                        disabled={cuota.pagado}
-                        className={`w-full rounded-xl border px-5 py-1.5 text-xs text-white outline-none transition-colors ${cuota.pagado
-                          ? "border-white/5 bg-white/5 text-white/30 cursor-not-allowed"
-                          : "border-white/10 bg-zinc-950/40 focus:border-orange-500/50"
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <span className="text-[10px] uppercase font-bold text-white/40 block">Monto Final</span>
+                          <span className={`text-base font-black ${cuota.pagado ? "text-emerald-400" : "text-orange-400"}`}>
+                            <FormatearNumero numero={montoConInteres} />
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          title={cuota.pagado ? "No se puede eliminar una cuota pagada" : "Eliminar cuota y redistribuir saldo"}
+                          onClick={() => eliminarCuota(index)}
+                          disabled={cuota.pagado}
+                          className={`p-2 rounded-xl border transition-all ${
+                            cuota.pagado
+                              ? "cursor-not-allowed border-white/5 bg-white/5 text-white/15"
+                              : "border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200 cursor-pointer active:scale-95"
                           }`}
-                      />
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Interés */}
-                    <div className="col-span-2 relative">
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.1}
-                        value={cuota.interes || ""}
-                        placeholder="0"
-                        onChange={(e) => handleCuotaChange(index, "interes", Number(e.target.value))}
-                        disabled={cuota.pagado}
-                        className={`w-full rounded-xl border px-2 pr-5 py-1.5 text-xs text-white outline-none transition-colors ${cuota.pagado
-                          ? "border-white/5 bg-white/5 text-white/30 cursor-not-allowed"
-                          : "border-white/10 bg-zinc-950/40 focus:border-orange-500/50"
-                          }`}
-                      />
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 text-xs">%</span>
-                    </div>
-
-                    {/* Vencimiento */}
-                    <div className="col-span-3">
-                      <input
-                        type="date"
-                        value={cuota.vencimiento}
-                        onChange={(e) => handleCuotaChange(index, "vencimiento", e.target.value)}
-                        disabled={cuota.pagado}
-                        className={`w-full rounded-xl border px-2 py-1.5 text-xs text-white outline-none transition-colors [color-scheme:dark] ${cuota.pagado
-                          ? "border-white/5 bg-white/5 text-white/30 cursor-not-allowed"
-                          : "border-white/10 bg-zinc-950/40 focus:border-orange-500/50"
-                          }`}
-                      />
-                    </div>
-
-                    {/* Total */}
-                    <div className="col-span-1 text-right">
-                      <span className={`text-xs font-bold ${cuota.pagado ? "text-green-400" : "text-orange-300"}`}>
-                        <FormatearNumero numero={montoConInteres} />
-                      </span>
-                    </div>
-
-                    <div className="col-span-1 flex justify-center">
-                      <button
-                        type="button"
-                        title={cuota.pagado ? "No se puede eliminar una cuota pagada" : "Eliminar cuota y redistribuir saldo"}
-                        onClick={() => eliminarCuota(index)}
-                        disabled={cuota.pagado}
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border transition ${cuota.pagado
-                          ? "cursor-not-allowed border-white/5 bg-white/5 text-white/15"
-                          : "border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200"
-                          }`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-
-                    {cuota.pagado && fechaPago && (
-                      <div className="col-span-12 pl-16 -mt-1">
-                        <div className="inline-flex items-center rounded-lg border border-green-500/20 bg-green-500/10 px-2 py-1 text-xs font-semibold text-green-300">
-                          Pagado el {fechaPago}
+                    {/* Inputs de la cuota: Monto, Interés, Vencimiento */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-white/40 mb-1 block">Monto Base</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs">$</span>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={cuota.monto || ""}
+                            placeholder="0.00"
+                            onChange={(e) => handleCuotaChange(index, "monto", Number(e.target.value))}
+                            disabled={cuota.pagado}
+                            className={`w-full rounded-xl border pl-7 pr-3 py-1.5 text-xs text-white outline-none transition-all ${
+                              cuota.pagado
+                                ? "border-white/5 bg-white/5 text-white/30 cursor-not-allowed"
+                                : "border-white/10 bg-zinc-900 focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20"
+                            }`}
+                          />
                         </div>
                       </div>
-                    )}
 
-                    <div className="col-span-12 grid grid-cols-1 gap-2 pl-0 sm:grid-cols-12 sm:pl-16">
-                      <div className="sm:col-span-4">
-                        <label className="mb-1 block text-xs font-semibold text-white/40">Método</label>
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-white/40 mb-1 block">Interés (%)</label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={cuota.interes || ""}
+                            placeholder="0"
+                            onChange={(e) => handleCuotaChange(index, "interes", Number(e.target.value))}
+                            disabled={cuota.pagado}
+                            className={`w-full rounded-xl border px-3 pr-7 py-1.5 text-xs text-white outline-none transition-all ${
+                              cuota.pagado
+                                ? "border-white/5 bg-white/5 text-white/30 cursor-not-allowed"
+                                : "border-white/10 bg-zinc-900 focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20"
+                            }`}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-xs">%</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-white/40 mb-1 block">Vencimiento</label>
+                        <input
+                          type="date"
+                          value={cuota.vencimiento}
+                          onChange={(e) => handleCuotaChange(index, "vencimiento", e.target.value)}
+                          disabled={cuota.pagado}
+                          className={`w-full rounded-xl border px-3 py-1.5 text-xs text-white outline-none transition-all [color-scheme:dark] ${
+                            cuota.pagado
+                              ? "border-white/5 bg-white/5 text-white/30 cursor-not-allowed"
+                              : "border-white/10 bg-zinc-900 focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20"
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Detalles adicionales: Método, Tipo/Nota, Comprobante */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-white/5 bg-zinc-900/40 p-3 rounded-xl">
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-white/40 mb-1 block">Método de pago</label>
                         <select
                           value={cuota.idmetodo || ""}
                           disabled={cuotaEstaBloqueada(cuota)}
@@ -541,7 +611,11 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                             handleCuotaChange(index, "idmetodo", idmetodo);
                             handleCuotaChange(index, "metodo", metodo);
                           }}
-                          className={`w-full rounded-xl border px-2 py-1.5 text-xs text-white outline-none ${cuotaEstaBloqueada(cuota) ? "cursor-not-allowed border-white/5 bg-white/5 text-white/30" : "border-white/10 bg-zinc-950/40 focus:border-orange-500/50"}`}
+                          className={`w-full rounded-xl border px-3 py-1.5 text-xs text-white outline-none transition-all ${
+                            cuotaEstaBloqueada(cuota)
+                              ? "cursor-not-allowed border-white/5 bg-white/5 text-white/30"
+                              : "border-white/10 bg-zinc-950/80 focus:border-orange-500/60"
+                          }`}
                         >
                           <option value="">Seleccionar método</option>
                           {metodosPago.map((metodo) => (
@@ -552,48 +626,55 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                         </select>
                       </div>
 
-                      {tieneMetodo && (
-                        <>
-                          <div className="sm:col-span-4">
-                            <label className="mb-1 block text-xs font-semibold text-white/40">Tipo/Nota</label>
-                            <input
-                              value={cuota.nota || ""}
-                              onChange={(e) => handleCuotaChange(index, "nota", e.target.value)}
-                              disabled={cuotaEstaBloqueada(cuota)}
-                              placeholder="ZELLE, CASHAPP, NOTA, ETC."
-                              className={`w-full uppercase rounded-xl border px-2 py-1.5 text-xs text-white outline-none ${cuotaEstaBloqueada(cuota) ? "cursor-not-allowed border-white/5 bg-white/5 text-white/30" : "border-white/10 bg-zinc-950/40 focus:border-orange-500/50"}`}
-                            />
-                          </div>
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-white/40 mb-1 block">Tipo / Nota</label>
+                        <input
+                          value={cuota.nota || ""}
+                          onChange={(e) => handleCuotaChange(index, "nota", e.target.value)}
+                          disabled={cuotaEstaBloqueada(cuota)}
+                          placeholder="ZELLE, CASHAPP, NOTA, ETC."
+                          className={`w-full uppercase rounded-xl border px-3 py-1.5 text-xs text-white outline-none transition-all ${
+                            cuotaEstaBloqueada(cuota)
+                              ? "cursor-not-allowed border-white/5 bg-white/5 text-white/30"
+                              : "border-white/10 bg-zinc-950/80 focus:border-orange-500/60"
+                          }`}
+                        />
+                      </div>
 
-                          <div className="sm:col-span-4">
-                            <label className="mb-1 block text-xs font-semibold text-white/40">Comprobante</label>
-                            <div className="flex items-center gap-2">
-                              <label className={`flex h-8 items-center gap-1 rounded-xl border px-3 text-xs font-bold transition ${cuotaEstaBloqueada(cuota) ? "cursor-not-allowed border-white/5 bg-white/5 text-white/30" : "cursor-pointer border-orange-500/30 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20"}`}>
-                                <Upload className="h-3.5 w-3.5" />
-                                Cargar
-                                <input
-                                  type="file"
-                                  className="hidden"
-                                  disabled={cuotaEstaBloqueada(cuota)}
-                                  onChange={(e) => handleSubirComprobante(index, e.target.files?.[0] || null)}
-                                />
-                              </label>
-                              {cuota.comprobante && (
-                                <a
-                                  href={cuota.comprobante}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  download
-                                  className="flex h-8 items-center gap-1 rounded-xl border border-green-500/20 bg-green-500/10 px-3 text-xs font-bold text-green-300 transition hover:bg-green-500/20"
-                                >
-                                  <Download className="h-3.5 w-3.5" />
-                                  Descargar
-                                </a>
-                              )}
-                            </div>
-                          </div>
-                        </>
-                      )}
+                      <div>
+                        <label className="text-[10px] uppercase font-bold text-white/40 mb-1 block">Comprobante</label>
+                        <div className="flex items-center gap-2">
+                          <label
+                            className={`flex h-8 items-center gap-1.5 rounded-xl border px-3 text-xs font-bold transition-all ${
+                              cuotaEstaBloqueada(cuota)
+                                ? "cursor-not-allowed border-white/5 bg-white/5 text-white/30"
+                                : "cursor-pointer border-orange-500/30 bg-orange-500/10 text-orange-200 hover:bg-orange-500/20 active:scale-95"
+                            }`}
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            <span>Cargar</span>
+                            <input
+                              type="file"
+                              className="hidden"
+                              disabled={cuotaEstaBloqueada(cuota)}
+                              onChange={(e) => handleSubirComprobante(index, e.target.files?.[0] || null)}
+                            />
+                          </label>
+
+                          {cuota.comprobante && (
+                            <a
+                              href={cuota.comprobante}
+                              target="_blank"
+                              rel="noreferrer"
+                              download
+                              className="flex h-8 items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 text-xs font-bold text-emerald-300 transition-all hover:bg-emerald-500/20"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              <span>Descargar</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );

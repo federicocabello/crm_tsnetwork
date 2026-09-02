@@ -24,8 +24,8 @@ FRONTEND_DIST_DIR = os.path.abspath(
 CORS(
     app,
     resources={
-        r"/api/*": {"origins": "http://localhost:5177"},
-        r"/uploads/*": {"origins": "http://localhost:5177"}
+        r"/api/*": {"origins": "http://localhost:5179"},
+        r"/uploads/*": {"origins": "http://localhost:5179"}
     },
     supports_credentials=True,
     allow_headers=["Content-Type", "Authorization"],
