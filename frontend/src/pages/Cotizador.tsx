@@ -18,13 +18,6 @@ interface RowData {
   precioFinal: string;
 }
 
-interface ClienteCotizacion {
-  nombre: string;
-  telefono: string;
-  direccion: string;
-  email: string;
-}
-
 interface Props {
   onClose: (arg0: boolean) => void;
   setCotizacion?: (data: any) => void;
@@ -46,7 +39,6 @@ export default function Cotizador({
   modo = "nuevo",
   onSaved,
   idCita = null,
-  idCliente = null,
   bloqueada = false,
   categoriaServicio,
 }: Props) {
@@ -55,12 +47,13 @@ export default function Cotizador({
   const [data, setData] = useState<Producto[]>([]);
   const [rows, setRows] = useState<Record<number, RowData>>(() => cotizacionInicial && "productos" in cotizacionInicial ? cotizacionInicial.productos : cotizacionInicial ?? {});
   const [search, setSearch] = useState("");
-  const [clienteCotizacion, setClienteCotizacion] = useState<ClienteCotizacion | null>(null);
-  const [fechaCita, setFechaCita] = useState<string | null>(null);
+
   const [guardando, setGuardando] = useState(false);
   const [descuento, setDescuento] = useState(() => cotizacionInicial && "productos" in cotizacionInicial ? Math.max(Number(cotizacionInicial.descuento) || 0, 0) : 0);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
+  const [pdfs, setPdfs] = useState<Array<{ id: number; version: number | null; archivo: string; nombre_archivo: string; generado_por: string; generado_en: string }>>([]);
   const [versiones, setVersiones] = useState<Array<{ id: number; version: number; subtotal: number; descuento: number; total: number; creado_por: string; creado_en: string; comentario?: string; productos: Array<{ producto_id: number | null; nombre_producto: string; cantidad: number; precio_final: number }> }>>([]);
 
   const roundUp = (num: number) => Math.ceil(num * 100) / 100;
@@ -173,8 +166,6 @@ useEffect(() => {
       }
 
       const cotizacion = await res.json();
-      setClienteCotizacion(cotizacion.cliente ?? null);
-      setFechaCita(cotizacion.cita_fecha ?? null);
       setDescuento(Math.max(Number(cotizacion.descuento) || 0, 0));
 
       const rowsCargadas: Record<number, RowData> = {};
@@ -194,29 +185,9 @@ useEffect(() => {
     }
   };
 
-  const fetchClienteCotizacion = async () => {
-    if (!idCliente) return;
-    try {
-      const res = await fetch(`${API_URL}/api/clientes/${idCliente}`);
-      if (!res.ok) return;
-      const dataCliente = await res.json();
-      const cita = dataCliente.citas?.find(
-        (item: { idcita: number }) => Number(item.idcita) === Number(idCita),
-      );
-      setClienteCotizacion({
-        nombre: dataCliente.cliente?.nombre ?? "",
-        email: dataCliente.cliente?.email ?? "",
-        telefono: cita?.telefono ?? "",
-        direccion: cita?.domicilio ?? "",
-      });
-    } catch (error) {
-      console.error("Error cargando datos del cliente:", error);
-    }
-  };
   fetchApi();
   fetchCotizacion();
-  fetchClienteCotizacion();
-}, [API_URL, modo, idCotizacion, idCita, idCliente]);
+}, [API_URL, modo, idCotizacion, idCita]);
 
   const filteredData = useMemo(() => {
     let baseData = categoriaServicio
@@ -252,10 +223,11 @@ useEffect(() => {
     if (!idCotizacion) return;
     setCargandoHistorial(true);
     try {
-      const resultado = await api<{ versiones: typeof versiones }>(
+      const resultado = await api<{ versiones: typeof versiones; pdfs: typeof pdfs }>(
         `/api/cotizaciones/${idCotizacion}/historial`,
       );
       setVersiones(resultado.versiones || []);
+      setPdfs(resultado.pdfs || []);
       setMostrarHistorial(true);
     } catch (error) {
       console.error("Error cargando historial:", error);
@@ -264,65 +236,31 @@ useEffect(() => {
       setCargandoHistorial(false);
     }
   };
-  const exportarPdf = () => {
-    const articulos = Object.entries(rows)
-      .filter(([, row]) => row.cantidad > 0)
-      .map(([id, row]) => ({
-        nombre: data.find((producto) => producto.id === Number(id))?.descrip ?? "Artículo",
-        precio: Number(row.precioFinal) || 0,
-      }));
+  const exportarPdf = async () => {
+    if (!idCotizacion || generandoPdf) return;
 
-    if (!articulos.length) {
-      alert("Agregá al menos un artículo antes de exportar.");
-      return;
+    const ventana = window.open("", "_blank");
+    setGenerandoPdf(true);
+    try {
+      const resultado = await api<{ archivo: string; nombre_archivo: string; version: number }>(
+        `/api/cotizaciones/${idCotizacion}/pdf`,
+        { method: "POST" },
+      );
+      if (ventana) {
+        ventana.location.href = resultado.archivo;
+      } else {
+        window.location.href = resultado.archivo;
+      }
+      if (mostrarHistorial) await cargarHistorial();
+    } catch (error) {
+      ventana?.close();
+      console.error("Error generando PDF:", error);
+      alert(error instanceof Error ? error.message : "No se pudo generar el PDF.");
+    } finally {
+      setGenerandoPdf(false);
     }
-
-    const ventana = window.open("", "_blank", "width=900,height=1100");
-    if (!ventana) {
-      alert("Habilitá las ventanas emergentes para exportar el PDF.");
-      return;
-    }
-
-    const escape = (value: string | null | undefined) =>
-      String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;");
-    const money = (value: number) =>
-      value.toLocaleString("en-US", { style: "currency", currency: "USD" });
-    const numero = idCotizacion ? String(idCotizacion).padStart(6, "0") : "BORRADOR";
-    const visita = fechaCita
-      ? new Date(`${fechaCita}T12:00:00`).toLocaleDateString("es-AR")
-      : "-";
-    const filas = articulos
-      .map(({ nombre }) => `<tr><td>${escape(nombre)}</td></tr>`)
-      .join("");
-    const logo = new URL("/logo_tsnetwork.png", window.location.origin).href;
-
-    ventana.document.write(`<!doctype html>
-<html lang="es"><head><meta charset="UTF-8"><title>Cotización ${numero}</title>
-<style>
-*{box-sizing:border-box}body{margin:0;color:#18181b;font-family:Arial,sans-serif}.page{max-width:820px;min-height:1040px;margin:auto;padding:42px}
-header{display:flex;justify-content:space-between;align-items:flex-start;gap:32px;padding-bottom:24px;border-bottom:3px solid #f97316}
-.logo{width:190px;max-height:82px;object-fit:contain;object-position:left center}h1{margin:0 0 8px;font-size:30px;text-transform:uppercase}
-.number{color:#f97316;font-weight:700}.meta{margin-top:7px;color:#52525b;font-size:13px}
-.client{margin:28px 0;padding:18px 20px;border:1px solid #d4d4d8;border-left:5px solid #f97316}
-.client h2{margin:0 0 12px;font-size:14px;text-transform:uppercase;color:#71717a}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;font-size:14px}.address{grid-column:1/-1}
-table{width:100%;border-collapse:collapse}th{padding:12px 14px;color:#fff;background:#27272a;text-align:left;font-size:13px;text-transform:uppercase}
-td{padding:14px;border-bottom:1px solid #e4e4e7;font-size:14px}.price{width:190px;text-align:right;white-space:nowrap}
-.total{display:flex;justify-content:flex-end;margin-top:22px}.summary{min-width:300px;padding:16px 18px;color:#fff;background:#27272a}.summary p{display:flex;justify-content:space-between;margin:5px 0;font-size:14px}.summary .net{padding-top:9px;border-top:1px solid #52525b;font-size:19px;font-weight:700}
-footer{margin-top:70px;padding-top:18px;border-top:1px solid #d4d4d8;color:#71717a;font-size:11px;text-align:center}
-@page{size:A4;margin:0}@media print{.page{max-width:none;min-height:auto}}
-</style></head><body><main class="page">
-<header><img class="logo" src="${logo}" alt="TS Network"><div><h1>Cotización</h1><div class="number">N.º ${numero}</div><div class="meta">Emisión: ${new Date().toLocaleDateString("es-AR")}</div><div class="meta">Visita: ${visita}</div></div></header>
-<section class="client"><h2>Datos del cliente</h2><div class="grid"><div><strong>Cliente:</strong> ${escape(clienteCotizacion?.nombre) || "-"}</div><div><strong>Teléfono:</strong> ${escape(clienteCotizacion?.telefono) || "-"}</div><div><strong>Email:</strong> ${escape(clienteCotizacion?.email) || "-"}</div><div class="address"><strong>Domicilio:</strong> ${escape(clienteCotizacion?.direccion) || "-"}</div></div></section>
-<table><thead><tr><th>Artículos incluidos</th></tr></thead><tbody>${filas}</tbody></table>
-<div class="total"><div class="summary"><p><span>Subtotal</span><span>${money(Number(subtotalGeneral))}</span></p><p><span>Descuento</span><span>-${money(descuento)}</span></p><p class="net"><span>Total</span><span>${money(Number(totalGeneral))}</span></p></div></div>
-<footer>Documento de cotización comercial. Precios y disponibilidad sujetos a confirmación.</footer>
-</main><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));<\/script></body></html>`);
-    ventana.document.close();
   };
+
   return (
     <div className="fixed inset-0 z-70 flex items-center justify-center overflow-y-auto bg-black/80 p-2 backdrop-blur-sm sm:p-4">
       <div className="my-auto flex h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl sm:h-[90vh] sm:rounded-3xl">
@@ -483,7 +421,7 @@ footer{margin-top:70px;padding-top:18px;border-top:1px solid #d4d4d8;color:#7171
               {modo === "editar" && idCotizacion && (
                 <>
                   <button type="button" onClick={cargarHistorial} disabled={cargandoHistorial} className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"><History className="h-4 w-4" />{cargandoHistorial ? "Cargando..." : "Historial"}</button>
-                  <button type="button" onClick={exportarPdf} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20"><FileDown className="h-4 w-4" /> Exportar a PDF</button>
+                  <button type="button" onClick={exportarPdf} disabled={generandoPdf} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf ? "Generando..." : "Exportar a PDF"}</button>
                 </>
               )}
               <button
@@ -517,6 +455,10 @@ footer{margin-top:70px;padding-top:18px;border-top:1px solid #d4d4d8;color:#7171
               <button type="button" onClick={() => setMostrarHistorial(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/60 hover:bg-white/10 hover:text-white" title="Cerrar"><X className="h-4 w-4" /></button>
             </div>
             <div className="max-h-[calc(85vh-4rem)] space-y-3 overflow-y-auto p-4">
+              <section className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3">
+                <h3 className="mb-2 text-sm font-black text-orange-200">PDFs emitidos</h3>
+                {pdfs.length === 0 ? <p className="text-sm text-white/45">Todavia no se genero ningun PDF.</p> : <div className="space-y-2">{pdfs.map((pdf) => <a key={pdf.id} href={pdf.archivo} target="_blank" rel="noreferrer" download className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm transition hover:border-orange-400/30 hover:bg-white/5"><span className="min-w-0"><strong className="block truncate text-white">{pdf.nombre_archivo}</strong><span className="text-xs text-white/45">{pdf.generado_en} · {pdf.generado_por}{pdf.version ? ` · Version ${pdf.version}` : ""}</span></span><FileDown className="h-4 w-4 shrink-0 text-orange-300" /></a>)}</div>}
+              </section>
               {versiones.length === 0 ? <p className="text-sm text-white/50">Todavía no hay versiones registradas.</p> : versiones.map((version) => (
                 <details key={version.id} className="rounded-lg border border-white/10 bg-white/5 p-3">
                   <summary className="cursor-pointer list-none">
