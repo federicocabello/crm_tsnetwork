@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileDown, History, X } from "lucide-react";
-import { api } from "../lib/api";
+import { FileDown, History, Trash2, X } from "lucide-react";
+import { api, getToken } from "../lib/api";
 
 interface Producto {
   id: number;
@@ -52,9 +52,11 @@ export default function Cotizador({
   const [descuento, setDescuento] = useState(() => cotizacionInicial && "productos" in cotizacionInicial ? Math.max(Number(cotizacionInicial.descuento) || 0, 0) : 0);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
-  const [generandoPdf, setGenerandoPdf] = useState(false);
-  const [pdfs, setPdfs] = useState<Array<{ id: number; version: number | null; archivo: string; nombre_archivo: string; generado_por: string; generado_en: string }>>([]);
+  const [generandoPdf, setGenerandoPdf] = useState<number | "actual" | null>(null);
+
   const [versiones, setVersiones] = useState<Array<{ id: number; version: number; subtotal: number; descuento: number; total: number; creado_por: string; creado_en: string; comentario?: string; productos: Array<{ producto_id: number | null; nombre_producto: string; cantidad: number; precio_final: number }> }>>([]);
+  const [versionEnEdicion, setVersionEnEdicion] = useState<number | null>(null);
+  const [eliminandoVersion, setEliminandoVersion] = useState<number | null>(null);
 
   const roundUp = (num: number) => Math.ceil(num * 100) / 100;
 
@@ -116,9 +118,10 @@ async function sendCotizacion() {
     const url = esNueva
       ? `${API_URL}/api/cotizacion/nueva`
       : `${API_URL}/api/cotizaciones/${idCotizacion}`;
+    const descuentoAplicado = Number(descuento) > 0 ? Number(descuento) : null;
     const body = esNueva
-      ? { cita: idCita, productos, descuento }
-      : { productos, descuento };
+      ? { cita: idCita, productos, ...(descuentoAplicado ? { descuento: descuentoAplicado } : {}) }
+      : { productos, ...(descuentoAplicado ? { descuento: descuentoAplicado } : {}) };
 
     await api(url.replace(API_URL || "", ""), {
       method: esNueva ? "POST" : "PUT",
@@ -223,11 +226,11 @@ useEffect(() => {
     if (!idCotizacion) return;
     setCargandoHistorial(true);
     try {
-      const resultado = await api<{ versiones: typeof versiones; pdfs: typeof pdfs }>(
+      const resultado = await api<{ versiones: typeof versiones }>(
         `/api/cotizaciones/${idCotizacion}/historial`,
       );
       setVersiones(resultado.versiones || []);
-      setPdfs(resultado.pdfs || []);
+
       setMostrarHistorial(true);
     } catch (error) {
       console.error("Error cargando historial:", error);
@@ -236,28 +239,140 @@ useEffect(() => {
       setCargandoHistorial(false);
     }
   };
-  const exportarPdf = async () => {
+  const eliminarVersion = async (version: (typeof versiones)[number]) => {
+    if (!idCotizacion || eliminandoVersion !== null) return;
+    if (!window.confirm(`¿Eliminar la versión ${version.version}? Esta acción no modifica la cotización actual.`)) return;
+
+    setEliminandoVersion(version.id);
+    try {
+      await api(`/api/cotizaciones/${idCotizacion}/versiones/${version.id}`, {
+        method: "DELETE",
+      });
+      setVersiones((actuales) => actuales.filter((item) => item.id !== version.id));
+      if (versionEnEdicion === version.version) {
+        setVersionEnEdicion(null);
+      }
+    } catch (error) {
+      console.error("Error eliminando versión:", error);
+      alert(error instanceof Error ? error.message : "No se pudo eliminar la versión.");
+    } finally {
+      setEliminandoVersion(null);
+    }
+  };
+  const editarVersion = (version: (typeof versiones)[number]) => {
+    if (bloqueada) return;
+
+    const rowsVersion: Record<number, RowData> = {};
+    version.productos.forEach((producto) => {
+      if (producto.producto_id === null) return;
+      const cantidad = Number(producto.cantidad) || 0;
+      const productoActual = data.find((item) => item.id === producto.producto_id);
+      const calculo = calculate(Number(productoActual?.precio) || 0, cantidad);
+      rowsVersion[producto.producto_id] = {
+        cantidad,
+        costo: calculo.costo,
+        precioFinal: Number(producto.precio_final || 0).toFixed(2),
+      };
+    });
+
+    if (Object.keys(rowsVersion).length === 0) {
+      alert("Esta version no tiene productos disponibles para editar.");
+      return;
+    }
+
+    setRows(rowsVersion);
+    setDescuento(Math.max(Number(version.descuento) || 0, 0));
+    setVersionEnEdicion(version.version);
+    setSearch("");
+    setMostrarHistorial(false);
+  };
+  const exportarPdf = async (versionId?: number, versionParaNueva?: (typeof versiones)[number]) => {
     if (!idCotizacion || generandoPdf) return;
 
     const ventana = window.open("", "_blank");
-    setGenerandoPdf(true);
+    setGenerandoPdf(versionId ?? "actual");
     try {
-      const resultado = await api<{ archivo: string; nombre_archivo: string; version: number }>(
-        `/api/cotizaciones/${idCotizacion}/pdf`,
-        { method: "POST" },
-      );
-      if (ventana) {
-        ventana.location.href = resultado.archivo;
-      } else {
-        window.location.href = resultado.archivo;
+      if (versionParaNueva && !bloqueada) {
+        const productos = Object.fromEntries(
+          versionParaNueva.productos
+            .filter((producto) => producto.producto_id !== null)
+            .map((producto) => [
+              String(producto.producto_id),
+              {
+                cantidad: Number(producto.cantidad) || 0,
+                costo: "0.00",
+                precioFinal: Number(producto.precio_final || 0).toFixed(2),
+              },
+            ]),
+        );
+        if (Object.keys(productos).length === 0) {
+          throw new Error("La version no tiene productos disponibles.");
+        }
+
+        const descuentoVersion = Math.max(Number(versionParaNueva.descuento) || 0, 0);
+        await api(`/api/cotizaciones/${idCotizacion}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            productos,
+            ...(descuentoVersion > 0 ? { descuento: descuentoVersion } : {}),
+          }),
+        });
+        setRows(productos as Record<number, RowData>);
+        setDescuento(descuentoVersion);
+        setVersionEnEdicion(null);
+        versionId = undefined;
+        await Promise.resolve(onSaved?.());
+      } else if (!versionId && versionEnEdicion !== null && !bloqueada) {
+        const productos = Object.fromEntries(
+          Object.entries(rows).filter(([, row]) => Number(row.cantidad) > 0),
+        );
+        if (Object.keys(productos).length === 0) {
+          throw new Error("La cotizacion debe tener al menos un producto.");
+        }
+
+        const descuentoAplicado = Number(descuento) > 0 ? Number(descuento) : null;
+        await api(`/api/cotizaciones/${idCotizacion}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            productos,
+            ...(descuentoAplicado ? { descuento: descuentoAplicado } : {}),
+          }),
+        });
+        await Promise.resolve(onSaved?.());
+        setVersionEnEdicion(null);
       }
-      if (mostrarHistorial) await cargarHistorial();
+
+      const token = getToken();
+      const response = await fetch(`/api/cotizaciones/${idCotizacion}/pdf`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(versionId ? { version_id: versionId } : {}),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || "No se pudo generar el PDF.");
+      }
+
+      const pdfUrl = URL.createObjectURL(await response.blob());
+      if (ventana) {
+        ventana.location.href = pdfUrl;
+      } else {
+        window.location.href = pdfUrl;
+      }
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 60_000);
+      if (versionParaNueva && mostrarHistorial) {
+        await cargarHistorial();
+      }
+
     } catch (error) {
       ventana?.close();
       console.error("Error generando PDF:", error);
       alert(error instanceof Error ? error.message : "No se pudo generar el PDF.");
     } finally {
-      setGenerandoPdf(false);
+      setGenerandoPdf(null);
     }
   };
 
@@ -273,6 +388,7 @@ useEffect(() => {
                 ? "Esta cotizacion ya fue confirmada y no se puede modificar."
                 : "Selecciona productos y cantidades para generar el presupuesto."}
             </p>
+            {versionEnEdicion !== null && <span className="mt-1 inline-flex rounded-md border border-orange-400/30 bg-orange-500/10 px-2 py-1 text-xs font-semibold text-orange-200">Basada en la versión {versionEnEdicion}</span>}
           </div>
 
           <button
@@ -418,10 +534,10 @@ useEffect(() => {
             </div>
 
             <div className="flex flex-wrap justify-end gap-2">
-              {modo === "editar" && idCotizacion && (
+              {modo === "editar" && idCotizacion && Object.values(rows).some((row) => Number(row.cantidad) > 0) && (
                 <>
                   <button type="button" onClick={cargarHistorial} disabled={cargandoHistorial} className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"><History className="h-4 w-4" />{cargandoHistorial ? "Cargando..." : "Historial"}</button>
-                  <button type="button" onClick={exportarPdf} disabled={generandoPdf} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf ? "Generando..." : "Exportar a PDF"}</button>
+                  <button type="button" onClick={() => exportarPdf()} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === "actual" ? "Generando..." : "Exportar a PDF"}</button>
                 </>
               )}
               <button
@@ -452,19 +568,20 @@ useEffect(() => {
           <div className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-xl border border-white/15 bg-zinc-900 shadow-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
               <div><h2 className="font-black text-white">Historial de cotización</h2><p className="text-xs text-white/45">Cada versión es de solo lectura.</p></div>
-              <button type="button" onClick={() => setMostrarHistorial(false)} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/60 hover:bg-white/10 hover:text-white" title="Cerrar"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setMostrarHistorial(false)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 bg-white/5 text-white/75 transition hover:border-white/30 hover:bg-white/10 hover:text-white" title="Cerrar historial"><X className="h-4 w-4" /></button>
             </div>
             <div className="max-h-[calc(85vh-4rem)] space-y-3 overflow-y-auto p-4">
-              <section className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3">
-                <h3 className="mb-2 text-sm font-black text-orange-200">PDFs emitidos</h3>
-                {pdfs.length === 0 ? <p className="text-sm text-white/45">Todavia no se genero ningun PDF.</p> : <div className="space-y-2">{pdfs.map((pdf) => <a key={pdf.id} href={pdf.archivo} target="_blank" rel="noreferrer" download className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm transition hover:border-orange-400/30 hover:bg-white/5"><span className="min-w-0"><strong className="block truncate text-white">{pdf.nombre_archivo}</strong><span className="text-xs text-white/45">{pdf.generado_en} · {pdf.generado_por}{pdf.version ? ` · Version ${pdf.version}` : ""}</span></span><FileDown className="h-4 w-4 shrink-0 text-orange-300" /></a>)}</div>}
-              </section>
               {versiones.length === 0 ? <p className="text-sm text-white/50">Todavía no hay versiones registradas.</p> : versiones.map((version) => (
                 <details key={version.id} className="rounded-lg border border-white/10 bg-white/5 p-3">
                   <summary className="cursor-pointer list-none">
                     <div className="flex flex-wrap items-center justify-between gap-2"><div><strong className="text-orange-300">Versión {version.version}</strong><p className="text-xs text-white/50">{version.creado_en} · {version.creado_por}</p></div><div className="text-right text-sm"><p className="text-white/50">Descuento: ${Number(version.descuento).toFixed(2)}</p><strong className="text-white">Total: ${Number(version.total).toFixed(2)}</strong></div></div>
                   </summary>
                   <div className="mt-3 divide-y divide-white/10 border-t border-white/10 pt-2">{version.productos.map((producto, index) => <div key={`${version.id}-${producto.producto_id ?? index}`} className="flex justify-between gap-3 py-2 text-sm"><span className="text-white/80">{producto.nombre_producto}</span><span className="shrink-0 text-white/50">Cant. {producto.cantidad}</span></div>)}</div>
+                  <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                    <button type="button" onClick={() => eliminarVersion(version)} disabled={eliminandoVersion !== null || generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-4 w-4" />{eliminandoVersion === version.id ? "Eliminando..." : "Eliminar versión"}</button>
+                    {!bloqueada && <button type="button" onClick={() => editarVersion(version)} disabled={generandoPdf !== null} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Editar esta versión</button>}
+                    <button type="button" onClick={() => exportarPdf(version.id, version)} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-3 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === version.id ? "Generando..." : `Exportar versión ${version.version}`}</button>
+                  </div>
                 </details>
               ))}
             </div>

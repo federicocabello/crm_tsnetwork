@@ -1,8 +1,8 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_file, send_from_directory
 from flask_mysqldb import MySQL
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager, get_jwt, get_jwt_identity, jwt_required
-import os, re, json, html
+import io, os, re, json, html
 from flask_cors import CORS
 from datetime import datetime
 from email.utils import parsedate_to_datetime
@@ -512,11 +512,31 @@ def inicio():
                         citas.telefono AS telefono,
                         citas.domicilio AS direccion,
                         hojas.id AS idhoja,
+                        (
+                            SELECT h_cotizacion.id
+                            FROM hojas h_cotizacion
+                            WHERE h_cotizacion.cita = citas.id
+                              AND EXISTS (
+                                  SELECT 1 FROM hojas_productos hp_cotizacion
+                                  WHERE hp_cotizacion.hoja = h_cotizacion.id
+                              )
+                            ORDER BY h_cotizacion.id DESC
+                            LIMIT 1
+                        ) AS idcotizacion,
                         hojas.tipo AS tipo_hoja,
                         CASE 
                             WHEN hojas.id IS NOT NULL THEN 1
                             ELSE 0
                         END AS tiene_hoja,
+                        CASE
+                            WHEN EXISTS (
+                                SELECT 1
+                                FROM hojas h_cotizacion
+                                JOIN hojas_productos hp_cotizacion ON hp_cotizacion.hoja = h_cotizacion.id
+                                WHERE h_cotizacion.cita = citas.id
+                            ) THEN 1
+                            ELSE 0
+                        END AS tiene_cotizacion,
                         hojas_inspeccion.id AS idinspeccion,
                         CASE 
                             WHEN hojas_inspeccion.id IS NOT NULL THEN 1
@@ -1396,7 +1416,7 @@ def get_cotizacion(idCotizacion):
             h.notas,
             COALESCE(h.descuento, 0) AS descuento,
             c.tipo AS cita_tipo,
-            DATE_FORMAT(c.dia, '%Y-%m-%d') AS cita_fecha,
+            DATE_FORMAT(c.dia, '%%Y-%%m-%%d') AS cita_fecha,
             c.telefono,
             c.domicilio,
             clientes.nombre AS cliente_nombre,
@@ -1466,28 +1486,41 @@ def historial_cotizacion(id_hoja):
                 (version["id"],),
             )
             version["productos"] = cursor.fetchall()
-        cursor.execute(
-            """
-            SELECT
-                cp.id,
-                cp.version_id,
-                cp.archivo,
-                cp.nombre_archivo,
-                DATE_FORMAT(cp.generado_en, '%%m/%%d/%%Y %%h:%%i %%p') AS generado_en,
-                COALESCE(a.fullname, 'Usuario no disponible') AS generado_por,
-                cv.version
-            FROM cotizaciones_pdfs cp
-            LEFT JOIN auth a ON a.id = cp.generado_por
-            LEFT JOIN cotizaciones_versiones cv ON cv.id = cp.version_id
-            WHERE cp.hoja_id = %s
-            ORDER BY cp.generado_en DESC, cp.id DESC
-            """,
-            (id_hoja,),
-        )
-        pdfs = cursor.fetchall()
-        return jsonify({"versiones": versiones, "pdfs": pdfs}), 200
+        return jsonify({"versiones": versiones}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
+@app.delete("/api/cotizaciones/<int:id_hoja>/versiones/<int:id_version>")
+@jwt_required()
+def eliminar_version_cotizacion(id_hoja, id_version):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute(
+            """
+            SELECT id, version
+            FROM cotizaciones_versiones
+            WHERE id = %s AND hoja_id = %s
+            """,
+            (id_version, id_hoja),
+        )
+        version = cursor.fetchone()
+        if not version:
+            return jsonify({"error": "Version de cotizacion no encontrada"}), 404
+
+        cursor.execute(
+            "DELETE FROM cotizaciones_versiones WHERE id = %s AND hoja_id = %s",
+            (id_version, id_hoja),
+        )
+        mysql.connection.commit()
+        return jsonify({
+            "msg": "Version eliminada correctamente",
+            "version": version["version"],
+        }), 200
+    except Exception as error:
+        mysql.connection.rollback()
+        return jsonify({"error": str(error)}), 500
     finally:
         cursor.close()
 
@@ -1498,7 +1531,14 @@ def moneda_pdf(valor):
 @app.post("/api/cotizaciones/<int:id_hoja>/pdf")
 @jwt_required()
 def generar_pdf_cotizacion(id_hoja):
-    generado_por = usuario_id_cotizacion()
+    data = request.get_json(silent=True) or {}
+    version_id = data.get("version_id")
+    if version_id is not None:
+        try:
+            version_id = int(version_id)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Version de cotizacion invalida"}), 400
+
     cursor = mysql.connection.cursor()
     try:
         cursor.execute(
@@ -1531,41 +1571,56 @@ def generar_pdf_cotizacion(id_hoja):
         if not productos:
             return jsonify({"error": "La cotizacion no tiene productos"}), 400
 
-        cursor.execute(
-            "SELECT id, version FROM cotizaciones_versiones WHERE hoja_id = %s ORDER BY version DESC LIMIT 1",
-            (id_hoja,),
-        )
-        version = cursor.fetchone()
-        if not version:
-            numero_version = guardar_version_cotizacion(cursor, id_hoja, generado_por, "Estado inicial")
+        if version_id is None:
+            subtotal = sum(float(item.get("precio_final") or 0) for item in productos)
+            descuento = max(float(cotizacion.get("descuento") or 0), 0)
+            total = max(subtotal - descuento, 0)
+        else:
             cursor.execute(
-                "SELECT id, version FROM cotizaciones_versiones WHERE hoja_id = %s AND version = %s",
-                (id_hoja, numero_version),
+                """
+                SELECT id, subtotal, descuento, total
+                FROM cotizaciones_versiones
+                WHERE id = %s AND hoja_id = %s
+                """,
+                (version_id, id_hoja),
             )
             version = cursor.fetchone()
+            if not version:
+                return jsonify({"error": "Version de cotizacion no encontrada"}), 404
 
-        subtotal = sum(float(item.get("precio_final") or 0) for item in productos)
-        descuento = max(float(cotizacion.get("descuento") or 0), 0)
-        total = max(subtotal - descuento, 0)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        nombre_archivo = f"cotizacion_{id_hoja}_v{version['version']}_{timestamp}.pdf"
-        carpeta = os.path.join(UPLOADS_DIR, "cotizaciones")
-        os.makedirs(carpeta, exist_ok=True)
-        ruta_archivo = os.path.join(carpeta, nombre_archivo)
-        url_archivo = f"/uploads/cotizaciones/{nombre_archivo}"
+            cursor.execute(
+                """
+                SELECT nombre_producto AS nombre, precio_final
+                FROM cotizaciones_versiones_productos
+                WHERE version_id = %s
+                ORDER BY id
+                """,
+                (version["id"],),
+            )
+            productos = cursor.fetchall()
+            if not productos:
+                return jsonify({"error": "La version no tiene productos"}), 400
+
+            subtotal = float(version.get("subtotal") or 0)
+            descuento = max(float(version.get("descuento") or 0), 0)
+            total = float(version.get("total") or 0)
+        nombre_archivo = f"cotizacion_{id_hoja}.pdf"
+        pdf_buffer = io.BytesIO()
 
         documento = SimpleDocTemplate(
-            ruta_archivo, pagesize=A4, rightMargin=18 * mm, leftMargin=18 * mm,
+            pdf_buffer, pagesize=A4, rightMargin=18 * mm, leftMargin=18 * mm,
             topMargin=16 * mm, bottomMargin=16 * mm,
             title=f"Cotizacion {id_hoja}", author="TS Network",
         )
         estilos = getSampleStyleSheet()
         estilos.add(ParagraphStyle(name="Derecha", parent=estilos["Normal"], alignment=TA_RIGHT))
+        estilos.add(ParagraphStyle(name="TextoBlanco", parent=estilos["Normal"], textColor=colors.white))
+        estilos.add(ParagraphStyle(name="TextoBlancoDerecha", parent=estilos["Derecha"], textColor=colors.white))
         contenido = []
-        logo = os.path.abspath(os.path.join(app.root_path, "..", "frontend", "public", "logo_tsnetwork.png"))
+        logo = os.path.abspath(os.path.join(app.root_path, "..", "frontend", "public", "logo_tsnetwork_black.png"))
         encabezado_izq = Image(logo, width=52 * mm, height=22 * mm) if os.path.isfile(logo) else Paragraph("<b>TS NETWORK</b>", estilos["Title"])
         encabezado_der = Paragraph(
-            f"<b>COTIZACION</b><br/>N. {id_hoja:06d}<br/>Version {version['version']}<br/>Emision: {datetime.now().strftime('%m/%d/%Y')}",
+            f"<b>COTIZACION</b><br/>N. {id_hoja:06d}<br/>Emision: {datetime.now().strftime('%m/%d/%Y')}",
             estilos["Derecha"],
         )
         encabezado = Table([[encabezado_izq, encabezado_der]], colWidths=[105 * mm, 65 * mm])
@@ -1582,32 +1637,35 @@ def generar_pdf_cotizacion(id_hoja):
         tabla_cliente.setStyle(TableStyle([("SPAN", (0, 0), (1, 0)), ("SPAN", (0, 3), (1, 3)), ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#d4d4d8")), ("LINEBEFORE", (0, 0), (0, -1), 3, colors.HexColor("#f97316")), ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f4f4f5")), ("PADDING", (0, 0), (-1, -1), 7), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
         contenido.extend([tabla_cliente, Spacer(1, 7 * mm)])
 
-        filas = [[Paragraph("<b>ARTICULOS INCLUIDOS</b>", estilos["Normal"])]]
+        filas = [[Paragraph("<b>ARTICULOS INCLUIDOS</b>", estilos["TextoBlanco"])]]
         filas.extend([[Paragraph(html.escape(str(item.get("nombre") or "Articulo")), estilos["Normal"])]] for item in productos)
         tabla_productos = Table(filas, colWidths=[170 * mm])
         tabla_productos.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#27272a")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white), ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e4e4e7")), ("PADDING", (0, 0), (-1, -1), 8)]))
         contenido.extend([tabla_productos, Spacer(1, 7 * mm)])
 
-        resumen = Table([
-            ["Subtotal", moneda_pdf(subtotal)],
-            ["Descuento", f"-{moneda_pdf(descuento)}"],
-            [Paragraph("<b>TOTAL</b>", estilos["Normal"]), Paragraph(f"<b>{moneda_pdf(total)}</b>", estilos["Derecha"])],
-        ], colWidths=[45 * mm, 40 * mm], hAlign="RIGHT")
+        filas_resumen = []
+        if descuento > 0:
+            filas_resumen.extend([
+                ["Subtotal", moneda_pdf(subtotal)],
+                ["Descuento", f"-{moneda_pdf(descuento)}"],
+            ])
+        filas_resumen.append([
+            Paragraph("<b>TOTAL</b>", estilos["TextoBlanco"]),
+            Paragraph(f"<b>{moneda_pdf(total)}</b>", estilos["TextoBlancoDerecha"]),
+        ])
+        resumen = Table(filas_resumen, colWidths=[45 * mm, 40 * mm], hAlign="RIGHT")
         resumen.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#27272a")), ("TEXTCOLOR", (0, 0), (-1, -1), colors.white), ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("LINEABOVE", (0, -1), (-1, -1), 0.7, colors.HexColor("#71717a")), ("PADDING", (0, 0), (-1, -1), 7)]))
         contenido.append(resumen)
         documento.build(contenido)
 
-        cursor.execute(
-            """
-            INSERT INTO cotizaciones_pdfs
-                (hoja_id, version_id, archivo, nombre_archivo, generado_por)
-            VALUES (%s, %s, %s, %s, %s)
-            """,
-            (id_hoja, version["id"], url_archivo, nombre_archivo, generado_por),
-        )
-        pdf_id = cursor.lastrowid
         mysql.connection.commit()
-        return jsonify({"id": pdf_id, "archivo": url_archivo, "nombre_archivo": nombre_archivo, "version": version["version"]}), 201
+        pdf_buffer.seek(0)
+        return send_file(
+            pdf_buffer,
+            mimetype="application/pdf",
+            as_attachment=False,
+            download_name=nombre_archivo,
+        )
     except Exception as error:
         mysql.connection.rollback()
         return jsonify({"error": str(error)}), 500
@@ -1859,7 +1917,7 @@ def get_cotizacion_detallada(idCotizacion):
                 h.notas,
             COALESCE(h.descuento, 0) AS descuento,
             c.tipo AS cita_tipo,
-                DATE_FORMAT(c.dia, '%Y-%m-%d') AS cita_fecha,
+                DATE_FORMAT(c.dia, '%%Y-%%m-%%d') AS cita_fecha,
                 c.telefono,
                 c.domicilio,
                 clientes.nombre AS cliente_nombre,
@@ -2515,15 +2573,26 @@ def actualizar_email_cliente(id_cliente):
 def eliminar_cita(id_cita):
     claims = get_jwt()
     identidad = get_jwt_identity()
-    usuario = claims.get("user")
-    if not isinstance(usuario, dict) and isinstance(identidad, dict):
-        usuario = identidad
-    usuario = usuario or {}
-    if usuario.get("rol") != "superadmin":
-        return jsonify({"error": "No autorizado"}), 403
+    usuario_claim = claims.get("user")
+    if isinstance(usuario_claim, dict):
+        usuario_id = usuario_claim.get("id")
+    elif isinstance(identidad, dict):
+        usuario_id = identidad.get("id")
+    else:
+        usuario_id = identidad
+
+    try:
+        usuario_id = int(usuario_id)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Sesion de usuario invalida"}), 401
 
     cursor = mysql.connection.cursor()
     try:
+        cursor.execute("SELECT rol FROM auth WHERE id = %s AND habilitado = 1", (usuario_id,))
+        usuario = cursor.fetchone()
+        if not usuario or str(usuario.get("rol") or "").strip().lower() != "superadmin":
+            return jsonify({"error": "Solo un superadmin puede deshabilitar citas"}), 403
+
         cursor.execute(
             "UPDATE citas SET eliminado = 1 WHERE id = %s AND COALESCE(eliminado, 0) = 0",
             (id_cita,),

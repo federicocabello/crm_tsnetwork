@@ -68,8 +68,10 @@ type AgendaItem = {
   telefono: string;
   direccion: string;
   idhoja: string;
+  idcotizacion?: string;
   tipo_hoja?: string;
   tiene_hoja: number;
+  tiene_cotizacion?: number;
   idinspeccion: string;
   tiene_inspeccion: number;
   detalles: boolean;
@@ -477,7 +479,7 @@ export default function Inicio() {
       await cargarInicio();
     } catch (error) {
       console.error("Error deshabilitando la cita:", error);
-      alert("No se pudo deshabilitar la cita.");
+      alert(error instanceof Error ? error.message : "No se pudo deshabilitar la cita.");
     }
   }
   async function handleConfirmInstalacion() {
@@ -1738,14 +1740,14 @@ export default function Inicio() {
                                 </div>
                               )}
 
-                              {it.tiene_hoja ? (
+                              {Number(it.tiene_cotizacion) === 1 ? (
                                 <div className="text-sm flex items-center gap-1">
                                   •<File className="h-4 w-4 text-green-500" />
                                   <span
                                     className="text-green-500 font-bold hover:underline cursor-pointer"
                                     onClick={() => {
                                       setOpenCotizacion(true);
-                                      setIdCotizacion(parseInt(it.idhoja));
+                                      setIdCotizacion(parseInt(it.idcotizacion || it.idhoja));
                                       setModoCotizacion("editar");
                                       setIdCitaSeleccionada(it.idcita);
                                       setCategoriaCotizacion(
