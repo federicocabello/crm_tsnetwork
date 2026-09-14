@@ -189,7 +189,7 @@ export default function Cliente() {
       await cargarInicioCliente();
     } catch (error) {
       console.error("Error deshabilitando la cita:", error);
-      alert("No se pudo deshabilitar la cita.");
+      alert(error instanceof Error ? error.message : "No se pudo deshabilitar la cita.");
     }
   };
 
