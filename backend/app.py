@@ -17,6 +17,7 @@ from tareas_programadas import asegurar_tabla as asegurar_tabla_tareas_programad
 from tareas_programadas import normalizar_rango as normalizar_rango_tareas
 from tareas_programadas import obtener_ocurrencias as obtener_ocurrencias_tareas
 from tareas_programadas_routes import registrar_rutas as registrar_rutas_tareas_programadas
+from facturacion_routes import registrar_rutas as registrar_rutas_facturacion
 
 load_dotenv()
 
@@ -49,6 +50,7 @@ jwt = JWTManager(app)
 
 mysql = MySQL(app)
 registrar_rutas_tareas_programadas(app, mysql)
+registrar_rutas_facturacion(app, mysql)
 
 def table_has_column(table_name, column_name):
     cursor = mysql.connection.cursor()
@@ -1365,92 +1367,7 @@ def guardar_version_cotizacion(cursor, id_hoja, creado_por=None, comentario=None
     )
     return version
 
-@app.get("/api/cotizacion/<int:idCotizacion>")
-def get_cotizacion(idCotizacion):
-    cursor = mysql.connection.cursor()
 
-    # 🔹 Productos
-    cursor.execute(
-        """
-        SELECT 
-            hp.producto,
-            p.descrip,
-            hp.cantidad,
-            hp.precio_final
-        FROM hojas_productos hp
-        JOIN productos p ON hp.producto = p.id
-        WHERE hp.hoja = %s
-        """,
-        (idCotizacion,)
-    )
-
-    query_productos = cursor.fetchall()
-
-    productos = [
-        {
-            "id": hoja["producto"],
-            "cantidad": float(hoja["cantidad"]),
-            "precioFinal": float(hoja["precio_final"]),
-            "descrip": hoja["descrip"],
-        }
-        for hoja in query_productos
-    ]
-
-    # 🔹 Total
-    cursor.execute(
-        """
-        SELECT SUM(precio_final) as total
-        FROM hojas_productos
-        WHERE hoja = %s
-        """,
-        (idCotizacion,)
-    )
-
-    total = cursor.fetchone()["total"] or 0
-
-    cursor.execute(
-        """
-        SELECT
-            h.firma_instalacion,
-            h.firma_foto_instalacion,
-            h.notas,
-            COALESCE(h.descuento, 0) AS descuento,
-            c.tipo AS cita_tipo,
-            DATE_FORMAT(c.dia, '%%Y-%%m-%%d') AS cita_fecha,
-            c.telefono,
-            c.domicilio,
-            clientes.nombre AS cliente_nombre,
-            clientes.email AS cliente_email
-        FROM hojas h
-        JOIN citas c ON c.id = h.cita
-        JOIN clientes ON clientes.id = c.cliente
-        WHERE h.id = %s
-        """,
-        (idCotizacion,),
-    )
-    hoja_info = cursor.fetchone()
-    firma_instalacion = hoja_info["firma_instalacion"] if hoja_info else None
-    firma_foto_instalacion = hoja_info["firma_foto_instalacion"] if hoja_info else None
-    notas = hoja_info["notas"] if hoja_info else None
-
-    cursor.close()
-
-    return jsonify({
-        "productos": productos,
-        "total": float(total),
-        "firma_instalacion": firma_instalacion,
-        "firma_foto_instalacion": firma_foto_instalacion,
-        "notas": notas,
-        "descuento": float(hoja_info.get("descuento") or 0) if hoja_info else 0,
-        "cita_tipo": hoja_info.get("cita_tipo") if hoja_info else None,
-        "cliente": {
-            "nombre": hoja_info.get("cliente_nombre") if hoja_info else "",
-            "telefono": hoja_info.get("telefono") if hoja_info else "",
-            "direccion": hoja_info.get("domicilio") if hoja_info else "",
-        },
-        "cita_fecha": hoja_info.get("cita_fecha") if hoja_info else None,
-    }), 200
-    
 @app.get("/api/cotizaciones/<int:id_hoja>/historial")
 @jwt_required()
 def historial_cotizacion(id_hoja):
@@ -3608,5 +3525,9 @@ def servir_frontend(path):
     return response
 
 if __name__ == "__main__":
-    app.run(debug=True, port=int(os.getenv("FLASK_PORT", "5000")))
+    app.run(
+        debug=True,
+        host=os.getenv("FLASK_HOST", "0.0.0.0"),
+        port=int(os.getenv("FLASK_PORT", "5000")),
+    )
 

@@ -42,7 +42,7 @@ export default function Cotizador({
   bloqueada = false,
   categoriaServicio,
 }: Props) {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
 
   const [data, setData] = useState<Producto[]>([]);
   const [rows, setRows] = useState<Record<number, RowData>>(() => cotizacionInicial && "productos" in cotizacionInicial ? cotizacionInicial.productos : cotizacionInicial ?? {});

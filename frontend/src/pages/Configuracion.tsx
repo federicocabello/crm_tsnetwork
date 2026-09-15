@@ -9,7 +9,7 @@ import UsuarioArchivos from "../components/UsuarioArchivos";
 import type { EstadoCita } from "../types/configuracion";
 
 export default function Users() {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const [users, setUsers] = useState<Usuarios[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [citasEstados, setCitasEstados] = useState<EstadoCita[]>([]);

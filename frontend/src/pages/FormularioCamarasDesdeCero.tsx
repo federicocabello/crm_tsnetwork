@@ -21,7 +21,7 @@ type EstadoCita = {
 export default function FormularioCamarasDesdeCero({ tipoRegistro = "camaras" }: FormularioCamarasDesdeCeroProps) {
   const esInternet = tipoRegistro === "internet";
   const [estadoInternet, setEstadoInternet] = useState("");
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const { user } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
   const guardadoEnCurso = useRef(false);

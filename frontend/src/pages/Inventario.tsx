@@ -15,7 +15,7 @@ type FiltroCategoria = "todos" | "internet" | "camaras" | "ambos";
 type FiltroStock = "todos" | "bajo";
 
 export default function Inventario() {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const { user } = useAuth();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);

@@ -12,7 +12,7 @@ type Detalle = {
 };
 
 export default function EditarDetalles({ idCita, onClose }: Props) {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
 
   const preguntasPorTipo: Record<string, string[]> = {
     camarasdesdecero: ["lugar", "audio", "monitor", "area", "atico", "estructura"],

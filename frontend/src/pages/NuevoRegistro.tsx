@@ -16,7 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 
 export default function NuevoRegistro() {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const [loading, setLoading] = useState<boolean>(true);
   const { user } = useAuth();
   const [selectedOption, setSelectedOption] = useState<"camaras" | "internet">("camaras");

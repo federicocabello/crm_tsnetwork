@@ -76,7 +76,7 @@ export default function Sidebar() {
   const { user } = useAuth();
   const role: Role = user?.rol ?? "invitado";
   const items = NAV.filter((i) => i.roles.includes(role));
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const [cantidadStockBajo, setCantidadStockBajo] = useState(0);
 
   useEffect(() => {

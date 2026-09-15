@@ -71,7 +71,7 @@ type ClienteResultado = {
 };
 
 export default function Pagos() {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
