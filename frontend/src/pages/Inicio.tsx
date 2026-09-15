@@ -259,7 +259,7 @@ function NotaCompacta({ nota }: { nota: string }) {
 
 export default function Inicio() {
   const { user } = useAuth();
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const navigate = useNavigate();
   const location = useLocation();
 

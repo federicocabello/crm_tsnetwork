@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { agendaDayClassName, dateKeyToDate, formatDateKey, isSelectableAgendaDate, isSundayKey } from "../utils/agendaFechas";
 
 export default function FormularioCamarasTieneClienteNuevo() {
-    const API_URL = import.meta.env.VITE_API_BASE_URL;
+    const API_URL = import.meta.env.VITE_API_BASE_URL || "";
     const { user } = useAuth();
     const [loading, setLoading] = useState<boolean>(false);
     const guardadoEnCurso = useRef(false);

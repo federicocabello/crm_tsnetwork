@@ -18,6 +18,13 @@ import {
   Pencil,
   FileDown,
   ChevronLeft,
+  CircleDollarSign,
+  ReceiptText,
+  CheckCircle,
+  RefreshCw,
+  Play,
+  Pause,
+  X,
 } from "lucide-react";
 import { darkenColor } from "../utils/colores";
 import DatePicker from "react-datepicker";
@@ -57,11 +64,57 @@ type Cliente = {
   email: string;
 };
 
+type FacturaCliente = {
+  id: number;
+  numero_factura: string;
+  cliente_id: number;
+  cita_id: number | null;
+  fecha_emision: string;
+  total: number;
+  enganche: number;
+  origen: "manual" | "recurrente";
+  concepto: string | null;
+  saldo: number;
+  pagado: number;
+  estado: "pendiente" | "vencida" | "pagada";
+  vencimiento: string;
+  fecha_pago: string | null;
+  metodo_nombre?: string | null;
+};
+
+type RecurrenteCliente = {
+  id: number;
+  cliente_id: number;
+  cita_id: number | null;
+  concepto: string;
+  monto: number;
+  dia_vencimiento: number;
+  frecuencia_meses: number;
+  fecha_inicio: string;
+  fecha_fin: string | null;
+  proxima_generacion: string;
+  metodo_id: number | null;
+  metodo_nombre: string | null;
+  activa: number;
+  facturas_generadas: number;
+  ultimo_periodo: string | null;
+};
+
+type ResumenFacturacion = {
+  total_facturas: number;
+  total_facturado: number;
+  total_saldo: number;
+  total_pagado: number;
+  pendientes: number;
+  vencidas: number;
+  pagadas: number;
+};
+
 export default function Cliente() {
   const { idCliente } = useParams<{ idCliente: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<Usuarios[]>([]);
   const [estados, setEstados] = useState<{ id: string, estado: string, color?: string }[]>([]);
@@ -91,6 +144,18 @@ export default function Cliente() {
   const [metodoEnganchePlan, setMetodoEnganchePlan] = useState("");
   const [idMetodoEnganchePlan, setIdMetodoEnganchePlan] = useState<number>(0);
 
+  // Estados de Facturación y Cobros Recurrentes
+  const [facturas, setFacturas] = useState<FacturaCliente[]>([]);
+  const [recurrentes, setRecurrentes] = useState<RecurrenteCliente[]>([]);
+  const [resumenFacturacion, setResumenFacturacion] = useState<ResumenFacturacion | null>(null);
+  const [metodosPago, setMetodosPago] = useState<{ id: number; metodo: string }[]>([]);
+  const [pestanaCliente, setPestanaCliente] = useState<"citas" | "facturas">("citas");
+  const [modalPagoFactura, setModalPagoFactura] = useState<FacturaCliente | null>(null);
+  const [metodoSeleccionadoModal, setMetodoSeleccionadoModal] = useState<number>(1);
+  const [fechaPagoModal, setFechaPagoModal] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [notaPagoModal, setNotaPagoModal] = useState<string>("");
+  const [guardandoPagoFactura, setGuardandoPagoFactura] = useState(false);
+
   const esInternet = (tipo: string) => (tipo || "").toLowerCase().includes("internet");
   const esCamaras = (tipo: string) => {
     const value = (tipo || "").toLowerCase();
@@ -100,6 +165,96 @@ export default function Cliente() {
   const esInstalacion = (tipo: string) => {
     const value = (tipo || "").toLowerCase();
     return value.includes("instalacion") || value.includes("instalación") || value.includes("desdecero");
+  };
+
+  const cargarFacturacionCliente = async () => {
+    try {
+      const [resFacturacion, resMetodos] = await Promise.all([
+        fetch(`${API_URL}/api/facturacion/clientes/${idCliente}`),
+        fetch(`${API_URL}/api/pagos/metodos`),
+      ]);
+      if (resFacturacion.ok) {
+        const data = await resFacturacion.json();
+        setFacturas(data.facturas || []);
+        setRecurrentes(data.recurrentes || []);
+        setResumenFacturacion(data.resumen || null);
+      }
+      if (resMetodos.ok) {
+        const metodos = await resMetodos.json();
+        setMetodosPago(metodos || []);
+        if (metodos && metodos.length > 0) {
+          setMetodoSeleccionadoModal(Number(metodos[0].id));
+        }
+      }
+    } catch (err) {
+      console.error("Error al cargar facturacion del cliente:", err);
+    }
+  };
+
+  const togglePagoFactura = async (factura: FacturaCliente) => {
+    if (Number(factura.pagado) === 0) {
+      setModalPagoFactura(factura);
+      setFechaPagoModal(new Date().toISOString().slice(0, 10));
+      setNotaPagoModal("");
+    } else {
+      if (!window.confirm(`¿Deseas revertir la factura ${factura.numero_factura} a estado Pendiente?`)) return;
+      setGuardandoPagoFactura(true);
+      try {
+        await api(`/api/facturacion/facturas/${factura.id}/pagar`, {
+          method: "POST",
+          body: JSON.stringify({ pagado: false }),
+        });
+        await Promise.all([cargarInicioCliente(), cargarFacturacionCliente()]);
+      } catch (err) {
+        alert("Error al revertir estado de factura");
+      } finally {
+        setGuardandoPagoFactura(false);
+      }
+    }
+  };
+
+  const confirmarPagoModal = async () => {
+    if (!modalPagoFactura) return;
+    setGuardandoPagoFactura(true);
+    try {
+      await api(`/api/facturacion/facturas/${modalPagoFactura.id}/pagar`, {
+        method: "POST",
+        body: JSON.stringify({
+          pagado: true,
+          metodo_id: metodoSeleccionadoModal,
+          fecha_pago: fechaPagoModal,
+          nota: notaPagoModal,
+        }),
+      });
+      setModalPagoFactura(null);
+      await Promise.all([cargarInicioCliente(), cargarFacturacionCliente()]);
+    } catch (err) {
+      alert("Error al registrar pago");
+    } finally {
+      setGuardandoPagoFactura(false);
+    }
+  };
+
+  const descargarPdfFactura = (idPago: number, numeroFactura: string) => {
+    const a = document.createElement("a");
+    a.href = `${API_URL}/api/facturacion/facturas/${idPago}/pdf`;
+    a.download = `${numeroFactura}.pdf`;
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const toggleRecurrente = async (item: RecurrenteCliente) => {
+    try {
+      await api(`/api/facturacion/recurrentes/${item.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ activa: !Number(item.activa) }),
+      });
+      await cargarFacturacionCliente();
+    } catch (err) {
+      alert("Error al actualizar estado de recurrencia");
+    }
   };
 
   const setearCitaSeleccionada = async (cita: Cita) => {
@@ -165,6 +320,7 @@ export default function Cliente() {
       setEstados(data.estados);
       setDeudaTotal(data.deuda_total ? data.deuda_total : 0);
 
+      await cargarFacturacionCliente();
     } catch (error) {
       alert("Error de conexión con el backend.");
       console.error("Error de conexión con el backend:", error);
@@ -440,141 +596,362 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
             </div>
           </div>
 
-          {/* Vista cuando no hay cita seleccionada (Lista de citas) */}
+          {/* Navegación de Pestañas cuando no hay cita seleccionada */}
+          {citaSeleccionada === 0 && (
+            <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
+              <button
+                type="button"
+                onClick={() => setPestanaCliente("citas")}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition cursor-pointer ${
+                  pestanaCliente === "citas"
+                    ? "bg-orange-600 text-white shadow-lg shadow-orange-950/40"
+                    : "text-white/60 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <CalendarFold className="h-4 w-4" />
+                <span>Citas y Servicios</span>
+                <span className="rounded-full bg-black/30 px-2 py-0.5 text-xs font-black">
+                  {citas.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPestanaCliente("facturas")}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition cursor-pointer ${
+                  pestanaCliente === "facturas"
+                    ? "bg-orange-600 text-white shadow-lg shadow-orange-950/40"
+                    : "text-white/60 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <ReceiptText className="h-4 w-4" />
+                <span>Facturación y Recurrentes</span>
+                <span className="rounded-full bg-black/30 px-2 py-0.5 text-xs font-black">
+                  {facturas.length}
+                </span>
+                {resumenFacturacion && resumenFacturacion.pendientes + resumenFacturacion.vencidas > 0 && (
+                  <span className="rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 text-[10px] font-black">
+                    {resumenFacturacion.pendientes + resumenFacturacion.vencidas} pendientes
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Vista cuando no hay cita seleccionada */}
           {citaSeleccionada === 0 ? (
-            <div className="space-y-3">
-              {citas.length === 0 ? (
-                <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-8 text-center text-white/50 font-medium">
-                  Este cliente no tiene citas registradas.
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {citas.map((cita) => (
-                    <div
-                      key={cita.idcita}
-                      className={`bg-zinc-900/90 border rounded-2xl p-4 shadow-md transition-all ${
-                        Number(cita.eliminado) === 1
-                          ? "cursor-not-allowed opacity-60 grayscale border-zinc-600/40"
-                          : "cursor-pointer hover:scale-[1.005]"
-                      } ${
-                        cita.idcita === citaSeleccionada
-                          ? "border-orange-500 shadow-orange-500/10 bg-zinc-900"
-                          : "border-white/10 hover:border-orange-500/50 hover:shadow-lg"
-                      }`}
-                      onClick={() => Number(cita.eliminado) !== 1 && setearCitaSeleccionada(cita)}
-                    >
-                      <div className="flex min-w-0 flex-col gap-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-white font-bold">
-                          {Number(cita.eliminado) === 1 ? (
-                            <div className="rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-xs font-black text-red-300">
-                              CITA ELIMINADA
+            pestanaCliente === "citas" ? (
+              <div className="space-y-3">
+                {citas.length === 0 ? (
+                  <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-8 text-center text-white/50 font-medium">
+                    Este cliente no tiene citas registradas.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {citas.map((cita) => (
+                      <div
+                        key={cita.idcita}
+                        className={`bg-zinc-900/90 border rounded-2xl p-4 shadow-md transition-all ${
+                          Number(cita.eliminado) === 1
+                            ? "cursor-not-allowed opacity-60 grayscale border-zinc-600/40"
+                            : "cursor-pointer hover:scale-[1.005]"
+                        } ${
+                          cita.idcita === citaSeleccionada
+                            ? "border-orange-500 shadow-orange-500/10 bg-zinc-900"
+                            : "border-white/10 hover:border-orange-500/50 hover:shadow-lg"
+                        }`}
+                        onClick={() => Number(cita.eliminado) !== 1 && setearCitaSeleccionada(cita)}
+                      >
+                        <div className="flex min-w-0 flex-col gap-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-white font-bold">
+                            {Number(cita.eliminado) === 1 ? (
+                              <div className="rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-xs font-black text-red-300">
+                                CITA ELIMINADA
+                              </div>
+                            ) : user?.rol === "superadmin" ? (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void eliminarCita(cita.idcita);
+                                }}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20 cursor-pointer"
+                                title="Deshabilitar cita"
+                                aria-label="Deshabilitar cita"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            ) : null}
+
+                            <div className="flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-200">
+                              <CalendarFold className="h-3.5 w-3.5" />
+                              <span>{cita.dia}</span>
                             </div>
-                          ) : user?.rol === "superadmin" ? (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                void eliminarCita(cita.idcita);
+                            <div className="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-200">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>{cita.hora}</span>
+                            </div>
+
+                            {esInternet(cita.tipo) && (
+                              <div className="rounded-full text-xs font-bold py-1 px-3 border border-orange-500/40 bg-orange-500/20 text-orange-200 flex items-center gap-1.5">
+                                <Globe className="h-3.5 w-3.5" />
+                                <span>INTERNET</span>
+                              </div>
+                            )}
+
+                            {esCamaras(cita.tipo) && (
+                              <div className="rounded-full text-xs font-bold py-1 px-3 border border-blue-500/40 bg-blue-500/20 text-blue-200 flex items-center gap-1.5">
+                                <Cctv className="h-3.5 w-3.5" />
+                                <span>CAMARAS</span>
+                              </div>
+                            )}
+
+                            {esInstalacion(cita.tipo) && (
+                              <div className="rounded-full text-xs font-bold py-1 px-3 border border-indigo-500/40 bg-indigo-500/20 text-indigo-200 flex items-center gap-1.5">
+                                <Drill className="h-3.5 w-3.5" />
+                                <span>INSTALACION</span>
+                              </div>
+                            )}
+
+                            {esSoporte(cita.tipo) && (
+                              <div className="rounded-full text-xs font-bold py-1 px-3 border border-emerald-500/40 bg-emerald-500/20 text-emerald-200 flex items-center gap-1.5">
+                                <Wrench className="h-3.5 w-3.5" />
+                                <span>SOPORTE</span>
+                              </div>
+                            )}
+                            <div
+                              className="rounded-full text-xs font-bold py-1 px-3 text-center border shadow-xs"
+                              style={{
+                                backgroundColor: cita.color,
+                                borderColor: darkenColor(cita.color, 0.4),
                               }}
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20 cursor-pointer"
-                              title="Deshabilitar cita"
-                              aria-label="Deshabilitar cita"
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          ) : null}
-
-                          <div className="flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-200">
-                            <CalendarFold className="h-3.5 w-3.5" />
-                            <span>{cita.dia}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-200">
-                            <Clock className="h-3.5 w-3.5" />
-                            <span>{cita.hora}</span>
-                          </div>
-
-                          {esInternet(cita.tipo) && (
-                            <div className="rounded-full text-xs font-bold py-1 px-3 border border-orange-500/40 bg-orange-500/20 text-orange-200 flex items-center gap-1.5">
-                              <Globe className="h-3.5 w-3.5" />
-                              <span>INTERNET</span>
+                              {cita.estado}
                             </div>
-                          )}
 
-                          {esCamaras(cita.tipo) && (
-                            <div className="rounded-full text-xs font-bold py-1 px-3 border border-blue-500/40 bg-blue-500/20 text-blue-200 flex items-center gap-1.5">
-                              <Cctv className="h-3.5 w-3.5" />
-                              <span>CAMARAS</span>
-                            </div>
-                          )}
-
-                          {esInstalacion(cita.tipo) && (
-                            <div className="rounded-full text-xs font-bold py-1 px-3 border border-indigo-500/40 bg-indigo-500/20 text-indigo-200 flex items-center gap-1.5">
-                              <Drill className="h-3.5 w-3.5" />
-                              <span>INSTALACION</span>
-                            </div>
-                          )}
-
-                          {esSoporte(cita.tipo) && (
-                            <div className="rounded-full text-xs font-bold py-1 px-3 border border-emerald-500/40 bg-emerald-500/20 text-emerald-200 flex items-center gap-1.5">
-                              <Wrench className="h-3.5 w-3.5" />
-                              <span>SOPORTE</span>
-                            </div>
-                          )}
-                          <div
-                            className="rounded-full text-xs font-bold py-1 px-3 text-center border shadow-xs"
-                            style={{
-                              backgroundColor: cita.color,
-                              borderColor: darkenColor(cita.color, 0.4),
-                            }}
-                          >
-                            {cita.estado}
+                            {Number(cita.deuda_cita || 0) > 0 && (
+                              <div className="rounded-full border border-amber-500/30 bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-200">
+                                Debe <FormatearNumero numero={Number(cita.deuda_cita || 0)} />
+                              </div>
+                            )}
+                            {Number(cita.pagado_cita || 0) > 0 && (
+                              <div className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-200">
+                                PAGADO <FormatearNumero numero={Number(cita.pagado_cita || 0)} />
+                              </div>
+                            )}
+                            {(cita.tipo == "camaras-tiene-nuevo-instalacion" ||
+                              cita.tipo == "camaras-tiene-existente-instalacion") && (
+                              <div className="text-xs text-amber-400 font-bold italic flex items-center gap-1">
+                                <TriangleAlert className="h-3.5 w-3.5" />
+                                <span>Ya tiene cámaras instaladas</span>
+                              </div>
+                            )}
                           </div>
 
-                          {Number(cita.deuda_cita || 0) > 0 && (
-                            <div className="rounded-full border border-amber-500/30 bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-200">
-                              Debe <FormatearNumero numero={Number(cita.deuda_cita || 0)} />
+                          {cita.domicilio.trim() && (
+                            <div className="min-w-0 text-white/90 text-sm flex gap-2 items-start font-semibold">
+                              <House className="h-4 w-4 shrink-0 text-orange-400 mt-0.5" />
+                              <span className="min-w-0 flex-1 break-words leading-snug">{cita.domicilio}</span>
                             </div>
                           )}
-                          {Number(cita.pagado_cita || 0) > 0 && (
-                            <div className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-200">
-                              PAGADO <FormatearNumero numero={Number(cita.pagado_cita || 0)} />
-                            </div>
-                          )}
-                          {(cita.tipo == "camaras-tiene-nuevo-instalacion" ||
-                            cita.tipo == "camaras-tiene-existente-instalacion") && (
-                            <div className="text-xs text-amber-400 font-bold italic flex items-center gap-1">
-                              <TriangleAlert className="h-3.5 w-3.5" />
-                              <span>Ya tiene cámaras instaladas</span>
-                            </div>
-                          )}
-                        </div>
 
-                        {cita.domicilio.trim() && (
-                          <div className="min-w-0 text-white/90 text-sm flex gap-2 items-start font-semibold">
-                            <House className="h-4 w-4 shrink-0 text-orange-400 mt-0.5" />
-                            <span className="min-w-0 flex-1 break-words leading-snug">{cita.domicilio}</span>
+                          {cita.notas.trim() && (
+                            <div className="min-w-0 text-white/60 text-xs bg-black/20 p-2.5 rounded-xl border border-white/5">
+                              <p className="line-clamp-2 break-words whitespace-pre-wrap">
+                                <strong className="text-white/80">Notas:</strong> {cita.notas}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-white/50">
+                            <span className="truncate italic">
+                              Asignado a <strong className="text-white/80">{cita.asignado}</strong>
+                            </span>
                           </div>
-                        )}
-
-                        {cita.notas.trim() && (
-                          <div className="min-w-0 text-white/60 text-xs bg-black/20 p-2.5 rounded-xl border border-white/5">
-                            <p className="line-clamp-2 break-words whitespace-pre-wrap">
-                              <strong className="text-white/80">Notas:</strong> {cita.notas}
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-white/50">
-                          <span className="truncate italic">
-                            Asignado a <strong className="text-white/80">{cita.asignado}</strong>
-                          </span>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Sección de Facturas y Cobros Recurrentes */
+              <div className="space-y-6">
+                {/* Cobros Recurrentes Configurados */}
+                {recurrentes.length > 0 && (
+                  <div className="rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-xl">
+                    <div className="flex items-center gap-2 pb-3 border-b border-white/10">
+                      <RefreshCw className="h-5 w-5 text-orange-400" />
+                      <h3 className="text-base font-bold text-white tracking-wide">Cobros Recurrentes Mensuales</h3>
                     </div>
-                  ))}
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {recurrentes.map((rec) => (
+                        <div
+                          key={rec.id}
+                          className={`rounded-xl border p-4 transition-all ${
+                            Number(rec.activa)
+                              ? "border-white/10 bg-zinc-950/40"
+                              : "border-white/5 bg-zinc-950/20 opacity-60"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="text-xs font-black uppercase text-white tracking-wide">{rec.concepto}</div>
+                              <div className="text-xl font-black text-orange-400 mt-1">
+                                <FormatearNumero numero={rec.monto} />
+                                <span className="text-xs font-normal text-white/40"> / mes</span>
+                              </div>
+                            </div>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase border ${
+                                Number(rec.activa)
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                                  : "border-white/10 bg-white/5 text-white/40"
+                              }`}
+                            >
+                              {Number(rec.activa) ? "Activo" : "Pausado"}
+                            </span>
+                          </div>
+                          <div className="mt-3 grid grid-cols-2 gap-1.5 text-xs text-white/50 border-t border-white/5 pt-2.5">
+                            <div>Vence día: <strong className="text-white/80">{rec.dia_vencimiento}</strong></div>
+                            <div>Generadas: <strong className="text-white/80">{rec.facturas_generadas}</strong></div>
+                            <div className="col-span-2">Próxima gen: <strong className="text-white/80">{rec.proxima_generacion}</strong></div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleRecurrente(rec)}
+                            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 py-1.5 text-xs font-bold text-white/70 hover:bg-white/5 hover:text-white transition cursor-pointer"
+                          >
+                            {Number(rec.activa) ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                            <span>{Number(rec.activa) ? "Pausar recurrencia" : "Reactivar recurrencia"}</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Listado de Facturas */}
+                <div className="rounded-2xl border border-white/10 bg-zinc-900 shadow-xl overflow-hidden">
+                  <div className="flex items-center justify-between p-4 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <ReceiptText className="h-5 w-5 text-orange-400" />
+                      <h3 className="text-base font-bold text-white tracking-wide">Facturas del Cliente</h3>
+                      <span className="text-xs text-white/40">({facturas.length})</span>
+                    </div>
+                  </div>
+
+                  {facturas.length === 0 ? (
+                    <div className="p-8 text-center text-white/40 text-sm">
+                      No hay facturas generadas para este cliente todavía.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-white/5">
+                      {facturas.map((fac) => (
+                        <div
+                          key={fac.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-white/[0.02] transition-colors"
+                        >
+                          <div className="space-y-1.5 min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono text-xs font-bold text-orange-300">
+                                {fac.numero_factura}
+                              </span>
+                              <span
+                                className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black uppercase ${
+                                  fac.origen === "recurrente"
+                                    ? "border-purple-500/30 bg-purple-500/10 text-purple-300"
+                                    : "border-white/10 bg-white/5 text-white/50"
+                                }`}
+                              >
+                                {fac.origen === "recurrente" ? "Recurrente" : "Manual"}
+                              </span>
+                              <span
+                                className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black uppercase ${
+                                  fac.estado === "pagada"
+                                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                                    : fac.estado === "vencida"
+                                    ? "border-red-500/30 bg-red-500/10 text-red-300"
+                                    : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                                }`}
+                              >
+                                {fac.estado}
+                              </span>
+                            </div>
+                            <div className="text-sm font-bold text-white/90">
+                              {fac.concepto || "Plan de pagos"}
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/45">
+                              <span>Emisión: <strong className="text-white/70">{fac.fecha_emision}</strong></span>
+                              <span>Vence: <strong className="text-white/70">{fac.vencimiento}</strong></span>
+                              {fac.fecha_pago && (
+                                <span className="text-emerald-400/90 font-semibold">
+                                  Pagado el: {fac.fecha_pago}
+                                </span>
+                              )}
+                              {fac.metodo_nombre && (
+                                <span>Método: <strong className="text-white/70">{fac.metodo_nombre}</strong></span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 shrink-0">
+                            <div className="text-right">
+                              <div className="text-base font-black text-white">
+                                <FormatearNumero numero={fac.total} />
+                              </div>
+                              {Number(fac.saldo) > 0 && (
+                                <div className="text-xs font-bold text-amber-400">
+                                  Saldo: <FormatearNumero numero={fac.saldo} />
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {/* Botón de Pago Rápido */}
+                              <button
+                                type="button"
+                                onClick={() => togglePagoFactura(fac)}
+                                disabled={guardandoPagoFactura}
+                                title={Number(fac.pagado) ? "Factura Pagada (Clic para revertir)" : "Marcar como pagada"}
+                                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-sm cursor-pointer active:scale-95 ${
+                                  Number(fac.pagado)
+                                    ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+                                    : "border border-emerald-500/50 bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-950/40"
+                                }`}
+                              >
+                                {Number(fac.pagado) ? (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                    <span>Pagada</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CircleDollarSign className="h-4 w-4" />
+                                    <span>Marcar Pagada</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* Botón Descargar PDF */}
+                              <button
+                                type="button"
+                                onClick={() => descargarPdfFactura(fac.id, fac.numero_factura)}
+                                title="Descargar PDF de la factura"
+                                className="flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-1.5 text-xs font-bold text-orange-300 hover:bg-orange-500/20 transition cursor-pointer"
+                              >
+                                <FileDown className="h-4 w-4" />
+                                <span className="hidden sm:inline">PDF</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )
           ) : (
             /* Vista de Columna Única cuando hay Cita Seleccionada */
             <div className="w-full space-y-5">
@@ -795,6 +1172,98 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                       </div>
                     </div>
                   ))}
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Registro / Confirmación de Pago de Factura */}
+          {modalPagoFactura && (
+            <div
+              className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm"
+              onMouseDown={() => setModalPagoFactura(null)}
+            >
+              <div
+                onMouseDown={(e) => e.stopPropagation()}
+                className="my-auto w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-2xl space-y-4"
+              >
+                <div className="flex items-start justify-between border-b border-white/10 pb-3">
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider text-orange-400">Registrar Pago</span>
+                    <h3 className="text-lg font-black text-white">{modalPagoFactura.numero_factura}</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setModalPagoFactura(null)}
+                    className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-zinc-950/60 p-3 text-sm space-y-1">
+                  <div className="text-xs text-white/50">Concepto: <strong className="text-white/80">{modalPagoFactura.concepto || "Plan de pagos"}</strong></div>
+                  <div className="text-xs text-white/50">Total a pagar: <strong className="text-emerald-400 font-bold"><FormatearNumero numero={modalPagoFactura.saldo || modalPagoFactura.total} /></strong></div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
+                      Método de pago
+                    </label>
+                    <select
+                      value={metodoSeleccionadoModal}
+                      onChange={(e) => setMetodoSeleccionadoModal(Number(e.target.value))}
+                      className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-all cursor-pointer"
+                    >
+                      {metodosPago.map((m) => (
+                        <option key={m.id} value={m.id} style={{ background: "#18181b", color: "#fafafa" }}>{m.metodo}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
+                      Fecha de pago
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaPagoModal}
+                      onChange={(e) => setFechaPagoModal(e.target.value)}
+                      className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
+                      Nota o Comprobante (opcional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Transferencia Zelle #1234"
+                      value={notaPagoModal}
+                      onChange={(e) => setNotaPagoModal(e.target.value)}
+                      className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-3 border-t border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setModalPagoFactura(null)}
+                    className="flex-1 rounded-xl border border-white/10 py-2.5 text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={guardandoPagoFactura}
+                    onClick={confirmarPagoModal}
+                    className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 text-xs font-black text-white transition shadow-lg shadow-emerald-950/40 cursor-pointer active:scale-95 disabled:opacity-50"
+                  >
+                    {guardandoPagoFactura ? "Guardando..." : "Confirmar Pago"}
+                  </button>
+                </div>
               </div>
             </div>
           )}

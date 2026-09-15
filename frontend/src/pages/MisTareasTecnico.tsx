@@ -66,7 +66,7 @@ async function copiarAlPortapapeles(texto: string) {
 }
 
 export default function MisTareasTecnico() {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const { user } = useAuth();
   const navigate = useNavigate();
   const [tareas, setTareas] = useState<Tarea[]>([]);

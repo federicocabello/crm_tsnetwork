@@ -9,7 +9,7 @@ type Props = {
 };
 
 const ConfiguracionCitas = ({ citasEstados, refreshData }: Props) => {
-    const API_URL = import.meta.env.VITE_API_BASE_URL;
+    const API_URL = import.meta.env.VITE_API_BASE_URL || "";
 
     const handleAddEstado = async () => {
     const estado = prompt("Nombre del estado:");

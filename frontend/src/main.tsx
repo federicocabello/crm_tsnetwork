@@ -18,7 +18,7 @@ import ProtectedRoute from "./auth/ProtectedRoute";
 import RoleRoute from "./auth/RoleRoute";
 import Layout from "./components/Layout";
 import Cliente from "./pages/Cliente";
-import Pagos from "./pages/Pagos";
+import Pagos from "./pages/PagosFacturacion";
 import Registros from "./pages/Registros";
 import MisTareasTecnico from "./pages/MisTareasTecnico";
 import TareasResumen from "./pages/TareasResumen";

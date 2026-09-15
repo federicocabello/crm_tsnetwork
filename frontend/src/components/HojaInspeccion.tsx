@@ -57,7 +57,7 @@ export default function HojaInspeccion({
   onClose,
   onSaved,
 }: HojaInspeccionProps) {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [productos, setProductos] = useState<Producto[]>([]);

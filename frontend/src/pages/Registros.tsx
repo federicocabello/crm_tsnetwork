@@ -112,7 +112,7 @@ function isOverdue(registro: RegistroTarea) {
 }
 
 export default function Registros() {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const { user } = useAuth();
   const navigate = useNavigate();
 

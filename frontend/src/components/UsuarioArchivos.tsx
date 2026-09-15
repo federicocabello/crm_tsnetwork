@@ -15,7 +15,7 @@ interface Archivo {
 }
 
 export default function UsuarioArchivos({ usuarioId, usuarioNombre, onClose }: UsuarioArchivosProps) {
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
   const [archivos, setArchivos] = useState<Archivo[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);

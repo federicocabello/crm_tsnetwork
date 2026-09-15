@@ -13,7 +13,7 @@ type Props = {
   color: string;
 };
 
-const API_URL = import.meta.env.VITE_API_BASE_URL;
+const API_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 export default function GaleriaCita({ idCita, color }: Props) {
   const [archivos, setArchivos] = useState<ArchivoCita[]>([]);
