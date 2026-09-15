@@ -1,3 +1,8 @@
 # Environment files
 /frontend/.env
 /backend/.env
+# Runtime files and local database migrations
+/backend/uploads/
+/backend/migrations/
+/frontend/uploads/
+/frontend/migrations/
