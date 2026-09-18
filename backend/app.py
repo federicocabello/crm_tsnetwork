@@ -1197,34 +1197,104 @@ def agenda_cambiar_asignado():
         cursor.close()
 
 
+def usuario_actual_es_superadmin(cursor):
+    claims = get_jwt()
+    identidad = get_jwt_identity()
+    usuario_claim = claims.get("user")
+
+    if isinstance(usuario_claim, dict):
+        usuario_id = usuario_claim.get("id")
+    elif isinstance(identidad, dict):
+        usuario_id = identidad.get("id")
+    else:
+        usuario_id = identidad
+
+    try:
+        usuario_id = int(usuario_id)
+    except (TypeError, ValueError):
+        return False
+
+    cursor.execute(
+        "SELECT rol FROM auth WHERE id = %s AND habilitado = 1",
+        (usuario_id,),
+    )
+    usuario = cursor.fetchone()
+    return bool(
+        usuario
+        and str(usuario.get("rol") or "").strip().lower() == "superadmin"
+    )
+
+
 @app.get("/api/productos")
+@jwt_required(optional=True)
 def get_productos():
     categoria = (request.args.get("categoria") or "todos").strip().lower()
     if categoria not in {"internet", "camaras", "todos"}:
         return jsonify({"error": "Categoria invalida"}), 400
 
     cursor = mysql.connection.cursor()
-    if categoria == "todos":
-        cursor.execute("SELECT * FROM productos")
-    else:
-        cursor.execute(
-            "SELECT * FROM productos WHERE LOWER(TRIM(categoria)) IN (%s, 'ambos')",
-            (categoria,),
-        )
+    es_superadmin = usuario_actual_es_superadmin(cursor)
+    condiciones = []
+    parametros = []
+
+    if categoria != "todos":
+        condiciones.append("LOWER(TRIM(categoria)) IN (%s, 'ambos')")
+        parametros.append(categoria)
+    if not es_superadmin:
+        condiciones.append("COALESCE(habilitado, 1) = 1")
+
+    consulta = "SELECT * FROM productos"
+    if condiciones:
+        consulta += " WHERE " + " AND ".join(condiciones)
+    consulta += " ORDER BY descrip"
+    cursor.execute(consulta, tuple(parametros))
     query_productos = cursor.fetchall()
     productos = [
-    {
-        "id": producto["id"],
-        "descrip": producto["descrip"],
-        "precio": float(producto["precio"]),
-        "stock": producto["stock"],
-        "categoria": (producto.get("categoria") or "ambos").strip().lower(),
-    }
-    for producto in query_productos
-]
+        {
+            "id": producto["id"],
+            "descrip": producto["descrip"],
+            "precio": float(producto["precio"]),
+            "stock": producto["stock"],
+            "categoria": (producto.get("categoria") or "ambos").strip().lower(),
+            "habilitado": bool(producto.get("habilitado", 1)),
+        }
+        for producto in query_productos
+    ]
 
     cursor.close()
     return jsonify(productos), 200
+
+
+@app.patch("/api/productos/<int:id_producto>/habilitado")
+@jwt_required()
+def cambiar_estado_producto(id_producto):
+    data = request.get_json(silent=True) or {}
+    habilitado = data.get("habilitado")
+    if not isinstance(habilitado, bool):
+        return jsonify({"error": "El estado habilitado debe ser booleano"}), 400
+
+    cursor = mysql.connection.cursor()
+    try:
+        if not usuario_actual_es_superadmin(cursor):
+            return jsonify({"error": "Solo un superadmin puede cambiar el estado de un producto"}), 403
+
+        cursor.execute(
+            "UPDATE productos SET habilitado = %s WHERE id = %s",
+            (1 if habilitado else 0, id_producto),
+        )
+        if cursor.rowcount == 0:
+            cursor.execute("SELECT id FROM productos WHERE id = %s", (id_producto,))
+            if not cursor.fetchone():
+                return jsonify({"error": "Producto no encontrado"}), 404
+
+        mysql.connection.commit()
+        estado = "habilitado" if habilitado else "deshabilitado"
+        return jsonify({"msg": f"Producto {estado} correctamente"}), 200
+    except Exception as error:
+        mysql.connection.rollback()
+        return jsonify({"error": str(error)}), 500
+    finally:
+        cursor.close()
 
 @app.put("/api/productos/<int:id_producto>")
 def actualizar_producto(id_producto):
