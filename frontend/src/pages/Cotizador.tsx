@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { FileDown, History, Trash2, X } from "lucide-react";
+import { Eye, EyeOff, FileDown, History, Trash2, X } from "lucide-react";
 import { api, getToken } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
 
 interface Producto {
   id: number;
@@ -8,6 +9,7 @@ interface Producto {
   precio: number;
   stock: number;
   categoria: "internet" | "camaras" | "ambos";
+  habilitado: boolean;
 }
 
 type CategoriaServicio = "internet" | "camaras";
@@ -43,12 +45,14 @@ export default function Cotizador({
   categoriaServicio,
 }: Props) {
   const API_URL = import.meta.env.VITE_API_BASE_URL || "";
+  const { user } = useAuth();
 
   const [data, setData] = useState<Producto[]>([]);
   const [rows, setRows] = useState<Record<number, RowData>>(() => cotizacionInicial && "productos" in cotizacionInicial ? cotizacionInicial.productos : cotizacionInicial ?? {});
   const [search, setSearch] = useState("");
 
   const [guardando, setGuardando] = useState(false);
+  const [actualizandoProducto, setActualizandoProducto] = useState<number | null>(null);
   const [descuento, setDescuento] = useState(() => cotizacionInicial && "productos" in cotizacionInicial ? Math.max(Number(cotizacionInicial.descuento) || 0, 0) : 0);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
@@ -92,6 +96,38 @@ export default function Cotizador({
         ...result,
       },
     }));
+  };
+
+  const cambiarEstadoProducto = async (producto: Producto) => {
+    if (user?.rol !== "superadmin" || actualizandoProducto !== null) return;
+
+    const nuevoEstado = !producto.habilitado;
+    setActualizandoProducto(producto.id);
+    try {
+      await api(`/api/productos/${producto.id}/habilitado`, {
+        method: "PATCH",
+        body: JSON.stringify({ habilitado: nuevoEstado }),
+      });
+      setData((actual) =>
+        actual.map((item) =>
+          item.id === producto.id ? { ...item, habilitado: nuevoEstado } : item
+        )
+      );
+      if (!nuevoEstado) {
+        setRows((actual) => {
+          const siguientes = { ...actual };
+          delete siguientes[producto.id];
+          return siguientes;
+        });
+      }
+    } catch (error) {
+      const mensaje = error instanceof Error
+        ? error.message
+        : "No se pudo cambiar el estado del producto.";
+      alert(mensaje);
+    } finally {
+      setActualizandoProducto(null);
+    }
   };
 
 async function sendCotizacion() {
@@ -143,14 +179,7 @@ async function sendCotizacion() {
 useEffect(() => {
   const fetchApi = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/productos`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      const datos = await response.json();
+      const datos = await api<Producto[]>("/api/productos");
       setData(datos);
     } catch {
       alert("Ocurrió un error");
@@ -423,10 +452,6 @@ useEffect(() => {
               </span>
             </div>
             </div>
-
-            <div className="hidden rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-white/60 sm:block">
-              Productos: {filteredData.length}
-            </div>
           </div>
 
           <div className="overflow-x-auto rounded-2xl border border-white/10">
@@ -459,10 +484,39 @@ useEffect(() => {
                     return (
                       <tr
                         key={item.id}
-                        className="transition hover:bg-white/0.03"
+                        className={`transition hover:bg-white/0.03 ${
+                          !item.habilitado ? "bg-red-950/15" : ""
+                        }`}
                       >
                         <td className="px-4 py-3 font-semibold text-white">
-                          {item.descrip}
+                          <div className="flex min-w-[240px] items-center justify-between gap-3">
+                            <div>
+                              <span className={!item.habilitado ? "text-white/45 line-through" : ""}>
+                                {item.descrip}
+                              </span>
+                              {!item.habilitado && (
+                                <span className="ml-2 rounded bg-red-500/15 px-2 py-0.5 text-[10px] font-bold uppercase text-red-300">
+                                  Deshabilitado
+                                </span>
+                              )}
+                            </div>
+                            {user?.rol === "superadmin" && (
+                              <button
+                                type="button"
+                                onClick={() => cambiarEstadoProducto(item)}
+                                disabled={actualizandoProducto !== null}
+                                className={`grid h-10 w-10 shrink-0 place-items-center rounded-md border-2 transition disabled:cursor-wait disabled:opacity-50 ${
+                                  item.habilitado
+                                    ? "border-red-500/60 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                                    : "border-green-500/60 bg-green-500/10 text-green-300 hover:bg-green-500/20"
+                                }`}
+                                title={item.habilitado ? "Deshabilitar producto" : "Habilitar producto"}
+                                aria-label={item.habilitado ? "Deshabilitar producto" : "Habilitar producto"}
+                              >
+                                {item.habilitado ? <EyeOff size={22} strokeWidth={2.5} /> : <Eye size={22} strokeWidth={2.5} />}
+                              </button>
+                            )}
+                          </div>
                         </td>
 
                         <td className="px-4 py-3 text-white/80">
@@ -486,12 +540,14 @@ useEffect(() => {
                             className="w-24 rounded-xl border border-white/10 bg-white px-3 py-2 text-center text-sm font-bold text-black outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                             type="number"
                             min={0}
-                            disabled={bloqueada || guardando}
+                            disabled={bloqueada || guardando || !item.habilitado}
                             value={row?.cantidad ?? ""}
                             title={
-                              bloqueada
-                                ? "No se puede modificar una instalacion confirmada"
-                                : undefined
+                              !item.habilitado
+                                ? "Producto deshabilitado"
+                                : bloqueada
+                                  ? "No se puede modificar una instalacion confirmada"
+                                  : undefined
                             }
                             onChange={(e) =>
                               handleChange(
