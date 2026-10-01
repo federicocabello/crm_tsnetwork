@@ -21,6 +21,7 @@ import {
   RotateCcw,
   Sparkles,
   Calendar,
+  Trash2,
 } from "lucide-react";
 
 import Loading from "../components/Loading";
@@ -53,7 +54,7 @@ type Movimiento = {
   interes?: number;
   saldo?: number;
   pagado?: number;
-  estado?: "pendiente" | "vencida" | "pagada";
+  estado?: "pendiente" | "vencida" | "pagada" | "cancelada";
   metodo_id?: number;
   metodo_nombre?: string | null;
   metodo_color?: string | null;
@@ -119,7 +120,7 @@ type FacturaDetalle = {
 };
 
 type Pestana = "facturas" | "pagos" | "recurrentes" | "resumen";
-type Estado = "todos" | "pendiente" | "vencida" | "pagada";
+type Estado = "todos" | "pendiente" | "vencida" | "pagada" | "cancelada";
 type Origen = "todos" | "manual" | "recurrente";
 
 const hoy = new Date();
@@ -165,6 +166,7 @@ function iniciales(nombre: string) {
 
 function estadoMovimiento(item: Movimiento) {
   if (Number(item.pagado) === 1) return "pagada";
+  if (Number(item.pagado) === 2) return "cancelada";
   return item.vencimiento < fechaInicial ? "vencida" : "pendiente";
 }
 
@@ -358,6 +360,29 @@ export default function PagosFacturacion() {
     } catch (error) {
       setAviso(
         error instanceof ApiError ? error.message : "Error al actualizar",
+      );
+    }
+  };
+
+  const eliminarRecurrente = async (item: Recurrente) => {
+    if (
+      !window.confirm(
+        `¿Estás seguro de eliminar permanentemente la regla de cobro recurrente "${item.concepto}" de ${item.cliente_nombre}? Las facturas históricas generadas no se borrarán.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await api(`/api/facturacion/recurrentes/${item.id}`, {
+        method: "DELETE",
+      });
+      setAviso("Cobro recurrente eliminado exitosamente");
+      await cargarRecurrentes();
+    } catch (error) {
+      setAviso(
+        error instanceof ApiError
+          ? error.message
+          : "Error al eliminar recurrente",
       );
     }
   };
@@ -640,6 +665,11 @@ export default function PagosFacturacion() {
                   style={{ background: "#18181b", color: "#fafafa" }}>
                   Pagada
                 </option>
+                <option
+                  value="cancelada"
+                  style={{ background: "#18181b", color: "#fafafa" }}>
+                  Cancelada
+                </option>
               </select>
               <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-2.5 text-white/40" />
             </div>
@@ -802,6 +832,7 @@ export default function PagosFacturacion() {
             query={queryAplicada}
             abrirModal={() => setModalRecurrente(true)}
             alternar={alternarRecurrencia}
+            eliminar={eliminarRecurrente}
             abrirDetalle={setDetalleId}
             descargarPdf={descargarPdf}
           />
@@ -1001,7 +1032,7 @@ function TablaMovimientos({
 
               {/* Acciones */}
               <div className="flex items-center justify-end gap-2 pt-0.5">
-                {itemEstado !== "pagada" && (
+                {itemEstado !== "pagada" && itemEstado !== "cancelada" && (
                   <button
                     onClick={() => abrirPagoRapido(item)}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all active:scale-95 hover:brightness-110"
@@ -1197,7 +1228,7 @@ function TablaMovimientos({
                   {/* Acciones */}
                   <td className="px-4 lg:px-5 py-4">
                     <div className="flex items-center gap-1.5 justify-end">
-                      {itemEstado !== "pagada" && (
+                      {itemEstado !== "pagada" && itemEstado !== "cancelada" && (
                         <button
                           onClick={() => abrirPagoRapido(item)}
                           className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-black cursor-pointer transition-all active:scale-95 hover:brightness-110"
@@ -1313,6 +1344,11 @@ function EstadoBadge({ estado }: { estado: string }) {
       color: "#fbbf24",
       dot: "#f59e0b",
     },
+    cancelada: {
+      bg: "rgba(113,113,122,0.18)",
+      color: "#a1a1aa",
+      dot: "#71717a",
+    },
   };
   const s = mapa[estado] ?? mapa.pendiente;
   return (
@@ -1338,6 +1374,7 @@ function TabRecurrentes({
   query,
   abrirModal,
   alternar,
+  eliminar,
   abrirDetalle,
   descargarPdf,
 }: {
@@ -1346,6 +1383,7 @@ function TabRecurrentes({
   query: string;
   abrirModal: () => void;
   alternar: (item: Recurrente) => void;
+  eliminar: (item: Recurrente) => void;
   abrirDetalle: (id: number) => void;
   descargarPdf: (id: number, num: string) => void;
 }) {
@@ -1523,6 +1561,16 @@ function TabRecurrentes({
                   </>
                 )}
               </button>
+
+              {Number(item.activa) === 0 && (
+                <button
+                  onClick={() => eliminar(item)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all hover:bg-red-500/20 active:scale-95 text-red-400 border border-red-500/30 bg-red-500/10"
+                  title="Eliminar suscripción pausada">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Eliminar</span>
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -1741,6 +1789,17 @@ function TabRecurrentes({
                       )}
                       {Number(item.activa) ? "Pausar" : "Reactivar"}
                     </button>
+
+                    {/* Eliminar (solo si está pausado) */}
+                    {Number(item.activa) === 0 && (
+                      <button
+                        onClick={() => eliminar(item)}
+                        className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-bold cursor-pointer transition-all hover:bg-red-500/20 active:scale-95 text-red-400 border border-red-500/30 bg-red-500/10"
+                        title="Eliminar suscripción recurrente">
+                        <Trash2 className="h-3 w-3" />
+                        <span>Eliminar</span>
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -1978,6 +2037,12 @@ function DrawerDetalle({
     detalle.cuotas.every((c) => Number(c.pagado) === 1),
   );
 
+  const estaCancelada = Boolean(
+    detalle &&
+    detalle.cuotas.length > 0 &&
+    detalle.cuotas.every((c) => Number(c.pagado) === 2),
+  );
+
   const toggleFactura = async (pagar: boolean) => {
     if (!detalle) return;
     setGuardando(true);
@@ -2211,7 +2276,17 @@ function DrawerDetalle({
                 </div>
               </div>
 
-              {!todoPagado ? (
+              {estaCancelada ? (
+                <div
+                  className="flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold"
+                  style={{
+                    background: "rgba(113,113,122,0.14)",
+                    border: "1px solid rgba(113,113,122,0.25)",
+                    color: "#a1a1aa",
+                  }}>
+                  <AlertCircle className="h-4 w-4" /> Factura Cancelada por Falta de Pago
+                </div>
+              ) : !todoPagado ? (
                 <button
                   disabled={guardando}
                   onClick={() => toggleFactura(true)}
@@ -2259,45 +2334,73 @@ function DrawerDetalle({
                 Cuotas ({detalle.cuotas.length})
               </div>
               <div className="space-y-2">
-                {detalle.cuotas.map((c) => (
-                  <div
-                    key={c.id}
-                    className="rounded-xl p-3 sm:p-4 space-y-2"
-                    style={{
-                      background: "rgba(255,255,255,0.025)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                    }}>
-                    <div className="flex items-center justify-between gap-2">
-                      <EstadoBadge
-                        estado={Number(c.pagado) ? "pagada" : "pendiente"}
-                      />
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-sm text-white">
-                          {dinero(c.monto)}
-                        </span>
-                        <button
-                          disabled={guardando}
-                          onClick={() =>
-                            toggleCuota(c.id, Number(c.pagado) === 0)
-                          }
-                          className="px-2.5 py-1 rounded-md text-[10px] font-black cursor-pointer disabled:opacity-50 hover:brightness-110 active:scale-95"
-                          style={
-                            Number(c.pagado)
-                              ? {
-                                  background: "rgba(16,185,129,0.1)",
-                                  color: "#34d399",
-                                  border: "1px solid rgba(16,185,129,0.2)",
-                                }
-                              : {
-                                  background: "rgba(249,115,22,0.1)",
-                                  color: "#fb923c",
-                                  border: "1px solid rgba(249,115,22,0.2)",
-                                }
-                          }>
-                          {Number(c.pagado) ? "Revertir" : "Cobrar"}
-                        </button>
+                {detalle.cuotas.map((c) => {
+                  const cuotaEstado =
+                    Number(c.pagado) === 1
+                      ? "pagada"
+                      : Number(c.pagado) === 2
+                        ? "cancelada"
+                        : "pendiente";
+                  return (
+                    <div
+                      key={c.id}
+                      className="rounded-xl p-3 sm:p-4 space-y-2"
+                      style={{
+                        background:
+                          Number(c.pagado) === 2
+                            ? "rgba(113,113,122,0.05)"
+                            : "rgba(255,255,255,0.025)",
+                        border:
+                          Number(c.pagado) === 2
+                            ? "1px solid rgba(113,113,122,0.15)"
+                            : "1px solid rgba(255,255,255,0.06)",
+                      }}>
+                      <div className="flex items-center justify-between gap-2">
+                        <EstadoBadge estado={cuotaEstado} />
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`font-black text-sm ${
+                              Number(c.pagado) === 2
+                                ? "text-zinc-500 line-through"
+                                : "text-white"
+                            }`}>
+                            {dinero(c.monto)}
+                          </span>
+                          {Number(c.pagado) === 2 ? (
+                            <span
+                              className="px-2 py-0.5 rounded text-[10px] font-bold"
+                              style={{
+                                background: "rgba(113,113,122,0.15)",
+                                color: "#a1a1aa",
+                                border: "1px solid rgba(113,113,122,0.25)",
+                              }}>
+                              Cancelada
+                            </span>
+                          ) : (
+                            <button
+                              disabled={guardando}
+                              onClick={() =>
+                                toggleCuota(c.id, Number(c.pagado) === 0)
+                              }
+                              className="px-2.5 py-1 rounded-md text-[10px] font-black cursor-pointer disabled:opacity-50 hover:brightness-110 active:scale-95"
+                              style={
+                                Number(c.pagado)
+                                  ? {
+                                      background: "rgba(16,185,129,0.1)",
+                                      color: "#34d399",
+                                      border: "1px solid rgba(16,185,129,0.2)",
+                                    }
+                                  : {
+                                      background: "rgba(249,115,22,0.1)",
+                                      color: "#fb923c",
+                                      border: "1px solid rgba(249,115,22,0.2)",
+                                    }
+                              }>
+                              {Number(c.pagado) ? "Revertir" : "Cobrar"}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
                     <div
                       className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] pt-1"
                       style={{ color: "rgba(255,255,255,0.38)" }}>
@@ -2332,7 +2435,8 @@ function DrawerDetalle({
                       </div>
                     )}
                   </div>
-                ))}
+                );
+              })}
               </div>
             </div>
 

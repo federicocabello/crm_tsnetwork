@@ -2555,6 +2555,69 @@ def actualizar_email_cliente(id_cliente):
     finally:
         cursor.close()
 
+@app.post("/api/clientes/<int:id_cliente>/desinstalacion-falta-pago")
+def desinstalacion_falta_pago_cliente(id_cliente):
+    cursor = mysql.connection.cursor()
+    try:
+        cursor.execute("SELECT id, nombre FROM clientes WHERE id = %s", (id_cliente,))
+        cliente = cursor.fetchone()
+        if not cliente:
+            return jsonify({"error": "Cliente no encontrado"}), 404
+
+        # 1. Actualizar estado de las citas activas/no eliminadas del cliente a DESINTALACIÓN A PROGRAMAR (id 10)
+        cursor.execute("SELECT id FROM citas_estados WHERE estado LIKE %s OR id = 10 ORDER BY (id = 10) DESC LIMIT 1", ("%DESINTALACI%A PROGRAMAR%",))
+        estado_desinst = cursor.fetchone()
+        id_estado_desinst = estado_desinst["id"] if estado_desinst else 10
+
+        cursor.execute("""
+            UPDATE citas
+            SET estado = %s,
+                notas = CASE
+                    WHEN notas IS NULL OR notas = '' THEN CONCAT('[DESINSTALACIÓN POR FALTA DE PAGO - ', CURDATE(), ']')
+                    WHEN notas LIKE '%%[DESINSTALACIÓN POR FALTA DE PAGO%%' THEN notas
+                    ELSE CONCAT(notas, '\n[DESINSTALACIÓN POR FALTA DE PAGO - ', CURDATE(), ']')
+                END
+            WHERE cliente = %s AND COALESCE(eliminado, 0) = 0
+        """, (id_estado_desinst, id_cliente))
+        citas_actualizadas = cursor.rowcount
+
+        # 2. Pausar cobros recurrentes activos del cliente
+        recurrentes_pausados = 0
+        try:
+            cursor.execute("UPDATE cobros_recurrentes SET activa = 0 WHERE cliente_id = %s AND activa = 1", (id_cliente,))
+            recurrentes_pausados = cursor.rowcount
+        except Exception as err:
+            print("Aviso al pausar cobros recurrentes:", err)
+
+        # 3. Cancelar todas las cuotas pendientes (pagado = 0) del cliente poniéndolas en pagado = 2 (cancelada)
+        cursor.execute("""
+            UPDATE pagos_cuotas
+            SET pagado = 2,
+                nota = CASE
+                    WHEN nota IS NULL OR nota = '' THEN 'CANCELADA POR FALTA DE PAGO'
+                    WHEN nota LIKE '%%CANCELADA POR FALTA DE PAGO%%' THEN nota
+                    ELSE CONCAT(nota, ' | CANCELADA POR FALTA DE PAGO')
+                END
+            WHERE pagado = 0
+              AND pago IN (SELECT id FROM pagos WHERE cliente = %s)
+        """, (id_cliente,))
+        cuotas_canceladas = cursor.rowcount
+
+        mysql.connection.commit()
+        return jsonify({
+            "msg": "Desinstalación por falta de pago registrada con éxito",
+            "cliente_id": id_cliente,
+            "citas_actualizadas": citas_actualizadas,
+            "recurrentes_pausados": recurrentes_pausados,
+            "cuotas_canceladas": cuotas_canceladas,
+        }), 200
+    except Exception as e:
+        mysql.connection.rollback()
+        print("Error en desinstalacion falta de pago:", e)
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+
 @app.patch("/api/citas/<int:id_cita>/eliminar")
 @jwt_required()
 def eliminar_cita(id_cita):
@@ -2778,13 +2841,20 @@ def actualizar_plan_de_pagos(id_pago):
             monto       = float(cuota.get("monto", 0))
             interes     = float(cuota.get("interes", 0))
             vencimiento = cuota.get("vencimiento")
-            pagado      = int(bool(cuota.get("pagado", False)))
-            fechapago   = normalizar_fecha_mysql(cuota.get("fechapago")) if pagado else None
+            val_pagado  = cuota.get("pagado", 0)
+            if isinstance(val_pagado, bool):
+                pagado = 1 if val_pagado else 0
+            else:
+                try:
+                    pagado = int(val_pagado)
+                except (ValueError, TypeError):
+                    pagado = 0
+            fechapago   = normalizar_fecha_mysql(cuota.get("fechapago")) if pagado == 1 else None
             metodo      = int(cuota.get("idmetodo") or cuota.get("metodo") or 1)
             nota        = (cuota.get("nota") or "").strip()
             comprobante = (cuota.get("comprobante") or "").strip()
 
-            if pagado and not fechapago:
+            if pagado == 1 and not fechapago:
                 cursor.execute(
                     """
                     INSERT INTO pagos_cuotas (pago, monto, interes, vencimiento, pagado, fechapago, metodo, nota, comprobante)

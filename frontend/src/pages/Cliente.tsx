@@ -25,6 +25,8 @@ import {
   Play,
   Pause,
   X,
+  Ban,
+  AlertTriangle,
 } from "lucide-react";
 import { darkenColor } from "../utils/colores";
 import DatePicker from "react-datepicker";
@@ -76,7 +78,7 @@ type FacturaCliente = {
   concepto: string | null;
   saldo: number;
   pagado: number;
-  estado: "pendiente" | "vencida" | "pagada";
+  estado: "pendiente" | "vencida" | "pagada" | "cancelada";
   vencimiento: string;
   fecha_pago: string | null;
   metodo_nombre?: string | null;
@@ -108,6 +110,7 @@ type ResumenFacturacion = {
   pendientes: number;
   vencidas: number;
   pagadas: number;
+  canceladas?: number;
 };
 
 export default function Cliente() {
@@ -155,6 +158,8 @@ export default function Cliente() {
   const [fechaPagoModal, setFechaPagoModal] = useState<string>(new Date().toISOString().slice(0, 10));
   const [notaPagoModal, setNotaPagoModal] = useState<string>("");
   const [guardandoPagoFactura, setGuardandoPagoFactura] = useState(false);
+  const [modalDesinstalacion, setModalDesinstalacion] = useState(false);
+  const [procesandoDesinstalacion, setProcesandoDesinstalacion] = useState(false);
 
   const esInternet = (tipo: string) => (tipo || "").toLowerCase().includes("internet");
   const esCamaras = (tipo: string) => {
@@ -254,6 +259,43 @@ export default function Cliente() {
       await cargarFacturacionCliente();
     } catch (err) {
       alert("Error al actualizar estado de recurrencia");
+    }
+  };
+
+  const eliminarRecurrente = async (item: RecurrenteCliente) => {
+    if (!window.confirm(`¿Estás seguro de eliminar permanentemente la recurrencia “${item.concepto}”?`)) return;
+    try {
+      await api(`/api/facturacion/recurrentes/${item.id}`, {
+        method: "DELETE",
+      });
+      await cargarFacturacionCliente();
+      alert("Cobro recurrente eliminado con éxito.");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Error al eliminar recurrencia");
+    }
+  };
+
+  const ejecutarDesinstalacionPorFaltaDePago = async () => {
+    const id = idCliente || cliente?.idcliente;
+    if (!id) return;
+    setProcesandoDesinstalacion(true);
+    try {
+      const res = await api<{ msg?: string; cuotas_canceladas?: number }>(
+        `/api/clientes/${id}/desinstalacion-falta-pago`,
+        { method: "POST" },
+      );
+      setModalDesinstalacion(false);
+      await Promise.all([cargarInicioCliente(), cargarFacturacionCliente()]);
+      if (citaSeleccionada > 0) {
+        const citaObj = citas.find((c) => c.idcita === citaSeleccionada);
+        if (citaObj) await setearCitaSeleccionada(citaObj);
+      }
+      alert(res.msg || "Desinstalación por falta de pago registrada correctamente.");
+    } catch (err) {
+      console.error("Error al procesar desinstalacion:", err);
+      alert(err instanceof Error ? err.message : "Error al procesar desinstalación por falta de pago.");
+    } finally {
+      setProcesandoDesinstalacion(false);
     }
   };
 
@@ -467,9 +509,10 @@ export default function Cliente() {
   const exportarPlanPdf = () => {
     if (!cliente || !citaActual || idPago === null) return;
 
-    const totalCuotas = cuotas.reduce((suma, cuota) => suma + Number(cuota.monto || 0), 0);
-    const pagadoCuotas = cuotas
-      .filter((cuota) => Boolean(cuota.pagado))
+    const cuotasValidas = cuotas.filter((cuota) => Number(cuota.pagado) !== 2);
+    const totalCuotas = cuotasValidas.reduce((suma, cuota) => suma + Number(cuota.monto || 0), 0);
+    const pagadoCuotas = cuotasValidas
+      .filter((cuota) => Number(cuota.pagado) === 1)
       .reduce((suma, cuota) => suma + Number(cuota.monto || 0), 0);
     const total = Number(enganchePlan || 0) + totalCuotas || Number(totalPlan || 0);
     const pagado = Number(enganchePlan || 0) + pagadoCuotas;
@@ -494,12 +537,12 @@ export default function Cliente() {
       const date = new Date(valor.includes("T") ? valor : `${valor}T12:00:00`);
       return Number.isNaN(date.getTime()) ? escapeHtml(valor) : date.toLocaleDateString("es-AR");
     };
-    const filas = cuotas.map((cuota, indice) => `
+    const filas = cuotasValidas.map((cuota, indice) => `
       <tr>
         <td>${indice + 1}</td>
         <td>${fecha(cuota.vencimiento)}</td>
         <td>${escapeHtml(cuota.metodo || "-")}</td>
-        <td>${cuota.pagado ? `Pagada${cuota.fechapago ? ` - ${fecha(cuota.fechapago)}` : ""}` : "Pendiente"}</td>
+        <td>${Number(cuota.pagado) === 1 ? `Pagada${cuota.fechapago ? ` - ${fecha(cuota.fechapago)}` : ""}` : "Pendiente"}</td>
         <td class="money">${moneda(Number(cuota.monto || 0))}</td>
       </tr>`).join("");
     const logo = new URL("/logo_tsnetwork.png", window.location.origin).href;
@@ -578,21 +621,52 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
               </div>
             </div>
 
-            <div
-              className={`px-4 py-2 rounded-xl font-bold border flex flex-col items-center justify-center shadow-lg transition-all ${
-                deudaTotal > 0
-                  ? "bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-amber-500/5"
-                  : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-emerald-500/5"
-              }`}
-            >
-              {deudaTotal > 0 ? (
-                <>
-                  <div className="text-[10px] uppercase font-bold tracking-widest text-amber-400/80">DEUDA TOTAL</div>
-                  <div className="text-2xl font-black tracking-tight"><FormatearNumero numero={deudaTotal} /></div>
-                </>
-              ) : (
-                <div className="text-xs font-extrabold tracking-wider uppercase px-2 py-1 text-emerald-400">SIN DEUDAS</div>
-              )}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Botón Desinstalación por falta de pago */}
+              {(() => {
+                const tieneCuotasPendientes = Boolean(
+                  deudaTotal > 0 ||
+                  cuotas.some((c) => Number(c.pagado) === 0) ||
+                  facturas.some((f) => f.estado === "pendiente" || f.estado === "vencida" || Number(f.saldo || 0) > 0)
+                );
+                return (
+                  <button
+                    type="button"
+                    disabled={!tieneCuotasPendientes || procesandoDesinstalacion}
+                    onClick={() => setModalDesinstalacion(true)}
+                    className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all shadow-md ${
+                      tieneCuotasPendientes
+                        ? "border-red-500/35 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:border-red-500/60 cursor-pointer active:scale-95"
+                        : "border-white/10 bg-white/5 text-white/30 cursor-not-allowed opacity-40"
+                    }`}
+                    title={
+                      tieneCuotasPendientes
+                        ? "Desinstalación por falta de pago"
+                        : "El cliente no tiene cuotas ni saldos pendientes"
+                    }
+                  >
+                    <Ban className={`h-4 w-4 ${tieneCuotasPendientes ? "text-red-400" : "text-white/30"}`} />
+                    <span>Desinstalación por falta de pago</span>
+                  </button>
+                );
+              })()}
+
+              <div
+                className={`px-4 py-2 rounded-xl font-bold border flex flex-col items-center justify-center shadow-lg transition-all ${
+                  deudaTotal > 0
+                    ? "bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-amber-500/5"
+                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-emerald-500/5"
+                }`}
+              >
+                {deudaTotal > 0 ? (
+                  <>
+                    <div className="text-[10px] uppercase font-bold tracking-widest text-amber-400/80">DEUDA TOTAL</div>
+                    <div className="text-2xl font-black tracking-tight"><FormatearNumero numero={deudaTotal} /></div>
+                  </>
+                ) : (
+                  <div className="text-xs font-extrabold tracking-wider uppercase px-2 py-1 text-emerald-400">SIN DEUDAS</div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -817,14 +891,27 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                             <div>Generadas: <strong className="text-white/80">{rec.facturas_generadas}</strong></div>
                             <div className="col-span-2">Próxima gen: <strong className="text-white/80">{rec.proxima_generacion}</strong></div>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => toggleRecurrente(rec)}
-                            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/10 py-1.5 text-xs font-bold text-white/70 hover:bg-white/5 hover:text-white transition cursor-pointer"
-                          >
-                            {Number(rec.activa) ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                            <span>{Number(rec.activa) ? "Pausar recurrencia" : "Reactivar recurrencia"}</span>
-                          </button>
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => toggleRecurrente(rec)}
+                              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-white/10 py-1.5 text-xs font-bold text-white/70 hover:bg-white/5 hover:text-white transition cursor-pointer"
+                            >
+                              {Number(rec.activa) ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                              <span>{Number(rec.activa) ? "Pausar" : "Reactivar"}</span>
+                            </button>
+                            {Number(rec.activa) === 0 && (
+                              <button
+                                type="button"
+                                onClick={() => eliminarRecurrente(rec)}
+                                className="flex items-center justify-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500/20 hover:text-red-200 transition cursor-pointer active:scale-95"
+                                title="Eliminar cobro recurrente"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span>Eliminar</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -850,7 +937,11 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                       {facturas.map((fac) => (
                         <div
                           key={fac.id}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 hover:bg-white/[0.02] transition-colors"
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 transition-colors ${
+                            fac.estado === "cancelada"
+                              ? "bg-zinc-950/40 opacity-75 hover:bg-zinc-950/60"
+                              : "hover:bg-white/[0.02]"
+                          }`}
                         >
                           <div className="space-y-1.5 min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
@@ -872,13 +963,15 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                                     ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
                                     : fac.estado === "vencida"
                                     ? "border-red-500/30 bg-red-500/10 text-red-300"
+                                    : fac.estado === "cancelada"
+                                    ? "border-zinc-600/40 bg-zinc-700/20 text-zinc-400"
                                     : "border-amber-500/30 bg-amber-500/10 text-amber-300"
                                 }`}
                               >
-                                {fac.estado}
+                                {fac.estado === "cancelada" ? "Cancelada (Falta de pago)" : fac.estado}
                               </span>
                             </div>
-                            <div className="text-sm font-bold text-white/90">
+                            <div className={`text-sm font-bold ${fac.estado === "cancelada" ? "text-white/60 line-through decoration-zinc-500" : "text-white/90"}`}>
                               {fac.concepto || "Plan de pagos"}
                             </div>
                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/45">
@@ -897,41 +990,52 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
 
                           <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 shrink-0">
                             <div className="text-right">
-                              <div className="text-base font-black text-white">
+                              <div className={`text-base font-black ${fac.estado === "cancelada" ? "text-zinc-400" : "text-white"}`}>
                                 <FormatearNumero numero={fac.total} />
                               </div>
-                              {Number(fac.saldo) > 0 && (
+                              {fac.estado === "cancelada" ? (
+                                <div className="text-xs font-bold text-zinc-500 italic">
+                                  Cancelada
+                                </div>
+                              ) : Number(fac.saldo) > 0 ? (
                                 <div className="text-xs font-bold text-amber-400">
                                   Saldo: <FormatearNumero numero={fac.saldo} />
                                 </div>
-                              )}
+                              ) : null}
                             </div>
 
                             <div className="flex items-center gap-2">
                               {/* Botón de Pago Rápido */}
-                              <button
-                                type="button"
-                                onClick={() => togglePagoFactura(fac)}
-                                disabled={guardandoPagoFactura}
-                                title={Number(fac.pagado) ? "Factura Pagada (Clic para revertir)" : "Marcar como pagada"}
-                                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-sm cursor-pointer active:scale-95 ${
-                                  Number(fac.pagado)
-                                    ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
-                                    : "border border-emerald-500/50 bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-950/40"
-                                }`}
-                              >
-                                {Number(fac.pagado) ? (
-                                  <>
-                                    <CheckCircle className="h-4 w-4 text-emerald-400" />
-                                    <span>Pagada</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <CircleDollarSign className="h-4 w-4" />
-                                    <span>Marcar Pagada</span>
-                                  </>
-                                )}
-                              </button>
+                              {fac.estado === "cancelada" ? (
+                                <span className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-700/50 bg-zinc-800/40 px-3 py-1.5 text-xs font-bold text-zinc-400">
+                                  <Ban className="h-3.5 w-3.5 text-zinc-500" />
+                                  <span>Cancelada</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => togglePagoFactura(fac)}
+                                  disabled={guardandoPagoFactura}
+                                  title={Number(fac.pagado) ? "Factura Pagada (Clic para revertir)" : "Marcar como pagada"}
+                                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-sm cursor-pointer active:scale-95 ${
+                                    Number(fac.pagado)
+                                      ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
+                                      : "border border-emerald-500/50 bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-950/40"
+                                  }`}
+                                >
+                                  {Number(fac.pagado) ? (
+                                    <>
+                                      <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                      <span>Pagada</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CircleDollarSign className="h-4 w-4" />
+                                      <span>Marcar Pagada</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
 
                               {/* Botón Descargar PDF */}
                               <button
@@ -1262,6 +1366,83 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                     className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 text-xs font-black text-white transition shadow-lg shadow-emerald-950/40 cursor-pointer active:scale-95 disabled:opacity-50"
                   >
                     {guardandoPagoFactura ? "Guardando..." : "Confirmar Pago"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Confirmación: Desinstalación por Falta de Pago */}
+          {modalDesinstalacion && (
+            <div
+              className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm"
+              onMouseDown={() => !procesandoDesinstalacion && setModalDesinstalacion(false)}
+            >
+              <div
+                onMouseDown={(e) => e.stopPropagation()}
+                className="my-auto w-full max-w-lg rounded-2xl border border-red-500/30 bg-zinc-900 p-6 shadow-2xl space-y-5"
+              >
+                <div className="flex items-start justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400">
+                      <AlertTriangle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black uppercase tracking-wider text-red-400">Acción Crítica</span>
+                      <h3 className="text-lg font-black text-white">Desinstalación por Falta de Pago</h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={procesandoDesinstalacion}
+                    onClick={() => setModalDesinstalacion(false)}
+                    className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white disabled:opacity-30"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-zinc-950/60 p-4 text-xs sm:text-sm text-white/80 space-y-2.5 leading-relaxed">
+                  <p>
+                    Estás a punto de registrar la <strong className="text-white">desinstalación por falta de pago</strong> para el cliente <strong className="text-orange-400">{cliente?.nombre}</strong>.
+                  </p>
+                  <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 space-y-1.5 text-xs text-red-200">
+                    <div className="font-bold flex items-center gap-1.5 text-red-300">
+                      <span>Efectos automáticos del proceso:</span>
+                    </div>
+                    <ul className="list-disc list-inside space-y-1 text-white/80">
+                      <li>Las citas activas cambiarán su estado a <strong className="text-white">DESINSTALACIÓN A PROGRAMAR</strong> con registro en notas.</li>
+                      <li>Todos los cobros recurrentes activos serán <strong className="text-white">pausados</strong> automáticamente.</li>
+                      <li>Se <strong className="text-white">cancelarán todos los saldos y cuotas pendientes</strong> del cliente para que no sumen deuda.</li>
+                      <li>Las cuotas canceladas <strong className="text-white">no se eliminarán</strong>; permanecerán en el historial identificadas en <span className="text-zinc-400 font-bold">color gris</span>.</li>
+                      <li>El cliente y sus facturas <strong className="text-white">no aparecerán más en las listas de vencidos ni pendientes</strong>.</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={procesandoDesinstalacion}
+                    onClick={() => setModalDesinstalacion(false)}
+                    className="flex-1 rounded-xl border border-white/10 py-2.5 text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    disabled={procesandoDesinstalacion}
+                    onClick={ejecutarDesinstalacionPorFaltaDePago}
+                    className="flex-1 rounded-xl bg-red-600 hover:bg-red-500 py-2.5 text-xs font-black text-white transition shadow-lg shadow-red-950/50 cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {procesandoDesinstalacion ? (
+                      <span>Procesando desinstalación...</span>
+                    ) : (
+                      <>
+                        <Ban className="h-4 w-4" />
+                        <span>Confirmar Desinstalación</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

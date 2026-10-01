@@ -73,7 +73,7 @@ def registrar_rutas(app, mysql):
             if desde and hasta and desde > hasta:
                 raise ValueError("La fecha inicial no puede ser posterior a la fecha final")
 
-            if estado not in ("todos", "pendiente", "vencida", "pagada"):
+            if estado not in ("todos", "pendiente", "vencida", "pagada", "cancelada"):
                 raise ValueError("El estado seleccionado no es valido")
             if origen not in ("todos", "manual", "recurrente"):
                 raise ValueError("El origen seleccionado no es valido")
@@ -105,11 +105,13 @@ def registrar_rutas(app, mysql):
 
             if vista == "facturas":
                 if estado == "pagada":
-                    condiciones.append("NOT EXISTS (SELECT 1 FROM pagos_cuotas pce WHERE pce.pago = p.id AND pce.pagado = 0)")
+                    condiciones.append("NOT EXISTS (SELECT 1 FROM pagos_cuotas pce WHERE pce.pago = p.id AND pce.pagado IN (0, 2)) AND EXISTS (SELECT 1 FROM pagos_cuotas pce WHERE pce.pago = p.id AND pce.pagado = 1)")
                 elif estado == "vencida":
                     condiciones.append("EXISTS (SELECT 1 FROM pagos_cuotas pce WHERE pce.pago = p.id AND pce.pagado = 0 AND pce.vencimiento < CURDATE())")
                 elif estado == "pendiente":
                     condiciones.append("EXISTS (SELECT 1 FROM pagos_cuotas pce WHERE pce.pago = p.id AND pce.pagado = 0)")
+                elif estado == "cancelada":
+                    condiciones.append("EXISTS (SELECT 1 FROM pagos_cuotas pce WHERE pce.pago = p.id AND pce.pagado = 2) AND NOT EXISTS (SELECT 1 FROM pagos_cuotas pce WHERE pce.pago = p.id AND pce.pagado = 0)")
             else:
                 if estado == "pagada":
                     condiciones.append("pc.pagado = 1")
@@ -117,6 +119,8 @@ def registrar_rutas(app, mysql):
                     condiciones.extend(["pc.pagado = 0", "pc.vencimiento < CURDATE()"])
                 elif estado == "pendiente":
                     condiciones.append("pc.pagado = 0")
+                elif estado == "cancelada":
+                    condiciones.append("pc.pagado = 2")
 
             if origen == "manual":
                 condiciones.append("frg.id IS NULL")
@@ -175,6 +179,7 @@ def registrar_rutas(app, mysql):
                         CASE
                             WHEN EXISTS (SELECT 1 FROM pagos_cuotas pcs WHERE pcs.pago = p.id AND pcs.pagado = 0 AND pcs.vencimiento < CURDATE()) THEN 'vencida'
                             WHEN EXISTS (SELECT 1 FROM pagos_cuotas pcs WHERE pcs.pago = p.id AND pcs.pagado = 0) THEN 'pendiente'
+                            WHEN EXISTS (SELECT 1 FROM pagos_cuotas pcs WHERE pcs.pago = p.id AND pcs.pagado = 2) THEN 'cancelada'
                             ELSE 'pagada'
                         END AS estado,
                         NULL AS metodo_id,
@@ -193,7 +198,7 @@ def registrar_rutas(app, mysql):
                     GROUP BY p.id, c.id, c.nombre, c.telefono, ci.telefono, p.fecha,
                              p.total, frg.id, frg.cobro_recurrente_id, cr.concepto
                     ORDER BY
-                        CASE estado WHEN 'vencida' THEN 0 WHEN 'pendiente' THEN 1 ELSE 2 END,
+                        CASE estado WHEN 'vencida' THEN 0 WHEN 'pendiente' THEN 1 WHEN 'cancelada' THEN 3 ELSE 2 END,
                         vencimiento DESC, factura_id DESC
                     LIMIT %s OFFSET %s
                 """, tuple(parametros + [por_pagina, offset]))
@@ -211,10 +216,11 @@ def registrar_rutas(app, mysql):
                         DATE_FORMAT(pc.fechapago, '%%Y-%%m-%%d') AS fecha_pago,
                         pc.monto,
                         pc.interes,
-                        CASE WHEN pc.pagado = 1 THEN 0 ELSE pc.monto END AS saldo,
+                        CASE WHEN pc.pagado IN (1, 2) THEN 0 ELSE pc.monto END AS saldo,
                         pc.pagado,
                         CASE
                             WHEN pc.pagado = 1 THEN 'pagada'
+                            WHEN pc.pagado = 2 THEN 'cancelada'
                             WHEN pc.vencimiento < CURDATE() THEN 'vencida'
                             ELSE 'pendiente'
                         END AS estado,
@@ -460,6 +466,30 @@ def registrar_rutas(app, mysql):
             if 'cursor' in locals():
                 cursor.close()
 
+    @app.delete("/api/facturacion/recurrentes/<int:id_cobro>")
+    @jwt_required()
+    def eliminar_cobro_recurrente(id_cobro):
+        cursor = mysql.connection.cursor()
+        try:
+            asegurar_tablas(mysql)
+            cursor.execute("SELECT id, activa FROM cobros_recurrentes WHERE id = %s", (id_cobro,))
+            cobro = cursor.fetchone()
+            if not cobro:
+                return jsonify({"error": "Cobro recurrente no encontrado"}), 404
+
+            if int(cobro["activa"]) != 0:
+                return jsonify({"error": "El cobro recurrente debe estar pausado para poder eliminarlo"}), 400
+
+            cursor.execute("DELETE FROM facturas_recurrentes_generadas WHERE cobro_recurrente_id = %s", (id_cobro,))
+            cursor.execute("DELETE FROM cobros_recurrentes WHERE id = %s", (id_cobro,))
+            mysql.connection.commit()
+            return jsonify({"msg": "Cobro recurrente eliminado correctamente"}), 200
+        except Exception as error:
+            mysql.connection.rollback()
+            return jsonify({"error": str(error)}), 500
+        finally:
+            cursor.close()
+
     @app.post("/api/facturacion/recurrentes/generar")
     @jwt_required()
     def generar_cobros_recurrentes():
@@ -684,6 +714,7 @@ def registrar_rutas(app, mysql):
                     CASE
                         WHEN EXISTS (SELECT 1 FROM pagos_cuotas pcs WHERE pcs.pago = p.id AND pcs.pagado = 0 AND pcs.vencimiento < CURDATE()) THEN 'vencida'
                         WHEN EXISTS (SELECT 1 FROM pagos_cuotas pcs WHERE pcs.pago = p.id AND pcs.pagado = 0) THEN 'pendiente'
+                        WHEN EXISTS (SELECT 1 FROM pagos_cuotas pcs WHERE pcs.pago = p.id AND pcs.pagado = 2) THEN 'cancelada'
                         ELSE 'pagada'
                     END AS estado,
                     DATE_FORMAT(COALESCE(
@@ -745,6 +776,7 @@ def registrar_rutas(app, mysql):
                     "pendientes": sum(1 for f in facturas if f["estado"] == "pendiente"),
                     "vencidas": sum(1 for f in facturas if f["estado"] == "vencida"),
                     "pagadas": sum(1 for f in facturas if f["estado"] == "pagada"),
+                    "canceladas": sum(1 for f in facturas if f["estado"] == "cancelada"),
                 }
             }), 200
         except Exception as error:
@@ -966,17 +998,20 @@ def _generar_pdf_factura(factura, cuotas):
     contenido.append(Spacer(1, 6 * mm))
 
     # ── 3. RESUMEN FINANCIERO (3 Cards: Total / Total Pagado / Falta Pagar) 
+    cuotas_activas = [c for c in (cuotas or []) if int(c.get("pagado") or 0) != 2]
     total_factura = float(factura.get("total") or 0)
     enganche = float(factura.get("enganche") or 0)
-    cuotas_pagadas_monto = sum(float(c.get("monto") or 0) for c in cuotas if c.get("pagado"))
+    cuotas_pagadas_monto = sum(float(c.get("monto") or 0) for c in cuotas_activas if int(c.get("pagado") or 0) == 1 or c.get("pagado") is True)
+    total_cuotas_activas = sum(float(c.get("monto") or 0) for c in cuotas_activas)
+    total_mostrado = (enganche + total_cuotas_activas) if cuotas else total_factura
     total_pagado = cuotas_pagadas_monto
-    if enganche > 0 and len(cuotas) == 0:
+    if enganche > 0 and len(cuotas_activas) == 0:
         total_pagado += enganche
-    falta_pagar = max(total_factura - total_pagado, 0.0)
+    falta_pagar = max(total_mostrado - total_pagado, 0.0)
 
     card_total = [
         Paragraph("TOTAL", estilo_box_label),
-        Paragraph(f"<b>{_dinero(total_factura)}</b>", estilo_box_total),
+        Paragraph(f"<b>{_dinero(total_mostrado)}</b>", estilo_box_total),
     ]
     card_pagado = [
         Paragraph("TOTAL PAGADO", estilo_box_label),
@@ -1012,16 +1047,16 @@ def _generar_pdf_factura(factura, cuotas):
 
     hoy_iso = date.today().isoformat()
 
-    if cuotas:
-        for idx, cuota in enumerate(cuotas, 1):
+    if cuotas_activas:
+        for idx, cuota in enumerate(cuotas_activas, 1):
             monto = float(cuota.get("monto") or 0)
-            pagado = bool(cuota.get("pagado"))
+            pagado_val = cuota.get("pagado")
             venc_raw = str(cuota.get("vencimiento") or "")
             venc_txt = _fecha_legible(venc_raw)
             metodo_txt = cuota.get("metodo_nombre") or "—"
             fecha_pago_raw = cuota.get("fecha_pago")
 
-            if pagado:
+            if int(pagado_val or 0) == 1 or pagado_val is True:
                 if fecha_pago_raw:
                     estado_txt = f"Pagada - {_fecha_legible(fecha_pago_raw)}"
                 else:
@@ -1045,7 +1080,7 @@ def _generar_pdf_factura(factura, cuotas):
             Paragraph(fecha_emision, estilo_td),
             Paragraph("—", estilo_td),
             Paragraph("Cubierto con enganche / Total", estilo_td),
-            Paragraph(f"<b>{_dinero(total_factura)}</b>", estilo_td_right),
+            Paragraph(f"<b>{_dinero(total_pagado or total_factura)}</b>", estilo_td_right),
         ])
 
     tabla_cuotas = Table(
