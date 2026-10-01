@@ -21,7 +21,7 @@ type Cuota = {
   idcuota: number;
   monto: number;
   interes: number;
-  pagado: boolean;
+  pagado: boolean | number;
   vencimiento: string;          // "YYYY-MM-DD" o puede venir como Date string del backend
   fechapago: string | null;
   idmetodo: number;
@@ -84,7 +84,7 @@ function normalizarCuotas(cuotas: Cuota[]): Cuota[] {
     vencimiento: formatVencimiento(c.vencimiento),
     monto: Number(c.monto),
     interes: Number(c.interes),
-    pagado: Boolean(c.pagado),
+    pagado: typeof c.pagado === "number" ? c.pagado : (c.pagado ? 1 : 0),
     idmetodo: Number(c.idmetodo || 1),
     nota: c.nota || "",
     comprobante: c.comprobante || "",
@@ -126,42 +126,51 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
   }, []);
 
   const enganchePlan = Number(enganche || 0);
-  const cuotasPagadas = cuotas.filter((c) => c.pagado).length;
+  const cuotasPagadas = cuotas.filter((c) => Number(c.pagado) === 1).length;
   const totalReal = cuotas.reduce(
     (acc, c) => acc + c.monto,
     0
   );
   const montoPagado = cuotas
-    .filter((c) => c.pagado)
+    .filter((c) => Number(c.pagado) === 1)
     .reduce((acc, c) => acc + c.monto, 0);
-  const montoPendiente = totalReal - montoPagado;
+  const montoPendiente = cuotas
+    .filter((c) => Number(c.pagado) === 0)
+    .reduce((acc, c) => acc + c.monto, 0);
   const totalConEnganche = enganchePlan + totalReal;
   const totalGuardado = Number(total || 0);
   const cuotasPagadasGuardadas = new Set(
     cuotasIniciales
-      .filter((cuota) => Boolean(cuota.pagado) && Number(cuota.idcuota) > 0)
+      .filter((cuota) => Number(cuota.pagado) === 1 && Number(cuota.idcuota) > 0)
       .map((cuota) => Number(cuota.idcuota))
   );
   const cuotaEstaBloqueada = (cuota: Cuota) =>
-    Boolean(cuota.pagado) && Number(cuota.idcuota) > 0 && cuotasPagadasGuardadas.has(Number(cuota.idcuota));
+    (Number(cuota.pagado) === 1 && Number(cuota.idcuota) > 0 && cuotasPagadasGuardadas.has(Number(cuota.idcuota))) ||
+    Number(cuota.pagado) === 2;
 
 
   const handleTogglePagado = (index: number) => {
     const cuota = cuotas[index];
     if (!cuota) return;
 
+    if (Number(cuota.pagado) === 2) {
+      setError("Las cuotas canceladas por falta de pago no se pueden modificar.");
+      return;
+    }
+
     if (cuotaEstaBloqueada(cuota)) {
       setError("Las cuotas pagadas ya actualizadas no se pueden modificar.");
       return;
     }
 
-    if (!cuota.pagado) {
+    const nuevoEstado = Number(cuota.pagado) === 1 ? 0 : 1;
+    if (nuevoEstado === 1) {
       setAvisoCuotaPagada(`La cuota ${index + 1} quedará marcada como pagada al actualizar el plan y no se podrá modificar después.`);
     } else {
       setAvisoCuotaPagada("");
     }
 
-    handleCuotaChange(index, "pagado", !cuota.pagado);
+    handleCuotaChange(index, "pagado", nuevoEstado);
   };
 
   const handleCuotaChange = (
@@ -433,11 +442,17 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                 const montoConInteres = cuota.monto;
                 const fechaPago = formatFechaPago(cuota.fechapago);
 
+                const esPagada = Number(cuota.pagado) === 1;
+                const esCancelada = Number(cuota.pagado) === 2;
+                const esPendiente = Number(cuota.pagado) === 0;
+
                 return (
                   <div
                     key={`${cuota.idcuota}-${index}`}
                     className={`rounded-2xl border transition-all p-4 space-y-3 shadow-md ${
-                      cuota.pagado
+                      esCancelada
+                        ? "bg-zinc-950/40 border-zinc-800/80 opacity-75"
+                        : esPagada
                         ? "bg-emerald-500/[0.03] border-emerald-500/20"
                         : "bg-zinc-950/70 border-white/10 hover:border-orange-500/30"
                     }`}
@@ -447,7 +462,9 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                       <div className="flex items-center gap-3">
                         <span
                           className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-black tracking-wider ${
-                            cuota.pagado
+                            esCancelada
+                              ? "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                              : esPagada
                               ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                               : "bg-orange-500/20 text-orange-400 border border-orange-500/30"
                           }`}
@@ -455,39 +472,45 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                           CUOTA #{index + 1}
                         </span>
 
-                        <button
-                          type="button"
-                          title={
-                            cuotaEstaBloqueada(cuota)
-                              ? "Esta cuota pagada ya no se puede modificar"
-                              : cuota.pagado
-                              ? "Marcar como pendiente"
-                              : "Marcar como pagada"
-                          }
-                          onClick={() => handleTogglePagado(index)}
-                          disabled={cuotaEstaBloqueada(cuota)}
-                          className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${
-                            cuotaEstaBloqueada(cuota)
-                              ? "cursor-not-allowed opacity-60 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                              : cuota.pagado
-                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 cursor-pointer"
-                              : "bg-zinc-800 text-white/60 border border-white/10 hover:text-white hover:bg-zinc-700 cursor-pointer"
-                          }`}
-                        >
-                          {cuota.pagado ? (
-                            <>
-                              <CheckCircle className="h-4 w-4 text-emerald-400" />
-                              <span>Pagado</span>
-                            </>
-                          ) : (
-                            <>
-                              <Circle className="h-4 w-4 text-white/30" />
-                              <span>Marcar como pagado</span>
-                            </>
-                          )}
-                        </button>
+                        {esCancelada ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-zinc-800/80 text-zinc-400 border border-zinc-700">
+                            <span>Cancelada (Falta de pago)</span>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            title={
+                              cuotaEstaBloqueada(cuota)
+                                ? "Esta cuota pagada ya no se puede modificar"
+                                : esPagada
+                                ? "Marcar como pendiente"
+                                : "Marcar como pagada"
+                            }
+                            onClick={() => handleTogglePagado(index)}
+                            disabled={cuotaEstaBloqueada(cuota)}
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                              cuotaEstaBloqueada(cuota)
+                                ? "cursor-not-allowed opacity-60 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                : esPagada
+                                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 cursor-pointer"
+                                : "bg-zinc-800 text-white/60 border border-white/10 hover:text-white hover:bg-zinc-700 cursor-pointer"
+                            }`}
+                          >
+                            {esPagada ? (
+                              <>
+                                <CheckCircle className="h-4 w-4 text-emerald-400" />
+                                <span>Pagado</span>
+                              </>
+                            ) : (
+                              <>
+                                <Circle className="h-4 w-4 text-white/30" />
+                                <span>Marcar como pagado</span>
+                              </>
+                            )}
+                          </button>
+                        )}
 
-                        {cuota.pagado && fechaPago && (
+                        {esPagada && fechaPago && (
                           <span className="text-xs font-semibold text-emerald-400/90 italic">
                             (Pagado el {fechaPago})
                           </span>
@@ -497,18 +520,18 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                       <div className="flex items-center gap-3">
                         <div className="text-right">
                           <span className="text-[10px] uppercase font-bold text-white/40 block">Monto Final</span>
-                          <span className={`text-base font-black ${cuota.pagado ? "text-emerald-400" : "text-orange-400"}`}>
+                          <span className={`text-base font-black ${esCancelada ? "text-zinc-400 line-through decoration-zinc-600" : esPagada ? "text-emerald-400" : "text-orange-400"}`}>
                             <FormatearNumero numero={montoConInteres} />
                           </span>
                         </div>
 
                         <button
                           type="button"
-                          title={cuota.pagado ? "No se puede eliminar una cuota pagada" : "Eliminar cuota y redistribuir saldo"}
+                          title={esCancelada ? "Cuota cancelada por falta de pago" : esPagada ? "No se puede eliminar una cuota pagada" : "Eliminar cuota y redistribuir saldo"}
                           onClick={() => eliminarCuota(index)}
-                          disabled={cuota.pagado}
+                          disabled={esPagada || esCancelada}
                           className={`p-2 rounded-xl border transition-all ${
-                            cuota.pagado
+                            esPagada || esCancelada
                               ? "cursor-not-allowed border-white/5 bg-white/5 text-white/15"
                               : "border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200 cursor-pointer active:scale-95"
                           }`}
@@ -531,9 +554,9 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                             value={cuota.monto || ""}
                             placeholder="0.00"
                             onChange={(e) => handleCuotaChange(index, "monto", Number(e.target.value))}
-                            disabled={cuota.pagado}
+                            disabled={!esPendiente}
                             className={`w-full rounded-xl border pl-7 pr-3 py-1.5 text-xs text-white outline-none transition-all ${
-                              cuota.pagado
+                              !esPendiente
                                 ? "border-white/5 bg-white/5 text-white/30 cursor-not-allowed"
                                 : "border-white/10 bg-zinc-900 focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20"
                             }`}
@@ -551,9 +574,9 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                             value={cuota.interes || ""}
                             placeholder="0"
                             onChange={(e) => handleCuotaChange(index, "interes", Number(e.target.value))}
-                            disabled={cuota.pagado}
+                            disabled={!esPendiente}
                             className={`w-full rounded-xl border px-3 pr-7 py-1.5 text-xs text-white outline-none transition-all ${
-                              cuota.pagado
+                              !esPendiente
                                 ? "border-white/5 bg-white/5 text-white/30 cursor-not-allowed"
                                 : "border-white/10 bg-zinc-900 focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20"
                             }`}
@@ -568,9 +591,9 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                           type="date"
                           value={cuota.vencimiento}
                           onChange={(e) => handleCuotaChange(index, "vencimiento", e.target.value)}
-                          disabled={cuota.pagado}
+                          disabled={!esPendiente}
                           className={`w-full rounded-xl border px-3 py-1.5 text-xs text-white outline-none transition-all [color-scheme:dark] ${
-                            cuota.pagado
+                            !esPendiente
                               ? "border-white/5 bg-white/5 text-white/30 cursor-not-allowed"
                               : "border-white/10 bg-zinc-900 focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20"
                           }`}
