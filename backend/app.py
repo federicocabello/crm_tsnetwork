@@ -8,7 +8,7 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 from werkzeug.utils import secure_filename
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_RIGHT
+from reportlab.lib.enums import TA_RIGHT, TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
@@ -1520,6 +1520,7 @@ def moneda_pdf(valor):
 def generar_pdf_cotizacion(id_hoja):
     data = request.get_json(silent=True) or {}
     version_id = data.get("version_id")
+    tipo = data.get("tipo", "cliente")  # "cliente" o "empresa"
     if version_id is not None:
         try:
             version_id = int(version_id)
@@ -1546,7 +1547,7 @@ def generar_pdf_cotizacion(id_hoja):
 
         cursor.execute(
             """
-            SELECT p.descrip AS nombre, hp.precio_final
+            SELECT p.descrip AS nombre, p.precio AS precio_base, hp.cantidad, hp.precio_final
             FROM hojas_productos hp
             JOIN productos p ON p.id = hp.producto
             WHERE hp.hoja = %s
@@ -1577,10 +1578,12 @@ def generar_pdf_cotizacion(id_hoja):
 
             cursor.execute(
                 """
-                SELECT nombre_producto AS nombre, precio_final
-                FROM cotizaciones_versiones_productos
-                WHERE version_id = %s
-                ORDER BY id
+                SELECT cvp.nombre_producto AS nombre, p.precio AS precio_base,
+                       cvp.cantidad, cvp.precio_final
+                FROM cotizaciones_versiones_productos cvp
+                LEFT JOIN productos p ON p.id = cvp.producto_id
+                WHERE cvp.version_id = %s
+                ORDER BY cvp.id
                 """,
                 (version["id"],),
             )
@@ -1591,7 +1594,8 @@ def generar_pdf_cotizacion(id_hoja):
             subtotal = float(version.get("subtotal") or 0)
             descuento = max(float(version.get("descuento") or 0), 0)
             total = float(version.get("total") or 0)
-        nombre_archivo = f"cotizacion_{id_hoja}.pdf"
+
+        nombre_archivo = f"cotizacion_{id_hoja}{'_empresa' if tipo == 'empresa' else ''}.pdf"
         pdf_buffer = io.BytesIO()
 
         documento = SimpleDocTemplate(
@@ -1601,13 +1605,17 @@ def generar_pdf_cotizacion(id_hoja):
         )
         estilos = getSampleStyleSheet()
         estilos.add(ParagraphStyle(name="Derecha", parent=estilos["Normal"], alignment=TA_RIGHT))
+        estilos.add(ParagraphStyle(name="Centro", parent=estilos["Normal"], alignment=TA_CENTER))
         estilos.add(ParagraphStyle(name="TextoBlanco", parent=estilos["Normal"], textColor=colors.white))
         estilos.add(ParagraphStyle(name="TextoBlancoDerecha", parent=estilos["Derecha"], textColor=colors.white))
+        estilos.add(ParagraphStyle(name="TextoBlancoCentro", parent=estilos["Centro"], textColor=colors.white))
         contenido = []
         logo = os.path.abspath(os.path.join(app.root_path, "..", "frontend", "public", "logo_tsnetwork_black.png"))
         encabezado_izq = Image(logo, width=52 * mm, height=22 * mm) if os.path.isfile(logo) else Paragraph("<b>TS NETWORK</b>", estilos["Title"])
+
+        tipo_doc_label = "COTIZACION INTERNA" if tipo == "empresa" else "COTIZACION"
         encabezado_der = Paragraph(
-            f"<b>COTIZACION</b><br/>N. {id_hoja:06d}<br/>Emision: {datetime.now().strftime('%m/%d/%Y')}",
+            f"<b>{tipo_doc_label}</b><br/>N. {id_hoja:06d}<br/>Emision: {datetime.now().strftime('%m/%d/%Y')}",
             estilos["Derecha"],
         )
         encabezado = Table([[encabezado_izq, encabezado_der]], colWidths=[105 * mm, 65 * mm])
@@ -1624,11 +1632,64 @@ def generar_pdf_cotizacion(id_hoja):
         tabla_cliente.setStyle(TableStyle([("SPAN", (0, 0), (1, 0)), ("SPAN", (0, 3), (1, 3)), ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#d4d4d8")), ("LINEBEFORE", (0, 0), (0, -1), 3, colors.HexColor("#f97316")), ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f4f4f5")), ("PADDING", (0, 0), (-1, -1), 7), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
         contenido.extend([tabla_cliente, Spacer(1, 7 * mm)])
 
-        filas = [[Paragraph("<b>ARTICULOS INCLUIDOS</b>", estilos["TextoBlanco"])]]
-        filas.extend([[Paragraph(html.escape(str(item.get("nombre") or "Articulo")), estilos["Normal"])]] for item in productos)
-        tabla_productos = Table(filas, colWidths=[170 * mm])
-        tabla_productos.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#27272a")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white), ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e4e4e7")), ("PADDING", (0, 0), (-1, -1), 8)]))
-        contenido.extend([tabla_productos, Spacer(1, 7 * mm)])
+        if tipo == "empresa":
+            # --- PDF INTERNO: tabla con precio_base, taxas, costo, precio_venta ---
+            col_w = [68 * mm, 16 * mm, 22 * mm, 22 * mm, 22 * mm, 22 * mm]
+            filas_emp = [[
+                Paragraph("<b>MATERIAL</b>", estilos["TextoBlanco"]),
+                Paragraph("<b>CANT.</b>", estilos["TextoBlancoCentro"]),
+                Paragraph("<b>PRECIO BASE</b>", estilos["TextoBlancoDerecha"]),
+                Paragraph("<b>TAXAS (8.25%)</b>", estilos["TextoBlancoDerecha"]),
+                Paragraph("<b>COSTO</b>", estilos["TextoBlancoDerecha"]),
+                Paragraph("<b>PRECIO VENTA</b>", estilos["TextoBlancoDerecha"]),
+            ]]
+            for item in productos:
+                precio_base_unit = float(item.get("precio_base") or 0)
+                cant = int(item.get("cantidad") or 0)
+                precio_venta = float(item.get("precio_final") or 0)
+                total_base = round(precio_base_unit * cant, 2)
+                taxas = round(total_base * 0.0825, 2)
+                costo = round(total_base + taxas, 2)
+                filas_emp.append([
+                    Paragraph(html.escape(str(item.get("nombre") or "Articulo")), estilos["Normal"]),
+                    Paragraph(str(cant), estilos["Centro"]),
+                    Paragraph(moneda_pdf(total_base), estilos["Derecha"]),
+                    Paragraph(moneda_pdf(taxas), estilos["Derecha"]),
+                    Paragraph(moneda_pdf(costo), estilos["Derecha"]),
+                    Paragraph(moneda_pdf(precio_venta), estilos["Derecha"]),
+                ])
+            tabla_emp = Table(filas_emp, colWidths=col_w)
+            estilo_emp = TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#27272a")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e4e4e7")),
+                ("PADDING", (0, 0), (-1, -1), 6),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fafafa")]),
+            ])
+            tabla_emp.setStyle(estilo_emp)
+            contenido.extend([tabla_emp, Spacer(1, 7 * mm)])
+        else:
+            # --- PDF CLIENTE: lista de articulos con cantidad ---
+            col_w_cli = [140 * mm, 30 * mm]
+            filas = [[
+                Paragraph("<b>ARTICULOS INCLUIDOS</b>", estilos["TextoBlanco"]),
+                Paragraph("<b>CANT.</b>", estilos["TextoBlancoCentro"]),
+            ]]
+            for item in productos:
+                filas.append([
+                    Paragraph(html.escape(str(item.get("nombre") or "Articulo")), estilos["Normal"]),
+                    Paragraph(str(int(item.get("cantidad") or 0)), estilos["Centro"]),
+                ])
+            tabla_productos = Table(filas, colWidths=col_w_cli)
+            tabla_productos.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#27272a")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e4e4e7")),
+                ("PADDING", (0, 0), (-1, -1), 8),
+                ("ALIGN", (1, 0), (1, -1), "CENTER"),
+            ]))
+            contenido.extend([tabla_productos, Spacer(1, 7 * mm)])
 
         filas_resumen = []
         if descuento > 0:

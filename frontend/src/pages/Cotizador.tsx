@@ -315,7 +315,7 @@ useEffect(() => {
     setSearch("");
     setMostrarHistorial(false);
   };
-  const exportarPdf = async (versionId?: number, versionParaNueva?: (typeof versiones)[number]) => {
+  const exportarPdf = async (versionId?: number, versionParaNueva?: (typeof versiones)[number], tipo: "cliente" | "empresa" = "cliente") => {
     if (!idCotizacion || generandoPdf) return;
 
     const ventana = window.open("", "_blank");
@@ -378,7 +378,10 @@ useEffect(() => {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(versionId ? { version_id: versionId } : {}),
+        body: JSON.stringify({
+          ...(versionId ? { version_id: versionId } : {}),
+          tipo,
+        }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
@@ -593,7 +596,8 @@ useEffect(() => {
               {modo === "editar" && idCotizacion && Object.values(rows).some((row) => Number(row.cantidad) > 0) && (
                 <>
                   <button type="button" onClick={cargarHistorial} disabled={cargandoHistorial} className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"><History className="h-4 w-4" />{cargandoHistorial ? "Cargando..." : "Historial"}</button>
-                  <button type="button" onClick={() => exportarPdf()} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === "actual" ? "Generando..." : "Exportar a PDF"}</button>
+                  <button type="button" onClick={() => exportarPdf(undefined, undefined, "cliente")} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === "actual" ? "Generando..." : "PDF Cliente"}</button>
+                  <button type="button" onClick={() => exportarPdf(undefined, undefined, "empresa")} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-sky-400/40 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === "actual" ? "Generando..." : "PDF Empresa"}</button>
                 </>
               )}
               <button
@@ -636,7 +640,8 @@ useEffect(() => {
                   <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
                     <button type="button" onClick={() => eliminarVersion(version)} disabled={eliminandoVersion !== null || generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-4 w-4" />{eliminandoVersion === version.id ? "Eliminando..." : "Eliminar versión"}</button>
                     {!bloqueada && <button type="button" onClick={() => editarVersion(version)} disabled={generandoPdf !== null} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Editar esta versión</button>}
-                    <button type="button" onClick={() => exportarPdf(version.id, version)} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-3 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === version.id ? "Generando..." : `Exportar versión ${version.version}`}</button>
+                    <button type="button" onClick={() => exportarPdf(version.id, version, "cliente")} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-3 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === version.id ? "Generando..." : `PDF Cliente v${version.version}`}</button>
+                    <button type="button" onClick={() => exportarPdf(version.id, version, "empresa")} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-sky-400/40 bg-sky-500/10 px-3 py-2 text-sm font-semibold text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === version.id ? "Generando..." : `PDF Empresa v${version.version}`}</button>
                   </div>
                 </details>
               ))}
