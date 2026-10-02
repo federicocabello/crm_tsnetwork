@@ -85,8 +85,9 @@ def registrar_rutas(app, mysql):
             if vista == "pagos":
                 condiciones.extend(["pc.pagado = 1", "DATE_FORMAT(pc.fechapago, '%%Y-%%m') = %s"])
                 parametros.append(mes)
-            elif cliente_id and todos_periodos:
-                # La vista de un cliente muestra su historial completo.
+            elif todos_periodos:
+                # La vista de un cliente y el filtro de vencidas pueden
+                # solicitar el historial completo.
                 pass
             elif desde or hasta:
                 if desde:
