@@ -15,7 +15,7 @@ type MetodoPago = {
   color?: string;
 };
 
-type FrecuenciaCuotas = "mensual" | "semanal";
+type FrecuenciaCuotas = "mensual" | "quincenal" | "semanal";
 
 type Cuota = {
   monto: number;
@@ -81,6 +81,8 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
       const fecha = new Date(fechaBase);
       if (frecuenciaCuotas === "semanal") {
         fecha.setDate(fechaBase.getDate() + i * 7);
+      } else if (frecuenciaCuotas === "quincenal") {
+        fecha.setDate(fechaBase.getDate() + i * 15);
       } else {
         fecha.setMonth(fechaBase.getMonth() + i);
       }
@@ -306,6 +308,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
               className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors"
             >
               <option value="mensual">Mensuales</option>
+              <option value="quincenal">Quincenales</option>
               <option value="semanal">Semanales</option>
             </select>
           </div>

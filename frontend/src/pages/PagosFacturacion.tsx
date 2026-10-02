@@ -259,16 +259,9 @@ export default function PagosFacturacion() {
       });
 
       if (pestana === "facturas") {
+        params.set("todos_periodos", "1");
         if (clienteFiltroId) {
           params.set("cliente_id", String(clienteFiltroId));
-          params.set("todos_periodos", "1");
-        } else if (estado === "vencida") {
-          // Las deudas vencidas deben mostrar todo el historial, no solo el
-          // rango inicial de tres meses.
-          params.set("todos_periodos", "1");
-        } else {
-          params.set("desde", desde);
-          params.set("hasta", hasta);
         }
       } else {
         params.set("mes", mes);
@@ -585,7 +578,7 @@ export default function PagosFacturacion() {
             style={{ background: "rgba(255,255,255,0.08)" }}
           />
 
-          {pestana === "facturas" && !clienteFiltroId && estado === "vencida" && (
+          {pestana === "facturas" && !clienteFiltroId && (
             <div
               className="px-3 py-2 rounded-lg text-xs font-bold"
               style={{
@@ -597,7 +590,7 @@ export default function PagosFacturacion() {
             </div>
           )}
           {/* El rango no limita las vencidas: siempre se muestra toda la deuda histórica. */}
-          {pestana === "facturas" && !clienteFiltroId && estado !== "vencida" && (
+          {false && pestana === "facturas" && !clienteFiltroId && (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
               <div className="flex items-center gap-1.5">
                 <Calendar
