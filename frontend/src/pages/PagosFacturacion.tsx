@@ -262,6 +262,10 @@ export default function PagosFacturacion() {
         if (clienteFiltroId) {
           params.set("cliente_id", String(clienteFiltroId));
           params.set("todos_periodos", "1");
+        } else if (estado === "vencida") {
+          // Las deudas vencidas deben mostrar todo el historial, no solo el
+          // rango inicial de tres meses.
+          params.set("todos_periodos", "1");
         } else {
           params.set("desde", desde);
           params.set("hasta", hasta);
@@ -581,8 +585,19 @@ export default function PagosFacturacion() {
             style={{ background: "rgba(255,255,255,0.08)" }}
           />
 
-          {/* Rango de fechas — solo en Facturas sin filtro de cliente */}
-          {pestana === "facturas" && !clienteFiltroId && (
+          {pestana === "facturas" && !clienteFiltroId && estado === "vencida" && (
+            <div
+              className="px-3 py-2 rounded-lg text-xs font-bold"
+              style={{
+                background: "rgba(239,68,68,0.1)",
+                border: "1px solid rgba(239,68,68,0.2)",
+                color: "#fca5a5",
+              }}>
+              Todo el historial
+            </div>
+          )}
+          {/* El rango no limita las vencidas: siempre se muestra toda la deuda histórica. */}
+          {pestana === "facturas" && !clienteFiltroId && estado !== "vencida" && (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
               <div className="flex items-center gap-1.5">
                 <Calendar
