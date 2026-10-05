@@ -893,9 +893,10 @@ export default function HojaInstalacion({
               </div>
 
               {activeTab === "materiales" ? (
-                <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+                  {/* Panel Izquierdo: Formulario de Agregar Material */}
                   {!bloqueada && (
-                    <div className="p-4 border-b border-white/10 bg-zinc-950/40 flex flex-col gap-3 shrink-0">
+                    <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 border-b md:border-b-0 md:border-r border-white/10 p-4 bg-zinc-950/40 flex flex-col gap-3 overflow-y-auto">
                       <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
                         Agregar material
                       </p>
@@ -928,7 +929,7 @@ export default function HojaInstalacion({
                           onChange={(e) =>
                             setSelectedProducto(e.target.value ? Number(e.target.value) : "")
                           }
-                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-green-500/50">
+                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500/50">
                           <option value="">Selecciona un producto...</option>
                           {productosFiltrados.map((p) => (
                             <option key={p.id} value={p.id}>
@@ -938,7 +939,7 @@ export default function HojaInstalacion({
                         </select>
                       </div>
                       <div className="flex gap-2">
-                        <div className="w-24 shrink-0">
+                        <div className="w-20 shrink-0">
                           <label className="block text-xs font-semibold text-white/60 mb-1">
                             Cant.
                           </label>
@@ -947,7 +948,7 @@ export default function HojaInstalacion({
                             min="1"
                             value={cantidad}
                             onChange={(e) => setCantidad(Number(e.target.value))}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-green-500/50 text-center"
+                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-green-500/50 text-center"
                           />
                         </div>
                         <div className="flex-1">
@@ -960,100 +961,108 @@ export default function HojaInstalacion({
                             maxLength={255}
                             onChange={(e) => setDetalle(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-                            placeholder="Color, largo, ubicacion, etc."
-                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-green-500/50"
+                            placeholder="Color, largo, ubicación, etc."
+                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500/50"
                           />
                         </div>
                       </div>
                       <button
                         onClick={handleAddItem}
                         disabled={!selectedProducto || cantidad <= 0}
-                        className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+                        className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors mt-1">
                         <Plus className="w-4 h-4" />
                         Agregar material
                       </button>
                     </div>
                   )}
 
-                  <div className="flex-1 flex flex-col min-h-0 p-4">
+                  {/* Panel Derecho: Lista de Materiales */}
+                  <div className="flex-1 flex flex-col min-h-0 p-4 bg-zinc-900/40 overflow-hidden">
+                    <div className="flex items-center justify-between mb-3 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-white/70 uppercase tracking-wider">
+                          Lista de materiales
+                        </p>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">
+                          {items.length} {items.length === 1 ? "ítem" : "ítems"}
+                        </span>
+                      </div>
+                      {cargadoDeInspeccion && (
+                        <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
+                          <FileText className="w-3 h-3" />
+                          Pre-cargado desde inspección
+                        </span>
+                      )}
+                    </div>
+
                     {items.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-10 text-white/30">
-                        <PackageSearch className="w-10 h-10 mb-2 opacity-40" />
-                        <p className="text-sm">No hay materiales cargados</p>
+                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-white/30 border border-dashed border-white/10 rounded-2xl bg-zinc-950/20">
+                        <PackageSearch className="w-12 h-12 mb-3 opacity-30 text-green-400" />
+                        <p className="text-sm font-semibold text-white/60">No hay materiales cargados</p>
+                        <p className="text-xs text-white/40 mt-1 max-w-xs">
+                          Selecciona un producto del panel izquierdo y presiona "Agregar material" para incluirlo en la hoja de instalación.
+                        </p>
                       </div>
                     ) : (
-                      <>
-                        <div className="flex items-center justify-between mb-2 shrink-0">
-                          <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
-                            Lista de materiales ({items.length})
-                          </p>
-                          {cargadoDeInspeccion && (
-                            <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
-                              <FileText className="w-3 h-3" />
-                              Pre-cargado desde inspeccion
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2">
-                          {items.map((item, index) => (
-                            <div
-                              key={`${item.producto_id}-${index}`}
-                              className="grid grid-cols-[88px_1fr_auto] gap-3 bg-zinc-800/60 border border-white/8 rounded-xl p-3 shrink-0">
-                              <div>
-                                <label className="block text-[10px] font-bold text-white/40 uppercase mb-1">
-                                  Cant.
-                                </label>
-                                {bloqueada ? (
-                                  <div className="bg-green-500/15 border border-green-500/30 rounded-lg px-2 py-2 text-center text-green-300 font-bold text-sm">
-                                    {item.cantidad}
-                                  </div>
-                                ) : (
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={item.cantidad}
-                                    onChange={(e) =>
-                                      handleUpdateItem(index, { cantidad: Number(e.target.value) })
-                                    }
-                                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-2 py-2 text-sm text-white text-center focus:outline-none focus:border-green-500/50"
-                                  />
-                                )}
-                              </div>
-
-                              <div className="min-w-0">
-                                <p className="text-white font-semibold text-sm leading-tight mb-2">
-                                  {item.producto_descrip}
-                                </p>
-                                {bloqueada ? (
-                                  item.detalle && (
-                                    <p className="text-white/50 text-xs italic">{item.detalle}</p>
-                                  )
-                                ) : (
-                                  <input
-                                    type="text"
-                                    value={item.detalle}
-                                    maxLength={255}
-                                    onChange={(e) =>
-                                      handleUpdateItem(index, { detalle: e.target.value })
-                                    }
-                                    placeholder="Detalle"
-                                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500/50"
-                                  />
-                                )}
-                              </div>
-
-                              {!bloqueada && (
-                                <button
-                                  onClick={() => handleRemoveItem(index)}
-                                  className="self-start shrink-0 p-2 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors"
-                                  title="Eliminar material">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 min-h-0">
+                        {items.map((item, index) => (
+                          <div
+                            key={`${item.producto_id}-${index}`}
+                            className="grid grid-cols-[72px_1fr_auto] gap-2.5 bg-zinc-800/70 border border-white/10 rounded-xl p-2.5 shrink-0 items-center hover:border-white/20 transition-colors">
+                            <div>
+                              <label className="block text-[9px] font-bold text-white/40 uppercase mb-1">
+                                Cant.
+                              </label>
+                              {bloqueada ? (
+                                <div className="bg-green-500/15 border border-green-500/30 rounded-lg px-2 py-1.5 text-center text-green-300 font-bold text-xs">
+                                  {item.cantidad}
+                                </div>
+                              ) : (
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={item.cantidad}
+                                  onChange={(e) =>
+                                    handleUpdateItem(index, { cantidad: Number(e.target.value) })
+                                  }
+                                  className="w-full bg-zinc-950 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-green-500/50 font-bold"
+                                />
                               )}
                             </div>
-                          ))}
-                        </div>
-                      </>
+
+                            <div className="min-w-0">
+                              <p className="text-white font-semibold text-xs leading-snug mb-1.5">
+                                {item.producto_descrip}
+                              </p>
+                              {bloqueada ? (
+                                item.detalle && (
+                                  <p className="text-white/50 text-[11px] italic">{item.detalle}</p>
+                                )
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={item.detalle}
+                                  maxLength={255}
+                                  onChange={(e) =>
+                                    handleUpdateItem(index, { detalle: e.target.value })
+                                  }
+                                  placeholder="Detalle (opcional)"
+                                  className="w-full bg-zinc-950 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none focus:border-green-500/50"
+                                />
+                              )}
+                            </div>
+
+                            {!bloqueada && (
+                              <button
+                                onClick={() => handleRemoveItem(index)}
+                                className="self-center p-2 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                                title="Eliminar material">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
