@@ -576,6 +576,9 @@ export default function HojaInspeccion({
 
             ${firmaUrl ? `
             <section class="final-signature">
+              <div style="font-size: 10px; color: #374151; line-height: 1.4; margin-bottom: 12px; background: #f9fafb; border: 1px solid #d1d5db; padding: 8px 10px; border-radius: 4px;">
+                <strong>Aceptaci&oacute;n del Cliente:</strong> Al firmar este documento, el cliente declara que ha le&iacute;do, comprendido y acepta los t&eacute;rminos y condiciones establecidos por TS Network, incluyendo garant&iacute;a, t&eacute;rminos de pago, manejo de informaci&oacute;n personal e identificaci&oacute;n, y autorizaciones de contacto.
+              </div>
               <h2>Firma de conformidad</h2>
               <div class="signature-layout">
                 <div class="signature-box">

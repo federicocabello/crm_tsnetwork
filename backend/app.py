@@ -1633,7 +1633,7 @@ def generar_pdf_cotizacion(id_hoja):
         contenido.extend([tabla_cliente, Spacer(1, 7 * mm)])
 
         if tipo == "empresa":
-            # --- PDF INTERNO: tabla con precio_base, taxas, costo, precio_venta ---
+            # --- PDF INTERNO: tabla con precio_base, taxas, costo, precio_venta y totales integrados ---
             col_w = [68 * mm, 16 * mm, 22 * mm, 22 * mm, 22 * mm, 22 * mm]
             filas_emp = [[
                 Paragraph("<b>MATERIAL</b>", estilos["TextoBlanco"]),
@@ -1643,6 +1643,9 @@ def generar_pdf_cotizacion(id_hoja):
                 Paragraph("<b>COSTO</b>", estilos["TextoBlancoDerecha"]),
                 Paragraph("<b>PRECIO VENTA</b>", estilos["TextoBlancoDerecha"]),
             ]]
+            total_costo_acum = 0.0
+            total_base_acum = 0.0
+            total_taxas_acum = 0.0
             for item in productos:
                 precio_base_unit = float(item.get("precio_base") or 0)
                 cant = int(item.get("cantidad") or 0)
@@ -1650,6 +1653,9 @@ def generar_pdf_cotizacion(id_hoja):
                 total_base = round(precio_base_unit * cant, 2)
                 taxas = round(total_base * 0.0825, 2)
                 costo = round(total_base + taxas, 2)
+                total_base_acum += total_base
+                total_taxas_acum += taxas
+                total_costo_acum += costo
                 filas_emp.append([
                     Paragraph(html.escape(str(item.get("nombre") or "Articulo")), estilos["Normal"]),
                     Paragraph(str(cant), estilos["Centro"]),
@@ -1658,17 +1664,75 @@ def generar_pdf_cotizacion(id_hoja):
                     Paragraph(moneda_pdf(costo), estilos["Derecha"]),
                     Paragraph(moneda_pdf(precio_venta), estilos["Derecha"]),
                 ])
-            tabla_emp = Table(filas_emp, colWidths=col_w)
-            estilo_emp = TableStyle([
+
+            num_prods = len(productos)
+            estilos_tabla = [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#27272a")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e4e4e7")),
+                ("GRID", (0, 0), (-1, num_prods), 0.4, colors.HexColor("#e4e4e7")),
                 ("PADDING", (0, 0), (-1, -1), 6),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fafafa")]),
+                ("ROWBACKGROUNDS", (0, 1), (-1, num_prods), [colors.white, colors.HexColor("#fafafa")]),
+            ]
+
+            # Fila de sumas de cada columna (precio base, taxas, costo, precio venta)
+            filas_emp.append([
+                Paragraph("<b>SUBTOTALES:</b>", estilos["TextoBlancoDerecha"]),
+                "",
+                Paragraph(f"<b>{moneda_pdf(total_base_acum)}</b>", estilos["TextoBlancoDerecha"]),
+                Paragraph(f"<b>{moneda_pdf(total_taxas_acum)}</b>", estilos["TextoBlancoDerecha"]),
+                Paragraph(f"<b>{moneda_pdf(total_costo_acum)}</b>", estilos["TextoBlancoDerecha"]),
+                Paragraph(f"<b>{moneda_pdf(subtotal)}</b>", estilos["TextoBlancoDerecha"]),
             ])
-            tabla_emp.setStyle(estilo_emp)
-            contenido.extend([tabla_emp, Spacer(1, 7 * mm)])
+
+            if descuento > 0:
+                filas_emp.append([
+                    Paragraph("<b>DESCUENTO:</b>", estilos["TextoBlancoDerecha"]),
+                    "",
+                    "",
+                    "",
+                    "",
+                    Paragraph(f"<b>-{moneda_pdf(descuento)}</b>", estilos["TextoBlancoDerecha"]),
+                ])
+                filas_emp.append([
+                    Paragraph("<b>TOTAL:</b>", estilos["TextoBlancoDerecha"]),
+                    "",
+                    "",
+                    "",
+                    "",
+                    Paragraph(f"<b>{moneda_pdf(total)}</b>", estilos["TextoBlancoDerecha"]),
+                ])
+                estilos_tabla.extend([
+                    ("SPAN", (0, -3), (1, -3)),
+                    ("BACKGROUND", (0, -3), (-1, -3), colors.HexColor("#3f3f46")),
+                    ("LINEABOVE", (0, -3), (-1, -3), 1.5, colors.HexColor("#27272a")),
+                    ("SPAN", (0, -2), (4, -2)),
+                    ("BACKGROUND", (0, -2), (-1, -2), colors.HexColor("#52525b")),
+                    ("SPAN", (0, -1), (4, -1)),
+                    ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#27272a")),
+                    ("LINEBELOW", (0, -1), (-1, -1), 2, colors.HexColor("#f97316")),
+                ])
+            else:
+                filas_emp.append([
+                    Paragraph("<b>TOTAL:</b>", estilos["TextoBlancoDerecha"]),
+                    "",
+                    "",
+                    "",
+                    "",
+                    Paragraph(f"<b>{moneda_pdf(total)}</b>", estilos["TextoBlancoDerecha"]),
+                ])
+                estilos_tabla.extend([
+                    ("SPAN", (0, -2), (1, -2)),
+                    ("BACKGROUND", (0, -2), (-1, -2), colors.HexColor("#3f3f46")),
+                    ("LINEABOVE", (0, -2), (-1, -2), 1.5, colors.HexColor("#27272a")),
+                    ("SPAN", (0, -1), (4, -1)),
+                    ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#27272a")),
+                    ("LINEBELOW", (0, -1), (-1, -1), 2, colors.HexColor("#f97316")),
+                ])
+
+            tabla_emp = Table(filas_emp, colWidths=col_w)
+            tabla_emp.setStyle(TableStyle(estilos_tabla))
+            contenido.append(tabla_emp)
         else:
             # --- PDF CLIENTE: lista de articulos con cantidad ---
             col_w_cli = [140 * mm, 30 * mm]
@@ -1691,19 +1755,19 @@ def generar_pdf_cotizacion(id_hoja):
             ]))
             contenido.extend([tabla_productos, Spacer(1, 7 * mm)])
 
-        filas_resumen = []
-        if descuento > 0:
-            filas_resumen.extend([
-                ["Subtotal", moneda_pdf(subtotal)],
-                ["Descuento", f"-{moneda_pdf(descuento)}"],
+            filas_resumen = []
+            if descuento > 0:
+                filas_resumen.extend([
+                    ["Subtotal", moneda_pdf(subtotal)],
+                    ["Descuento", f"-{moneda_pdf(descuento)}"],
+                ])
+            filas_resumen.append([
+                Paragraph("<b>TOTAL</b>", estilos["TextoBlanco"]),
+                Paragraph(f"<b>{moneda_pdf(total)}</b>", estilos["TextoBlancoDerecha"]),
             ])
-        filas_resumen.append([
-            Paragraph("<b>TOTAL</b>", estilos["TextoBlanco"]),
-            Paragraph(f"<b>{moneda_pdf(total)}</b>", estilos["TextoBlancoDerecha"]),
-        ])
-        resumen = Table(filas_resumen, colWidths=[45 * mm, 40 * mm], hAlign="RIGHT")
-        resumen.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#27272a")), ("TEXTCOLOR", (0, 0), (-1, -1), colors.white), ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("LINEABOVE", (0, -1), (-1, -1), 0.7, colors.HexColor("#71717a")), ("PADDING", (0, 0), (-1, -1), 7)]))
-        contenido.append(resumen)
+            resumen = Table(filas_resumen, colWidths=[45 * mm, 40 * mm], hAlign="RIGHT")
+            resumen.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#27272a")), ("TEXTCOLOR", (0, 0), (-1, -1), colors.white), ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("LINEABOVE", (0, -1), (-1, -1), 0.7, colors.HexColor("#71717a")), ("PADDING", (0, 0), (-1, -1), 7)]))
+            contenido.append(resumen)
         documento.build(contenido)
 
         mysql.connection.commit()
