@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -435,465 +435,207 @@ export default function PagosFacturacion() {
 
   if (cargando && !resumen) return <Loading />;
 
+  // KPI computations
+  const cobradoMes = Number(resumen?.pagadas_mes?.total ?? 0);
+  const montoDeuda = deudaTotal;
+
   return (
-    <div
-      className="flex flex-col w-full rounded-2xl border border-white/10 bg-[#0d0d12] text-white shadow-2xl shadow-black/40 overflow-hidden">
-      {/* ── TOP BAR ─────────────────────────────────── */}
-      <header
-        className="shrink-0 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3.5 sm:py-4"
-        style={{
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
-          background: "#0a0a10",
-        }}>
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <h1 className="text-base sm:text-lg font-black text-white tracking-tight">
+    <div className="flex flex-col w-full" style={{ background: "var(--alt-page-bg)", minHeight: "100%" }}>
+
+      {/* ── PAGE HEADER */}
+      <div className="alt-page-header">
+        <div>
+          <h1 className="alt-page-title">
+            <ReceiptText style={{ width: 18, height: 18, color: "#f97316" }} />
             Facturación y Cobranza
+            {cargandoLista && <LoaderCircle style={{ width: 14, height: 14, color: "#f97316", animation: "spin 1s linear infinite" }} />}
           </h1>
-          {cargandoLista && (
-            <LoaderCircle
-              className="h-3.5 w-3.5 animate-spin"
-              style={{ color: "#f97316" }}
-            />
-          )}
+          <div className="alt-breadcrumb" style={{ marginTop: 2 }}>
+            <a href="/inicio">Inicio</a>
+            <span>/</span>
+            <span>Facturación</span>
+          </div>
         </div>
-
-        {/* Acciones */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={generarPendientes}
-            disabled={cargandoLista}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-bold cursor-pointer disabled:opacity-50 transition-all hover:bg-white/10 active:scale-95"
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.7)",
-            }}>
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${cargandoLista ? "animate-spin" : ""}`}
-              style={{ color: "#f97316" }}
-            />
-            <span className="hidden sm:inline">Generar Pendientes</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <button onClick={generarPendientes} disabled={cargandoLista} className="alt-btn alt-btn-secondary">
+            <RefreshCw style={{ width: 13, height: 13, color: "#f97316" }} className={cargandoLista ? "animate-spin" : ""} />
+            <span>Generar Pendientes</span>
           </button>
-
-          <button
-            onClick={() => setModalRecurrente(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-lg text-xs font-black cursor-pointer transition-all hover:brightness-110 active:scale-95"
-            style={{ background: "#f97316", color: "#fff" }}>
-            <Plus className="h-3.5 w-3.5" />
-            <span>Nuevo Recurrente</span>
+          <button onClick={() => setModalRecurrente(true)} className="alt-btn alt-btn-primary">
+            <Plus style={{ width: 13, height: 13 }} />
+            Nuevo Recurrente
           </button>
         </div>
-      </header>
-
-      {/* ── TABS ────────────────────────────────────── */}
-      <div
-        className="shrink-0 flex items-center overflow-x-auto no-scrollbar px-3 sm:px-6"
-        style={{
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
-          background: "#0a0a10",
-        }}>
-        {(
-          [
-            {
-              id: "facturas",
-              label: "Facturas",
-              icon: <FileText className="h-3.5 w-3.5" />,
-            },
-            {
-              id: "pagos",
-              label: "Fact. Pagadas",
-              icon: <ReceiptText className="h-3.5 w-3.5" />,
-            },
-            {
-              id: "recurrentes",
-              label: "Recurrentes",
-              icon: <RefreshCw className="h-3.5 w-3.5" />,
-            },
-            {
-              id: "resumen",
-              label: "Resumen",
-              icon: <Wallet className="h-3.5 w-3.5" />,
-            },
-          ] as { id: Pestana; label: string; icon: React.ReactNode }[]
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              setPestana(tab.id);
-              setPagina(1);
-            }}
-            className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 sm:py-3 text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0"
-            style={{
-              color: pestana === tab.id ? "#fff" : "rgba(255,255,255,0.38)",
-              borderBottom:
-                pestana === tab.id
-                  ? "2px solid #f97316"
-                  : "2px solid transparent",
-            }}>
-            {tab.icon}
-            <span>{tab.label}</span>
-          </button>
-        ))}
       </div>
 
-      {/* ── BARRA DE FILTROS (solo Facturas / Pagos) ── */}
-      {(pestana === "facturas" || pestana === "pagos") && (
-        <div
-          className="shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 px-3.5 sm:px-6 py-2.5 sm:py-3"
-          style={{
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(255,255,255,0.015)",
-          }}>
-          {/* Búsqueda */}
-          <div className="relative flex-1 min-w-[180px] sm:flex-initial sm:w-56">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none"
-              style={{ color: "rgba(255,255,255,0.28)" }}
-            />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Buscar cliente, N.º factura..."
-              className="w-full pl-9 pr-8 py-2 rounded-lg text-xs outline-none transition-all focus:border-orange-500/60"
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.09)",
-                color: "#fff",
-              }}
-            />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 cursor-pointer"
-                style={{ color: "rgba(255,255,255,0.35)" }}>
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Separador */}
-          <div
-            className="hidden md:block h-5 w-px"
-            style={{ background: "rgba(255,255,255,0.08)" }}
-          />
-
-          {pestana === "facturas" && !clienteFiltroId && (
-            <div
-              className="px-3 py-2 rounded-lg text-xs font-bold"
-              style={{
-                background: "rgba(239,68,68,0.1)",
-                border: "1px solid rgba(239,68,68,0.2)",
-                color: "#fca5a5",
-              }}>
-              Todo el historial
-            </div>
-          )}
-          {/* El rango no limita las vencidas: siempre se muestra toda la deuda histórica. */}
-          {false && pestana === "facturas" && !clienteFiltroId && (
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
-              <div className="flex items-center gap-1.5">
-                <Calendar
-                  className="h-3.5 w-3.5 shrink-0"
-                  style={{ color: "rgba(255,255,255,0.35)" }}
-                />
-                <input
-                  type="date"
-                  value={desde}
-                  onChange={(e) => {
-                    setDesde(e.target.value);
-                    setPagina(1);
-                  }}
-                  className="px-2.5 sm:px-3 py-2 rounded-lg text-xs text-white outline-none cursor-pointer max-w-[130px] sm:max-w-none"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.09)",
-                  }}
-                />
-              </div>
-              <span
-                className="text-xs"
-                style={{ color: "rgba(255,255,255,0.3)" }}>
-                —
-              </span>
-              <input
-                type="date"
-                value={hasta}
-                onChange={(e) => {
-                  setHasta(e.target.value);
-                  setPagina(1);
-                }}
-                className="px-2.5 sm:px-3 py-2 rounded-lg text-xs text-white outline-none cursor-pointer max-w-[130px] sm:max-w-none"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.09)",
-                }}
-              />
-            </div>
-          )}
-
-          {/* Separador */}
-          <div
-            className="hidden md:block h-5 w-px"
-            style={{ background: "rgba(255,255,255,0.08)" }}
-          />
-
-          {/* Estado */}
-          {pestana === "facturas" && (
-            <div className="relative inline-flex items-center flex-1 sm:flex-initial min-w-[130px] sm:min-w-0">
-              <select
-                value={estado}
-                onChange={(e) => {
-                  setEstado(e.target.value as Estado);
-                  setPagina(1);
-                }}
-                className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg text-xs font-medium outline-none cursor-pointer transition-all hover:bg-white/[0.08] focus:border-orange-500/60"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  color: "#fff",
-                }}>
-                <option
-                  value="todos"
-                  style={{ background: "#18181b", color: "#fafafa" }}>
-                  Todos los estados
-                </option>
-                <option
-                  value="pendiente"
-                  style={{ background: "#18181b", color: "#fafafa" }}>
-                  Pendiente
-                </option>
-                <option
-                  value="vencida"
-                  style={{ background: "#18181b", color: "#fafafa" }}>
-                  Vencida
-                </option>
-                <option
-                  value="pagada"
-                  style={{ background: "#18181b", color: "#fafafa" }}>
-                  Pagada
-                </option>
-                <option
-                  value="cancelada"
-                  style={{ background: "#18181b", color: "#fafafa" }}>
-                  Cancelada
-                </option>
-              </select>
-              <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-2.5 text-white/40" />
-            </div>
-          )}
-
-          {/* Origen */}
-          <div className="relative inline-flex items-center flex-1 sm:flex-initial min-w-[130px] sm:min-w-0">
-            <select
-              value={origen}
-              onChange={(e) => {
-                setOrigen(e.target.value as Origen);
-                setPagina(1);
-              }}
-              className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg text-xs font-medium outline-none cursor-pointer transition-all hover:bg-white/[0.08] focus:border-orange-500/60"
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "#fff",
-              }}>
-              <option
-                value="todos"
-                style={{ background: "#18181b", color: "#fafafa" }}>
-                Todos los orígenes
-              </option>
-              <option
-                value="recurrente"
-                style={{ background: "#18181b", color: "#fafafa" }}>
-                Recurrentes
-              </option>
-              <option
-                value="manual"
-                style={{ background: "#18181b", color: "#fafafa" }}>
-                Manuales
-              </option>
-            </select>
-            <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-2.5 text-white/40" />
-          </div>
-
-          {/* Método de pago */}
-          <div className="relative inline-flex items-center flex-1 sm:flex-initial min-w-[130px] sm:min-w-0">
-            <select
-              value={metodo}
-              onChange={(e) => {
-                setMetodo(e.target.value);
-                setPagina(1);
-              }}
-              className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg text-xs font-medium outline-none cursor-pointer transition-all hover:bg-white/[0.08] focus:border-orange-500/60"
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "#fff",
-              }}>
-              <option
-                value=""
-                style={{ background: "#18181b", color: "#fafafa" }}>
-                Forma de pago
-              </option>
-              {metodos.map((m) => (
-                <option
-                  key={m.id}
-                  value={m.id}
-                  style={{ background: "#18181b", color: "#fafafa" }}>
-                  {m.metodo}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-2.5 text-white/40" />
-          </div>
-
-          {/* Conteo al final */}
-          <span
-            className="w-full sm:w-auto sm:ml-auto text-right text-[11px] sm:text-xs pt-1 sm:pt-0"
-            style={{ color: "rgba(255,255,255,0.35)" }}>
-            {movimientos.total} resultado(s)
-          </span>
-        </div>
-      )}
-
-      {/* ── BANNER CLIENTE FILTRADO ──────────────────── */}
-      {clienteFiltroId && pestana === "facturas" && (
-        <div
-          className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2"
-          style={{
-            background: "rgba(249,115,22,0.08)",
-            borderBottom: "1px solid rgba(249,115,22,0.18)",
-          }}>
-          <div
-            className="flex items-center gap-2 text-xs"
-            style={{ color: "rgba(255,255,255,0.65)" }}>
-            <span style={{ color: "#fb923c" }}>●</span>
-            Filtrando por:{" "}
-            <Link
-              to={`/clientes/${clienteFiltroId}`}
-              className="font-black uppercase hover:underline"
-              style={{ color: "#fff" }}>
-              {clienteFiltroNombre}
-            </Link>
-          </div>
-          <button
-            onClick={limpiarCliente}
-            className="flex items-center gap-1 text-xs font-bold cursor-pointer hover:text-white"
-            style={{ color: "rgba(255,255,255,0.4)" }}>
-            <X className="h-3 w-3" /> Quitar filtro
-          </button>
-        </div>
-      )}
-
-      {/* ── AVISO ───────────────────────────────────── */}
+      {/* ── AVISO */}
       {aviso && (
-        <div
-          className="shrink-0 flex items-center justify-between gap-3 px-4 sm:px-6 py-2.5"
-          style={{
-            background: "rgba(249,115,22,0.1)",
-            borderBottom: "1px solid rgba(249,115,22,0.18)",
-          }}>
-          <div
-            className="flex items-center gap-2 text-xs font-medium"
-            style={{ color: "#fed7aa" }}>
-            <Sparkles
-              className="h-3.5 w-3.5 shrink-0"
-              style={{ color: "#f97316" }}
-            />
-            {aviso}
+        <div style={{ padding: "8px 16px 0" }}>
+          <div className="alt-notice alt-notice-info">
+            <span>{aviso}</span>
+            <button onClick={() => setAviso("")} style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", display: "inline-flex", padding: 2 }}>
+              <X style={{ width: 14, height: 14 }} />
+            </button>
           </div>
-          <button
-            onClick={() => setAviso("")}
-            className="cursor-pointer p-0.5 hover:text-white"
-            style={{ color: "rgba(255,255,255,0.4)" }}>
-            <X className="h-4 w-4" />
-          </button>
         </div>
       )}
 
-      {/* ── CONTENIDO ───────────────────────────────── */}
-      <div className="flex-1 min-h-0">
-        {pestana === "resumen" && (
-          <ResumenTab
-            resumen={resumen}
-            vencidasCantidad={vencidasMes.length}
-            deudaTotal={deudaTotal}
-          />
-        )}
+      {/* ── KPI INFO BOXES */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, padding: "12px 16px" }}>
+        <div className="alt-info-box">
+          <div className="alt-info-box-icon c-green"><Wallet style={{ width: 22, height: 22 }} /></div>
+          <div className="alt-info-box-content">
+            <div className="alt-info-box-label">Cobrado este mes</div>
+            <div className="alt-info-box-value">{dinero(cobradoMes)}</div>
+            <div className="alt-info-box-sub">{resumen?.pagadas_mes?.cuotas ?? 0} cuota(s)</div>
+          </div>
+        </div>
+        <div className="alt-info-box">
+          <div className="alt-info-box-icon c-blue"><FileText style={{ width: 22, height: 22 }} /></div>
+          <div className="alt-info-box-content">
+            <div className="alt-info-box-label">Facturas (historial)</div>
+            <div className="alt-info-box-value">{movimientos.total}</div>
+            <div className="alt-info-box-sub">todos los períodos</div>
+          </div>
+        </div>
+        <div className="alt-info-box">
+          <div className="alt-info-box-icon c-red"><AlertCircle style={{ width: 22, height: 22 }} /></div>
+          <div className="alt-info-box-content">
+            <div className="alt-info-box-label">Vencidas este mes</div>
+            <div className="alt-info-box-value">{vencidasMes.length}</div>
+            <div className="alt-info-box-sub">sin cobrar</div>
+          </div>
+        </div>
+        <div className="alt-info-box">
+          <div className="alt-info-box-icon c-orange"><CircleDollarSign style={{ width: 22, height: 22 }} /></div>
+          <div className="alt-info-box-content">
+            <div className="alt-info-box-label">Deuda acumulada</div>
+            <div className="alt-info-box-value">{dinero(montoDeuda)}</div>
+            <div className="alt-info-box-sub">{(resumen?.deuda_por_cliente ?? []).length} cliente(s)</div>
+          </div>
+        </div>
+      </div>
 
+      {/* ── MAIN CARD */}
+      <div className="alt-card" style={{ margin: "0 16px 16px", flex: 1 }}>
+
+        {/* TABS */}
+        <div className="alt-tabs">
+          {([
+            { id: "facturas", label: "Facturas", icon: <FileText style={{width:13,height:13}} /> },
+            { id: "pagos", label: "Pagadas", icon: <CheckCircle2 style={{width:13,height:13}} /> },
+            { id: "recurrentes", label: "Recurrentes", icon: <RefreshCw style={{width:13,height:13}} /> },
+            { id: "resumen", label: "Resumen", icon: <Wallet style={{width:13,height:13}} /> },
+          ] as { id: Pestana; label: string; icon: React.ReactNode }[]).map(tab => (
+            <button
+              key={tab.id}
+              className={`alt-tab${pestana === tab.id ? " active" : ""}`}
+              onClick={() => { setPestana(tab.id); setPagina(1); }}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* FILTER BAR */}
         {(pestana === "facturas" || pestana === "pagos") && (
-          <TablaMovimientos
-            pestana={pestana}
-            respuesta={movimientos}
-            cargando={cargandoLista}
-            setPagina={setPagina}
-            abrirDetalle={setDetalleId}
-            abrirPagoRapido={setModalPagoRapido}
-            descargarPdf={descargarPdf}
-          />
+          <div className="alt-filters">
+            <div style={{ position: "relative", flex: "1 1 180px", maxWidth: 260 }}>
+              <Search style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", width: 13, height: 13, color: "var(--alt-text-muted)", pointerEvents: "none" }} />
+              <input
+                className="alt-input"
+                style={{ width: "100%", paddingLeft: 28, paddingRight: query ? 28 : 10, boxSizing: "border-box" }}
+                type="text"
+                placeholder="Buscar cliente, N.º factura..."
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+              />
+              {query && (
+                <button onClick={() => setQuery("")} style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", padding: 2, cursor: "pointer", color: "var(--alt-text-muted)" }}>
+                  <X style={{ width: 12, height: 12 }} />
+                </button>
+              )}
+            </div>
+            {pestana === "facturas" && (
+              <div style={{ position: "relative" }}>
+                <select className="alt-select" value={estado} onChange={e => { setEstado(e.target.value as Estado); setPagina(1); }}>
+                  <option value="todos">Todos los estados</option>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="vencida">Vencida</option>
+                  <option value="pagada">Pagada</option>
+                  <option value="cancelada">Cancelada</option>
+                </select>
+                <ChevronDown style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", width: 12, height: 12, color: "var(--alt-text-muted)", pointerEvents: "none" }} />
+              </div>
+            )}
+            <div style={{ position: "relative" }}>
+              <select className="alt-select" value={origen} onChange={e => { setOrigen(e.target.value as Origen); setPagina(1); }}>
+                <option value="todos">Todos los orígenes</option>
+                <option value="recurrente">Recurrentes</option>
+                <option value="manual">Manuales</option>
+              </select>
+              <ChevronDown style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", width: 12, height: 12, color: "var(--alt-text-muted)", pointerEvents: "none" }} />
+            </div>
+            <div style={{ position: "relative" }}>
+              <select className="alt-select" value={metodo} onChange={e => { setMetodo(e.target.value); setPagina(1); }}>
+                <option value="">Forma de pago</option>
+                {metodos.map(m => <option key={m.id} value={m.id}>{m.metodo}</option>)}
+              </select>
+              <ChevronDown style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", width: 12, height: 12, color: "var(--alt-text-muted)", pointerEvents: "none" }} />
+            </div>
+            <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "var(--alt-text-muted)" }}>
+              {movimientos.total} resultado(s)
+            </span>
+          </div>
         )}
 
+        {/* BANNER CLIENTE FILTRADO */}
+        {clienteFiltroId && pestana === "facturas" && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 16px", background: "rgba(249,115,22,0.08)", borderBottom: "1px solid rgba(249,115,22,0.18)", fontSize: "0.75rem" }}>
+            <span style={{ color: "var(--alt-text-muted)" }}>
+              Filtrando:{" "}
+              <Link to={`/clientes/${clienteFiltroId}`} style={{ color: "var(--alt-text)", fontWeight: 700 }}>
+                {clienteFiltroNombre}
+              </Link>
+            </span>
+            <button onClick={limpiarCliente} style={{ background: "none", border: "none", color: "var(--alt-text-muted)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.72rem" }}>
+              <X style={{ width: 12, height: 12 }} /> Quitar filtro
+            </button>
+          </div>
+        )}
+
+        {/* CONTENT */}
+        {pestana === "resumen" && <ResumenTab resumen={resumen} vencidasCantidad={vencidasMes.length} deudaTotal={deudaTotal} />}
+        {(pestana === "facturas" || pestana === "pagos") && (
+          <TablaMovimientos pestana={pestana} respuesta={movimientos} cargando={cargandoLista} setPagina={setPagina} abrirDetalle={setDetalleId} abrirPagoRapido={setModalPagoRapido} descargarPdf={descargarPdf} />
+        )}
         {pestana === "recurrentes" && (
-          <TabRecurrentes
-            items={recurrentes}
-            cargando={cargandoLista}
-            query={queryAplicada}
-            abrirModal={() => setModalRecurrente(true)}
-            alternar={alternarRecurrencia}
-            eliminar={eliminarRecurrente}
-            abrirDetalle={setDetalleId}
-            descargarPdf={descargarPdf}
-          />
+          <TabRecurrentes items={recurrentes} cargando={cargandoLista} query={queryAplicada} abrirModal={() => setModalRecurrente(true)} alternar={alternarRecurrencia} eliminar={eliminarRecurrente} abrirDetalle={setDetalleId} descargarPdf={descargarPdf} />
         )}
       </div>
 
-      {/* ── MODALES ─────────────────────────────────── */}
+      {/* MODALES */}
       {detalleId && (
-        <DrawerDetalle
-          detalle={detalle}
-          metodos={metodos}
-          cerrar={() => setDetalleId(null)}
+        <DrawerDetalle detalle={detalle} metodos={metodos} cerrar={() => setDetalleId(null)}
           onActualizado={async () => {
-            await Promise.all([
-              cargarMovimientos(),
-              cargarResumen(),
-              detalleId
-                ? fetch(url(`/api/facturacion/facturas/${detalleId}`))
-                    .then((r) => (r.ok ? r.json() : null))
-                    .then(setDetalle)
-                    .catch(() => {})
-                : null,
+            await Promise.all([cargarMovimientos(), cargarResumen(),
+              detalleId ? fetch(url(`/api/facturacion/facturas/${detalleId}`)).then(r => r.ok ? r.json() : null).then(setDetalle).catch(() => {}) : null,
             ]);
           }}
         />
       )}
-
       {modalRecurrente && (
-        <ModalRecurrente
-          url={url}
-          metodos={metodos}
-          cerrar={() => setModalRecurrente(false)}
+        <ModalRecurrente url={url} metodos={metodos} cerrar={() => setModalRecurrente(false)}
           guardado={async (mensaje) => {
-            setModalRecurrente(false);
-            setAviso(mensaje);
-            setPestana("recurrentes");
-            await Promise.all([
-              cargarRecurrentes(),
-              cargarResumen(),
-              cargarMovimientos(),
-            ]);
+            setModalRecurrente(false); setAviso(mensaje); setPestana("recurrentes");
+            await Promise.all([cargarRecurrentes(), cargarResumen(), cargarMovimientos()]);
           }}
         />
       )}
-
       {modalPagoRapido && (
-        <ModalPago
-          movimiento={modalPagoRapido}
-          metodos={metodos}
-          cerrar={() => setModalPagoRapido(null)}
+        <ModalPago movimiento={modalPagoRapido} metodos={metodos} cerrar={() => setModalPagoRapido(null)}
           onActualizado={async () => {
-            setModalPagoRapido(null);
-            setAviso("Pago registrado correctamente");
+            setModalPagoRapido(null); setAviso("Pago registrado correctamente");
             await Promise.all([cargarMovimientos(), cargarResumen()]);
           }}
         />
@@ -902,18 +644,9 @@ export default function PagosFacturacion() {
   );
 }
 
-// ==========================================
-// Componente: Tabla de Facturas / Pagos
-// ==========================================
 
 function TablaMovimientos({
-  pestana,
-  respuesta,
-  cargando,
-  setPagina,
-  abrirDetalle,
-  abrirPagoRapido,
-  descargarPdf,
+  pestana, respuesta, cargando, setPagina, abrirDetalle, abrirPagoRapido, descargarPdf,
 }: {
   pestana: "facturas" | "pagos";
   respuesta: RespuestaMovimientos;
@@ -924,363 +657,82 @@ function TablaMovimientos({
   descargarPdf: (id: number, num: string) => void;
 }) {
   return (
-    <div className="flex flex-col">
-      {/* ── VISTA MÓVIL (< 640px) ────────────────────── */}
-      <div className={`sm:hidden flex flex-col divide-y divide-white/[0.06] ${cargando ? "opacity-40" : ""}`}>
-        {respuesta.items.map((item) => {
-          const itemEstado = item.estado || estadoMovimiento(item);
-          const facturaId = item.factura_id || item.id || 0;
-          const numeroFac =
-            item.numero_factura ||
-            `FAC-${String(facturaId).padStart(6, "0")}`;
-
-          return (
-            <div
-              key={item.movimiento_id || item.id}
-              className="p-4 space-y-3 transition-colors hover:bg-white/[0.02]">
-              {/* Fila superior: Factura # + Tipo + Estado */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => facturaId && abrirDetalle(facturaId)}
-                    className="font-mono text-xs font-black hover:underline cursor-pointer"
-                    style={{ color: "#fb923c" }}>
-                    {numeroFac}
-                  </button>
-                  <span
-                    className="inline-block rounded px-1.5 py-0.5 text-[9px] font-black uppercase"
-                    style={
-                      item.origen === "recurrente"
-                        ? {
-                            background: "rgba(167,139,250,0.15)",
-                            color: "#c4b5fd",
-                          }
-                        : {
-                            background: "rgba(255,255,255,0.06)",
-                            color: "rgba(255,255,255,0.4)",
-                          }
-                    }>
-                    {item.origen === "recurrente" ? "Recurrente" : "Manual"}
-                  </span>
-                </div>
-                <EstadoBadge estado={itemEstado} />
-              </div>
-
-              {/* Cliente */}
-              <div className="flex items-center gap-2.5">
-                <div
-                  className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black"
-                  style={{
-                    background: "rgba(255,255,255,0.07)",
-                    color: "rgba(255,255,255,0.7)",
-                  }}>
-                  {iniciales(item.cliente_nombre)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <Link
-                    to={`/clientes/${item.cliente_id}`}
-                    className="font-bold uppercase text-xs block truncate hover:underline text-white">
-                    {item.cliente_nombre}
-                  </Link>
-                  {item.telefono && (
-                    <span className="text-[10px] text-white/40 block truncate">
-                      {item.telefono}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Datos financieros en grid */}
-              <div
-                className="grid grid-cols-2 gap-2 p-2.5 rounded-lg text-xs"
-                style={{
-                  background: "rgba(255,255,255,0.025)",
-                  border: "1px solid rgba(255,255,255,0.05)",
-                }}>
-                <div>
-                  <span className="text-[10px] text-white/35 block uppercase font-bold">
-                    {pestana === "pagos" ? "Fecha Pago" : "Vencimiento"}
-                  </span>
-                  <span
-                    className="font-bold text-xs"
-                    style={{
-                      color:
-                        pestana === "pagos"
-                          ? "#34d399"
-                          : itemEstado === "vencida"
-                            ? "#f87171"
-                            : "rgba(255,255,255,0.75)",
-                    }}>
-                    {pestana === "pagos"
-                      ? fecha(item.fecha_pago || item.fechapago)
-                      : fecha(item.vencimiento)}
-                  </span>
-                </div>
-
-                <div className="text-right">
-                  <span className="text-[10px] text-white/35 block uppercase font-bold">
-                    Monto Total
-                  </span>
-                  <span className="font-black text-sm text-white">
-                    {dinero(item.monto)}
-                  </span>
-                </div>
-
-                {Number(item.saldo) > 0 && (
-                  <div className="col-span-2 flex items-center justify-between pt-1 border-t border-white/[0.04]">
-                    <span className="text-[10px] text-white/35 uppercase font-bold">
-                      Saldo Pendiente
-                    </span>
-                    <span className="font-black text-xs" style={{ color: "#fbbf24" }}>
-                      {dinero(item.saldo)}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* Acciones */}
-              <div className="flex items-center justify-end gap-2 pt-0.5">
-                {itemEstado !== "pagada" && itemEstado !== "cancelada" && (
-                  <button
-                    onClick={() => abrirPagoRapido(item)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all active:scale-95 hover:brightness-110"
-                    style={{ background: "#059669", color: "#fff" }}>
-                    <CircleDollarSign className="h-3.5 w-3.5" />
-                    <span>Cobrar</span>
-                  </button>
-                )}
-                <button
-                  onClick={() =>
-                    facturaId && descargarPdf(facturaId, numeroFac)
-                  }
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all hover:bg-white/10"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    color: "#fb923c",
-                  }}
-                  title="Descargar PDF">
-                  <FileDown className="h-3.5 w-3.5" />
-                  <span>PDF</span>
-                </button>
-                <button
-                  onClick={() => facturaId && abrirDetalle(facturaId)}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all hover:bg-white/10 active:scale-95"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    color: "rgba(255,255,255,0.85)",
-                  }}>
-                  Detalle
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── VISTA ESCRITORIO / TABLET (≥ 640px) ───────── */}
-      <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full min-w-[920px] text-left text-xs border-collapse">
+    <div style={{ opacity: cargando ? 0.5 : 1, transition: "opacity 0.2s" }}>
+      <div style={{ overflowX: "auto" }}>
+        <table className="alt-table" style={{ minWidth: 780 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              {[
-                "N.º Factura",
-                "Cliente",
-                "Tipo",
-                "Emisión",
-                pestana === "pagos" ? "Fecha Pago" : "Vencimiento",
-                "Total",
-                "Saldo",
-                "Estado",
-                "",
-              ].map((col) => (
-                <th
-                  key={col}
-                  className="px-4 lg:px-5 py-3 font-bold uppercase tracking-wider"
-                  style={{ color: "rgba(255,255,255,0.28)", fontSize: "10px" }}>
-                  {col}
-                </th>
-              ))}
+            <tr>
+              <th>N.º Factura</th>
+              <th>Cliente</th>
+              <th>Tipo</th>
+              <th>Emisión</th>
+              <th>{pestana === "pagos" ? "Fecha Pago" : "Vencimiento"}</th>
+              <th className="td-right">Total</th>
+              <th className="td-right">Saldo</th>
+              <th>Estado</th>
+              <th></th>
             </tr>
           </thead>
-          <tbody className={cargando ? "opacity-40" : ""}>
-            {respuesta.items.map((item) => {
+          <tbody>
+            {respuesta.items.map(item => {
               const itemEstado = item.estado || estadoMovimiento(item);
               const facturaId = item.factura_id || item.id || 0;
-              const numeroFac =
-                item.numero_factura ||
-                `FAC-${String(facturaId).padStart(6, "0")}`;
-
+              const numeroFac = item.numero_factura || `FAC-${String(facturaId).padStart(6, "0")}`;
               return (
-                <tr
-                  key={item.movimiento_id || item.id}
-                  className="group transition-colors"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background =
-                      "rgba(255,255,255,0.025)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "transparent")
-                  }>
-                  {/* N.º Factura */}
-                  <td className="px-4 lg:px-5 py-4">
+                <tr key={item.movimiento_id || item.id}>
+                  <td>
                     <button
                       onClick={() => facturaId && abrirDetalle(facturaId)}
-                      className="font-mono font-bold hover:underline cursor-pointer"
-                      style={{ color: "#fb923c" }}>
+                      className="td-mono"
+                      style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+                    >
                       {numeroFac}
                     </button>
                   </td>
-
-                  {/* Cliente */}
-                  <td className="px-4 lg:px-5 py-4">
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black"
-                        style={{
-                          background: "rgba(255,255,255,0.07)",
-                          color: "rgba(255,255,255,0.55)",
-                        }}>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800, color: "rgba(255,255,255,0.55)", flexShrink: 0 }}>
                         {iniciales(item.cliente_nombre)}
                       </div>
                       <div>
-                        <Link
-                          to={`/clientes/${item.cliente_id}`}
-                          className="font-bold uppercase block hover:underline"
-                          style={{ color: "#fff", fontSize: "11px" }}>
+                        <Link to={`/clientes/${item.cliente_id}`} style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--alt-text)", display: "block", textDecoration: "none" }}
+                          onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
+                          onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}>
                           {item.cliente_nombre}
                         </Link>
-                        {item.telefono && (
-                          <span
-                            style={{
-                              color: "rgba(255,255,255,0.32)",
-                              fontSize: "10px",
-                            }}>
-                            {item.telefono}
-                          </span>
-                        )}
+                        {item.telefono && <span className="td-muted" style={{ display: "block" }}>{item.telefono}</span>}
                       </div>
                     </div>
                   </td>
-
-                  {/* Tipo */}
-                  <td className="px-4 lg:px-5 py-4">
-                    <span
-                      className="inline-block rounded px-2 py-0.5 text-[10px] font-black uppercase"
-                      style={
-                        item.origen === "recurrente"
-                          ? {
-                              background: "rgba(167,139,250,0.15)",
-                              color: "#c4b5fd",
-                            }
-                          : {
-                              background: "rgba(255,255,255,0.06)",
-                              color: "rgba(255,255,255,0.4)",
-                            }
-                      }>
+                  <td>
+                    <span className={`alt-badge ${item.origen === "recurrente" ? "alt-badge-blue" : "alt-badge-gray"}`}>
                       {item.origen === "recurrente" ? "Recurrente" : "Manual"}
                     </span>
                   </td>
-
-                  {/* Emisión */}
-                  <td
-                    className="px-4 lg:px-5 py-4"
-                    style={{ color: "rgba(255,255,255,0.45)" }}>
-                    {fecha(item.fecha_emision)}
+                  <td className="td-muted">{fecha(item.fecha_emision)}</td>
+                  <td>
+                    <span style={{ fontWeight: 700, fontSize: "0.78rem", color: pestana === "pagos" ? "#4ade80" : itemEstado === "vencida" ? "#f87171" : "var(--alt-text)" }}>
+                      {pestana === "pagos" ? fecha(item.fecha_pago || item.fechapago) : fecha(item.vencimiento)}
+                    </span>
                   </td>
-
-                  {/* Vencimiento / Pago */}
-                  <td className="px-4 lg:px-5 py-4 font-bold">
-                    {pestana === "pagos" ? (
-                      <span style={{ color: "#34d399" }}>
-                        {fecha(item.fecha_pago || item.fechapago)}
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          color:
-                            itemEstado === "vencida"
-                              ? "#f87171"
-                              : "rgba(255,255,255,0.6)",
-                        }}>
-                        {fecha(item.vencimiento)}
-                      </span>
-                    )}
+                  <td className="td-right">{dinero(item.monto)}</td>
+                  <td className="td-right">
+                    {Number(item.saldo) > 0
+                      ? <span style={{ color: "#fbbf24", fontWeight: 700 }}>{dinero(item.saldo)}</span>
+                      : <span style={{ color: "var(--alt-text-muted)" }}>—</span>}
                   </td>
-
-                  {/* Total */}
-                  <td
-                    className="px-4 lg:px-5 py-4 font-black text-sm"
-                    style={{ color: "#fff" }}>
-                    {dinero(item.monto)}
-                  </td>
-
-                  {/* Saldo */}
-                  <td className="px-4 lg:px-5 py-4 font-bold">
-                    {Number(item.saldo) > 0 ? (
-                      <span style={{ color: "#fbbf24" }}>
-                        {dinero(item.saldo)}
-                      </span>
-                    ) : (
-                      <span style={{ color: "rgba(255,255,255,0.18)" }}>—</span>
-                    )}
-                  </td>
-
-                  {/* Estado */}
-                  <td className="px-4 lg:px-5 py-4">
-                    <EstadoBadge estado={itemEstado} />
-                  </td>
-
-                  {/* Acciones */}
-                  <td className="px-4 lg:px-5 py-4">
-                    <div className="flex items-center gap-1.5 justify-end">
+                  <td><EstadoBadge estado={itemEstado} /></td>
+                  <td>
+                    <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
                       {itemEstado !== "pagada" && itemEstado !== "cancelada" && (
-                        <button
-                          onClick={() => abrirPagoRapido(item)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[11px] font-black cursor-pointer transition-all active:scale-95 hover:brightness-110"
-                          style={{ background: "#059669", color: "#fff" }}
-                          title="Cobrar">
-                          <CircleDollarSign className="h-3 w-3" />
-                          <span>Cobrar</span>
+                        <button onClick={() => abrirPagoRapido(item)} className="alt-btn alt-btn-success alt-btn-sm">
+                          <CircleDollarSign style={{ width: 12, height: 12 }} /> Cobrar
                         </button>
                       )}
-                      <button
-                        onClick={() =>
-                          facturaId && descargarPdf(facturaId, numeroFac)
-                        }
-                        className="p-1.5 rounded-md cursor-pointer transition-all hover:bg-white/10"
-                        style={{ color: "rgba(255,255,255,0.32)" }}
-                        title="PDF"
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.color = "#fb923c")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.color =
-                            "rgba(255,255,255,0.32)")
-                        }>
-                        <FileDown className="h-3.5 w-3.5" />
+                      <button onClick={() => facturaId && descargarPdf(facturaId, numeroFac)} className="alt-btn alt-btn-secondary alt-btn-sm alt-btn-icon" title="PDF">
+                        <FileDown style={{ width: 13, height: 13, color: "#f97316" }} />
                       </button>
-                      <button
-                        onClick={() => facturaId && abrirDetalle(facturaId)}
-                        className="px-2.5 py-1.5 rounded-md text-[11px] font-bold cursor-pointer transition-all active:scale-95"
-                        style={{
-                          background: "rgba(255,255,255,0.05)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          color: "rgba(255,255,255,0.75)",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background =
-                            "rgba(255,255,255,0.1)";
-                          e.currentTarget.style.color = "#fff";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background =
-                            "rgba(255,255,255,0.05)";
-                          e.currentTarget.style.color =
-                            "rgba(255,255,255,0.75)";
-                        }}>
+                      <button onClick={() => facturaId && abrirDetalle(facturaId)} className="alt-btn alt-btn-secondary alt-btn-sm">
                         Detalle
                       </button>
                     </div>
@@ -1293,44 +745,30 @@ function TablaMovimientos({
       </div>
 
       {!respuesta.items.length && !cargando && (
-        <div
-          className="py-16 sm:py-24 text-center text-xs sm:text-sm"
-          style={{ color: "rgba(255,255,255,0.22)" }}>
+        <div style={{ padding: "40px 16px", textAlign: "center", color: "var(--alt-text-muted)", fontSize: "0.8rem" }}>
           No se encontraron facturas con los filtros actuales.
         </div>
       )}
 
-      {/* Paginación */}
       {respuesta.paginas > 1 && (
-        <div
-          className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3 border-t text-xs"
-          style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-          <span style={{ color: "rgba(255,255,255,0.32)" }}>
-            Página <strong style={{ color: "#fff" }}>{respuesta.pagina}</strong>{" "}
-            de <strong style={{ color: "#fff" }}>{respuesta.paginas}</strong>
+        <div className="alt-pagination" style={{ justifyContent: "space-between" }}>
+          <span style={{ fontSize: "0.72rem", color: "var(--alt-text-muted)" }}>
+            Página <strong style={{ color: "var(--alt-text)" }}>{respuesta.pagina}</strong> de <strong style={{ color: "var(--alt-text)" }}>{respuesta.paginas}</strong>
           </span>
-          <div className="flex gap-2 w-full sm:w-auto justify-end">
-            <button
-              disabled={respuesta.pagina <= 1}
-              onClick={() => setPagina(respuesta.pagina - 1)}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-1 px-3 py-1.5 rounded-md font-bold disabled:opacity-30 cursor-pointer hover:bg-white/10"
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.09)",
-                color: "#fff",
-              }}>
-              <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+          <div style={{ display: "flex", gap: 4 }}>
+            <button className="alt-page-btn" disabled={respuesta.pagina <= 1} onClick={() => setPagina(respuesta.pagina - 1)}>
+              <ChevronLeft style={{ width: 13, height: 13 }} />
             </button>
-            <button
-              disabled={respuesta.pagina >= respuesta.paginas}
-              onClick={() => setPagina(respuesta.pagina + 1)}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-1 px-3 py-1.5 rounded-md font-bold disabled:opacity-30 cursor-pointer hover:bg-white/10"
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.09)",
-                color: "#fff",
-              }}>
-              Siguiente <ChevronRight className="h-3.5 w-3.5" />
+            {Array.from({ length: Math.min(respuesta.paginas, 7) }, (_, i) => {
+              const p = i + 1;
+              return (
+                <button key={p} className={`alt-page-btn${p === respuesta.pagina ? " active" : ""}`} onClick={() => setPagina(p)}>
+                  {p}
+                </button>
+              );
+            })}
+            <button className="alt-page-btn" disabled={respuesta.pagina >= respuesta.paginas} onClick={() => setPagina(respuesta.pagina + 1)}>
+              <ChevronRight style={{ width: 13, height: 13 }} />
             </button>
           </div>
         </div>
@@ -1344,47 +782,22 @@ function TablaMovimientos({
 // ==========================================
 
 function EstadoBadge({ estado }: { estado: string }) {
-  const mapa: Record<string, { bg: string; color: string; dot: string }> = {
-    pagada: { bg: "rgba(16,185,129,0.14)", color: "#34d399", dot: "#10b981" },
-    vencida: { bg: "rgba(239,68,68,0.14)", color: "#f87171", dot: "#ef4444" },
-    pendiente: {
-      bg: "rgba(245,158,11,0.14)",
-      color: "#fbbf24",
-      dot: "#f59e0b",
-    },
-    cancelada: {
-      bg: "rgba(113,113,122,0.18)",
-      color: "#a1a1aa",
-      dot: "#71717a",
-    },
+  const cls: Record<string, string> = {
+    pagada: "alt-badge-green",
+    vencida: "alt-badge-red",
+    pendiente: "alt-badge-amber",
+    cancelada: "alt-badge-gray",
   };
-  const s = mapa[estado] ?? mapa.pendiente;
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-black uppercase"
-      style={{ background: s.bg, color: s.color }}>
-      <span
-        className="h-1.5 w-1.5 rounded-full"
-        style={{ background: s.dot }}
-      />
-      {estado}
-    </span>
-  );
+  return <span className={`alt-badge ${cls[estado] ?? "alt-badge-gray"}`}>{estado}</span>;
 }
+
 
 // ==========================================
 // Componente: Tab Cobros Recurrentes
 // ==========================================
 
 function TabRecurrentes({
-  items,
-  cargando,
-  query,
-  abrirModal,
-  alternar,
-  eliminar,
-  abrirDetalle,
-  descargarPdf,
+  items, cargando, query, abrirModal, alternar, eliminar, abrirDetalle, descargarPdf,
 }: {
   items: Recurrente[];
   cargando: boolean;
@@ -1397,415 +810,78 @@ function TabRecurrentes({
 }) {
   const visibles = useMemo(() => {
     const q = query.toLowerCase();
-    return items.filter(
-      (i) =>
-        !q || `${i.cliente_nombre} ${i.concepto}`.toLowerCase().includes(q),
-    );
+    return items.filter(i => !q || `${i.cliente_nombre} ${i.concepto}`.toLowerCase().includes(q));
   }, [items, query]);
 
   return (
-    <div className="flex flex-col">
-      {/* Barra de acciones */}
-      <div
-        className="flex items-center justify-between gap-3 px-4 sm:px-6 py-2.5 sm:py-3 border-b"
-        style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-        <span className="text-xs" style={{ color: "rgba(255,255,255,0.28)" }}>
-          {visibles.length} suscripción(es)
-        </span>
-        <button
-          onClick={abrirModal}
-          className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-black cursor-pointer hover:brightness-110 active:scale-95"
-          style={{ background: "#f97316", color: "#fff" }}>
-          <Plus className="h-3.5 w-3.5" /> <span className="hidden xs:inline">Nuevo Recurrente</span><span className="xs:hidden">Nuevo</span>
+    <div style={{ opacity: cargando ? 0.5 : 1, transition: "opacity 0.2s" }}>
+      {/* Header bar */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: "1px solid var(--alt-card-border)" }}>
+        <span style={{ fontSize: "0.75rem", color: "var(--alt-text-muted)" }}>{visibles.length} suscripción(es)</span>
+        <button onClick={abrirModal} className="alt-btn alt-btn-primary">
+          <Plus style={{ width: 13, height: 13 }} /> Nuevo Recurrente
         </button>
       </div>
 
-      {/* ── VISTA MÓVIL RECURRENTES (< 640px) ───────── */}
-      <div className={`sm:hidden flex flex-col divide-y divide-white/[0.06] ${cargando ? "opacity-40" : ""}`}>
-        {visibles.map((item) => (
-          <div
-            key={item.id}
-            className="p-4 space-y-3 transition-colors hover:bg-white/[0.02]"
-            style={{ opacity: Number(item.activa) ? 1 : 0.55 }}>
-            {/* Header: Cliente + Estado */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black"
-                  style={{
-                    background: "rgba(167,139,250,0.12)",
-                    color: "#c4b5fd",
-                  }}>
-                  {iniciales(item.cliente_nombre)}
-                </div>
-                <Link
-                  to={`/clientes/${item.cliente_id}`}
-                  className="font-bold uppercase text-xs truncate hover:underline text-white">
-                  {item.cliente_nombre}
-                </Link>
-              </div>
-
-              <span
-                className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-black uppercase shrink-0"
-                style={
-                  Number(item.activa)
-                    ? {
-                        background: "rgba(16,185,129,0.14)",
-                        color: "#34d399",
-                      }
-                    : {
-                        background: "rgba(255,255,255,0.06)",
-                        color: "rgba(255,255,255,0.38)",
-                      }
-                }>
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{
-                    background: Number(item.activa)
-                      ? "#10b981"
-                      : "rgba(255,255,255,0.3)",
-                  }}
-                />
-                {Number(item.activa) ? "Activo" : "Pausado"}
-              </span>
-            </div>
-
-            {/* Concepto & Monto */}
-            <div className="flex items-start justify-between gap-3">
-              <span className="text-xs text-white/70 font-medium line-clamp-2">
-                {item.concepto}
-              </span>
-              <span className="font-black text-sm shrink-0" style={{ color: "#f97316" }}>
-                {dinero(item.monto)}
-              </span>
-            </div>
-
-            {/* Datos clave en grid */}
-            <div
-              className="grid grid-cols-3 gap-2 p-2.5 rounded-lg text-xs"
-              style={{
-                background: "rgba(255,255,255,0.025)",
-                border: "1px solid rgba(255,255,255,0.05)",
-              }}>
-              <div>
-                <span className="text-[10px] text-white/35 block uppercase font-bold">
-                  Vence
-                </span>
-                <span className="font-bold text-xs text-white/75">
-                  día {item.dia_vencimiento}
-                </span>
-              </div>
-              <div>
-                <span className="text-[10px] text-white/35 block uppercase font-bold">
-                  Próx. Cobro
-                </span>
-                <span className="font-bold text-xs text-white/75">
-                  {fecha(item.proxima_generacion)}
-                </span>
-              </div>
-              <div>
-                <span className="text-[10px] text-white/35 block uppercase font-bold">
-                  Generadas
-                </span>
-                <span className="font-bold text-xs text-white/75">
-                  {item.facturas_generadas}
-                </span>
-              </div>
-            </div>
-
-            {/* Acciones */}
-            <div className="flex items-center justify-end gap-2 pt-0.5">
-              <button
-                disabled={!item.ultima_factura_id}
-                onClick={() =>
-                  item.ultima_factura_id &&
-                  descargarPdf(
-                    item.ultima_factura_id,
-                    item.ultimo_numero_factura ||
-                      `FAC-${String(item.ultima_factura_id).padStart(6, "0")}`,
-                  )
-                }
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all disabled:opacity-25 disabled:cursor-not-allowed hover:bg-white/10"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "#fb923c",
-                }}
-                title="Descargar PDF">
-                <FileDown className="h-3.5 w-3.5" />
-                <span>PDF</span>
-              </button>
-
-              <button
-                disabled={!item.ultima_factura_id}
-                onClick={() =>
-                  item.ultima_factura_id &&
-                  abrirDetalle(item.ultima_factura_id)
-                }
-                className="px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all disabled:opacity-25 disabled:cursor-not-allowed hover:bg-white/10 active:scale-95"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "rgba(255,255,255,0.85)",
-                }}>
-                Detalle
-              </button>
-
-              <button
-                onClick={() => alternar(item)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all hover:bg-white/10 active:scale-95"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: Number(item.activa) ? "rgba(255,255,255,0.6)" : "#34d399",
-                }}>
-                {Number(item.activa) ? (
-                  <>
-                    <Pause className="h-3 w-3" /> Pausar
-                  </>
-                ) : (
-                  <>
-                    <Play className="h-3 w-3" /> Reactivar
-                  </>
-                )}
-              </button>
-
-              {Number(item.activa) === 0 && (
-                <button
-                  onClick={() => eliminar(item)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all hover:bg-red-500/20 active:scale-95 text-red-400 border border-red-500/30 bg-red-500/10"
-                  title="Eliminar suscripción pausada">
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>Eliminar</span>
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── VISTA ESCRITORIO RECURRENTES (≥ 640px) ───── */}
-      <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full min-w-[860px] text-left text-xs border-collapse">
+      {/* Table */}
+      <div style={{ overflowX: "auto" }}>
+        <table className="alt-table" style={{ minWidth: 760 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              {[
-                "Cliente",
-                "Concepto",
-                "Monto / mes",
-                "Día vence",
-                "Próx. generación",
-                "Generadas",
-                "Estado",
-                "",
-              ].map((col) => (
-                <th
-                  key={col}
-                  className="px-4 lg:px-5 py-3 font-bold uppercase tracking-wider"
-                  style={{ color: "rgba(255,255,255,0.28)", fontSize: "10px" }}>
-                  {col}
-                </th>
-              ))}
+            <tr>
+              <th>Cliente</th>
+              <th>Concepto</th>
+              <th className="td-right">Monto/mes</th>
+              <th>Día vence</th>
+              <th>Próx. generación</th>
+              <th>Generadas</th>
+              <th>Estado</th>
+              <th></th>
             </tr>
           </thead>
-          <tbody className={cargando ? "opacity-40" : ""}>
-            {visibles.map((item) => (
-              <tr
-                key={item.id}
-                className="transition-colors"
-                style={{
-                  borderBottom: "1px solid rgba(255,255,255,0.04)",
-                  opacity: Number(item.activa) ? 1 : 0.5,
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "rgba(255,255,255,0.025)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "transparent")
-                }>
-                {/* Cliente */}
-                <td className="px-4 lg:px-5 py-4">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="h-7 w-7 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black"
-                      style={{
-                        background: "rgba(167,139,250,0.12)",
-                        color: "#c4b5fd",
-                      }}>
+          <tbody>
+            {visibles.map(item => (
+              <tr key={item.id} style={{ opacity: Number(item.activa) ? 1 : 0.5 }}>
+                <td>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(167,139,250,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800, color: "#c4b5fd", flexShrink: 0 }}>
                       {iniciales(item.cliente_nombre)}
                     </div>
-                    <Link
-                      to={`/clientes/${item.cliente_id}`}
-                      className="font-bold uppercase hover:underline"
-                      style={{ color: "#fff", fontSize: "11px" }}>
+                    <Link to={`/clientes/${item.cliente_id}`} style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--alt-text)", textDecoration: "none" }}
+                      onMouseEnter={e => (e.currentTarget.style.textDecoration = "underline")}
+                      onMouseLeave={e => (e.currentTarget.style.textDecoration = "none")}>
                       {item.cliente_nombre}
                     </Link>
                   </div>
                 </td>
-
-                {/* Concepto */}
-                <td
-                  className="px-4 lg:px-5 py-4"
-                  style={{ color: "rgba(255,255,255,0.55)", maxWidth: 200 }}>
-                  <span className="line-clamp-1">{item.concepto}</span>
+                <td className="td-muted" style={{ maxWidth: 200 }}>
+                  <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.concepto}</span>
                 </td>
-
-                {/* Monto */}
-                <td
-                  className="px-4 lg:px-5 py-4 font-black text-sm"
-                  style={{ color: "#f97316" }}>
-                  {dinero(item.monto)}
-                </td>
-
-                {/* Día vencimiento */}
-                <td
-                  className="px-4 lg:px-5 py-4 font-bold"
-                  style={{ color: "rgba(255,255,255,0.6)" }}>
-                  día {item.dia_vencimiento}
-                </td>
-
-                {/* Próxima generación */}
-                <td
-                  className="px-4 lg:px-5 py-4"
-                  style={{ color: "rgba(255,255,255,0.55)" }}>
-                  {fecha(item.proxima_generacion)}
-                </td>
-
-                {/* Facturas generadas */}
-                <td
-                  className="px-4 lg:px-5 py-4 font-bold"
-                  style={{ color: "rgba(255,255,255,0.5)" }}>
-                  {item.facturas_generadas}
-                </td>
-
-                {/* Estado */}
-                <td className="px-4 lg:px-5 py-4">
-                  <span
-                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px] font-black uppercase"
-                    style={
-                      Number(item.activa)
-                        ? {
-                            background: "rgba(16,185,129,0.14)",
-                            color: "#34d399",
-                          }
-                        : {
-                            background: "rgba(255,255,255,0.06)",
-                            color: "rgba(255,255,255,0.38)",
-                          }
-                    }>
-                    <span
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{
-                        background: Number(item.activa)
-                          ? "#10b981"
-                          : "rgba(255,255,255,0.3)",
-                      }}
-                    />
+                <td className="td-right td-mono">{dinero(item.monto)}</td>
+                <td className="td-muted">día {item.dia_vencimiento}</td>
+                <td className="td-muted">{fecha(item.proxima_generacion)}</td>
+                <td className="td-muted">{item.facturas_generadas}</td>
+                <td>
+                  <span className={`alt-badge ${Number(item.activa) ? "alt-badge-green" : "alt-badge-gray"}`}>
                     {Number(item.activa) ? "Activo" : "Pausado"}
                   </span>
                 </td>
-
-                {/* Acciones */}
-                <td className="px-4 lg:px-5 py-4">
-                  <div className="flex items-center gap-1.5 justify-end">
-                    {/* PDF — solo si hay factura generada */}
-                    <button
-                      disabled={!item.ultima_factura_id}
-                      onClick={() =>
-                        item.ultima_factura_id &&
-                        descargarPdf(
-                          item.ultima_factura_id,
-                          item.ultimo_numero_factura ||
-                            `FAC-${String(item.ultima_factura_id).padStart(6, "0")}`,
-                        )
-                      }
-                      className="p-1.5 rounded-md cursor-pointer transition-all disabled:opacity-25 disabled:cursor-not-allowed hover:bg-white/10"
-                      style={{ color: "rgba(255,255,255,0.32)" }}
-                      title={
-                        item.ultima_factura_id
-                          ? "Descargar PDF"
-                          : "Sin factura generada aún"
-                      }
-                      onMouseEnter={(e) => {
-                        if (item.ultima_factura_id)
-                          e.currentTarget.style.color = "#fb923c";
-                      }}
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.color = "rgba(255,255,255,0.32)")
-                      }>
-                      <FileDown className="h-3.5 w-3.5" />
+                <td>
+                  <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                    <button disabled={!item.ultima_factura_id} onClick={() => item.ultima_factura_id && descargarPdf(item.ultima_factura_id, item.ultimo_numero_factura || `FAC-${String(item.ultima_factura_id).padStart(6,"0")}`)}
+                      className="alt-btn alt-btn-secondary alt-btn-sm alt-btn-icon" title="PDF">
+                      <FileDown style={{ width: 13, height: 13, color: "#f97316" }} />
                     </button>
-
-                    {/* Detalle — solo si hay factura generada */}
-                    <button
-                      disabled={!item.ultima_factura_id}
-                      onClick={() =>
-                        item.ultima_factura_id &&
-                        abrirDetalle(item.ultima_factura_id)
-                      }
-                      className="px-2.5 py-1.5 rounded-md text-[11px] font-bold cursor-pointer transition-all disabled:opacity-25 disabled:cursor-not-allowed active:scale-95"
-                      style={{
-                        background: "rgba(255,255,255,0.05)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        color: "rgba(255,255,255,0.75)",
-                      }}
-                      title={
-                        item.ultima_factura_id
-                          ? "Ver detalle de última factura"
-                          : "Sin factura generada aún"
-                      }
-                      onMouseEnter={(e) => {
-                        if (item.ultima_factura_id) {
-                          e.currentTarget.style.background =
-                            "rgba(255,255,255,0.1)";
-                          e.currentTarget.style.color = "#fff";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background =
-                          "rgba(255,255,255,0.05)";
-                        e.currentTarget.style.color = "rgba(255,255,255,0.75)";
-                      }}>
+                    <button disabled={!item.ultima_factura_id} onClick={() => item.ultima_factura_id && abrirDetalle(item.ultima_factura_id)}
+                      className="alt-btn alt-btn-secondary alt-btn-sm">
                       Detalle
                     </button>
-
-                    {/* Separador */}
-                    <div
-                      className="h-4 w-px mx-0.5"
-                      style={{ background: "rgba(255,255,255,0.08)" }}
-                    />
-
-                    {/* Pausar / Reactivar */}
-                    <button
-                      onClick={() => alternar(item)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-bold cursor-pointer transition-all hover:bg-white/10 active:scale-95"
-                      style={{
-                        background: "rgba(255,255,255,0.05)",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        color: "rgba(255,255,255,0.55)",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.color = "#fff")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.color = "rgba(255,255,255,0.55)")
-                      }>
-                      {Number(item.activa) ? (
-                        <Pause className="h-3 w-3" />
-                      ) : (
-                        <Play className="h-3 w-3" />
-                      )}
-                      {Number(item.activa) ? "Pausar" : "Reactivar"}
+                    <button onClick={() => alternar(item)}
+                      className={`alt-btn alt-btn-sm ${Number(item.activa) ? "alt-btn-secondary" : "alt-btn-success"}`}>
+                      {Number(item.activa) ? <><Pause style={{ width: 11, height: 11 }} /> Pausar</> : <><Play style={{ width: 11, height: 11 }} /> Reactivar</>}
                     </button>
-
-                    {/* Eliminar (solo si está pausado) */}
                     {Number(item.activa) === 0 && (
-                      <button
-                        onClick={() => eliminar(item)}
-                        className="flex items-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-bold cursor-pointer transition-all hover:bg-red-500/20 active:scale-95 text-red-400 border border-red-500/30 bg-red-500/10"
-                        title="Eliminar suscripción recurrente">
-                        <Trash2 className="h-3 w-3" />
-                        <span>Eliminar</span>
+                      <button onClick={() => eliminar(item)} className="alt-btn alt-btn-danger alt-btn-sm" title="Eliminar">
+                        <Trash2 style={{ width: 12, height: 12 }} />
                       </button>
                     )}
                   </div>
@@ -1817,9 +893,7 @@ function TabRecurrentes({
       </div>
 
       {!visibles.length && !cargando && (
-        <div
-          className="py-16 sm:py-24 text-center text-xs sm:text-sm"
-          style={{ color: "rgba(255,255,255,0.22)" }}>
+        <div style={{ padding: "40px 16px", textAlign: "center", color: "var(--alt-text-muted)", fontSize: "0.8rem" }}>
           No hay cobros recurrentes configurados.
         </div>
       )}
@@ -1827,9 +901,6 @@ function TabRecurrentes({
   );
 }
 
-// ==========================================
-// Componente: Resumen Financiero
-// ==========================================
 
 function ResumenTab({
   resumen,

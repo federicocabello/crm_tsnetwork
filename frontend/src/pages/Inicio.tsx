@@ -114,12 +114,6 @@ type Cliente = {
   domicilio?: string;
 };
 
-type BuscarCitas = {
-  id: string;
-  dia: string;
-  hora: string;
-  dia_original: string;
-};
 
 type CuotaAlerta = {
   idcuota: number;
@@ -387,7 +381,6 @@ export default function Inicio() {
   };
 
   const [loading, setLoading] = useState(true);
-  const [loading2, setLoading2] = useState(false);
   const [cuotasAlertas, setCuotasAlertas] = useState<CuotaAlerta[]>([]);
   const [induccionCompleta, setInduccionCompleta] = useState(false);
 
@@ -811,32 +804,8 @@ export default function Inicio() {
     return () => clearTimeout(timeout);
   }, [query]);
 
-  const [buscarCitasCliente, setBuscarCitasCliente] = useState<BuscarCitas[]>(
-    [],
-  );
-  const [nombreClienteSeleccionado, setNombreClienteSeleccionado] =
-    useState<string>("");
-
-  const seleccionarCliente = async (idCliente: number, nombre: string) => {
-    setClienteSeleccionado(idCliente);
-    setLoading2(true);
-
-    try {
-      const res = await fetch(
-        `${API_URL}/api/clientes/buscar/citas/${idCliente}`,
-      );
-      if (!res.ok) {
-        console.error("Error al traer citas del cliente:", res.status);
-        return;
-      }
-
-      const data = await res.json();
-      setBuscarCitasCliente(data.citas);
-      setNombreClienteSeleccionado(nombre);
-      setLoading2(false);
-    } catch (error) {
-      console.error("Error de conexión con el backend:", error);
-    }
+  const seleccionarCliente = (idCliente: number) => {
+    navigate(`/clientes/${idCliente}`);
   };
 
   return (
@@ -1017,7 +986,7 @@ export default function Inicio() {
               <UserRoundSearch className="w-4 h-4" />
               Buscar cliente
             </div>
-            {(query || resultados.length > 0 || clienteSeleccionado) && (
+                      {(query || resultados.length > 0) && (
               <button
                 type="button"
                 title="Limpiar busqueda"
@@ -1025,10 +994,9 @@ export default function Inicio() {
                   setQuery("");
                   setResultados([]);
                   setClienteSeleccionado(null);
-                  setBuscarCitasCliente([]);
-                  setNombreClienteSeleccionado("");
                 }}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 p-0 text-white/60 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-200">
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 p-0 text-white/60 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-200"
+              >
                 <X className="h-4 w-4" />
               </button>
             )}
@@ -1046,19 +1014,12 @@ export default function Inicio() {
           {resultados?.length > 0 && (
             <ul className="bg-[var(--bg-surface-2)] mt-2 max-h-60 overflow-y-auto rounded-lg border border-[var(--bg-border)] text-xs shadow-lg">
               {resultados.map((c) => {
-                const esSeleccionado = c.id === clienteSeleccionado;
                 return (
                   <li
                     key={c.id}
-                    //className="p-2 text-white hover:bg-orange-600 hover:text-white/90 cursor-pointer"
-                    className={`p-2 text-white cursor-pointer flex items-center gap-2 transition-all ${
-                      esSeleccionado
-                        ? "bg-green-600 text-white font-bold"
-                        : "hover:bg-orange-600 hover:text-white/90"
-                    }`}
-                    onClick={() => {
-                      seleccionarCliente(c.id, c.nombre);
-                    }}>
+                    className="p-2 text-white cursor-pointer flex items-center gap-2 transition-all hover:bg-orange-600 hover:text-white/90"
+                    onClick={() => seleccionarCliente(c.id)}
+                  >
                     <span className="min-w-0 flex-1">
                       <span className="block font-bold">{c.nombre}</span>
                       {(c.telefono || c.domicilio) && (
@@ -1067,63 +1028,10 @@ export default function Inicio() {
                         </span>
                       )}
                     </span>
-                    <span hidden={!esSeleccionado}>
-                      <CircleCheck className="w-4 h-4" />
-                    </span>
                   </li>
                 );
               })}
             </ul>
-          )}
-
-          {loading2 ? (
-            <Loading />
-          ) : (
-            clienteSeleccionado && (
-              <div className="mt-2 rounded-lg bg-zinc-950/30 text-sm">
-                <div className="font-bold text-center italic p-2 bg-zinc-800 rounded-t-lg border border-white/10">
-                  Citas de <strong>{nombreClienteSeleccionado}</strong>
-                </div>
-                {buscarCitasCliente.length > 0 ? (
-                  <ul className="max-h-64 overflow-auto rounded-b-lg border border-white/10 xl:max-h-56">
-                    {buscarCitasCliente.map((cita) => {
-                      const esDomingo = isSundayKey(cita.dia_original);
-
-                      return (
-                        <li
-                          key={cita.id}
-                          className={`p-3 text-white flex flex-wrap gap-2 items-center justify-between transition-all sm:p-4 ${
-                            esDomingo
-                              ? "cursor-not-allowed border-l-4 border-red-500 bg-red-500/10 text-red-200"
-                              : "cursor-pointer hover:bg-orange-500/70 hover:text-white"
-                          }`}
-                          onClick={() => {
-                            if (esDomingo) return;
-                            setCitaResaltada(null);
-                            setSelectedDay(cita.dia_original);
-                          }}>
-                          <span className="min-w-0 break-words text-base font-bold sm:text-lg">
-                            {cita.dia}
-                          </span>
-                          <span
-                            className={`shrink-0 rounded-full border px-2 py-1 text-xs font-bold text-center w-20 transition-all ${
-                              esDomingo
-                                ? "border-red-300/50 bg-red-700/70 text-red-50"
-                                : "border-white bg-green-700"
-                            }`}>
-                            {esDomingo ? "Domingo" : cita.hora}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <div className="text-white/60">
-                    No hay citas para este cliente.
-                  </div>
-                )}
-              </div>
-            )
           )}
         </div>
 

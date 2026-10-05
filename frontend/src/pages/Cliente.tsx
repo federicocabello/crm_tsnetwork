@@ -567,13 +567,13 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
   const [mostrarPlanPagos, setMostrarPlanPagos] = useState(false);
 
   return (
-    <div className="w-full space-y-5 max-w-7xl mx-auto">
+    <div className="w-full space-y-4 max-w-7xl mx-auto">
       {loading && <Loading />}
       {!loading && (
         <>
           {/* Header del Cliente */}
-          <div className="bg-gradient-to-r from-zinc-900 via-zinc-900/95 to-zinc-900/90 p-5 rounded-2xl border border-white/10 shadow-xl backdrop-blur-md flex flex-wrap justify-between items-center gap-4 hover:border-orange-500/20 transition-all">
-            <div className="flex items-center gap-4">
+          <div className="alt-page-header">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => {
@@ -583,45 +583,47 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                     navigate(-1);
                   }
                 }}
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-800/80 px-3.5 py-2 text-xs font-bold text-white hover:bg-zinc-700/80 hover:-translate-x-0.5 transition-all shadow-md cursor-pointer active:scale-95"
+                className="alt-btn alt-btn-secondary alt-btn-sm flex items-center gap-1.5 cursor-pointer"
               >
-                <ChevronLeft className="h-4 w-4 text-orange-400" />
+                <ChevronLeft className="h-4 w-4" />
                 <span>Volver</span>
               </button>
 
-              <div className="space-y-0.5">
-                <div className="text-2xl font-black tracking-tight text-orange-400 flex items-center gap-2">
-                  <User className="h-6 w-6 text-orange-500" />
-                  <span>{cliente?.nombre}</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="alt-page-title m-0 flex items-center gap-2">
+                    <User className="h-5 w-5" style={{ color: "var(--alt-primary)" }} />
+                    <span>{cliente?.nombre}</span>
+                  </h1>
                   <button
                     type="button"
                     onClick={modificarNombreCliente}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/10 hover:text-orange-300 cursor-pointer"
+                    className="alt-btn alt-btn-secondary alt-btn-sm p-1 inline-flex items-center justify-center cursor-pointer"
                     title="Modificar nombre"
                     aria-label="Modificar nombre del cliente"
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-3.5 w-3.5" />
                   </button>
                 </div>
                 {cliente?.email ? (
-                  <div className="text-white/60 flex gap-1.5 text-xs items-center font-medium">
-                    <Mail className="h-3.5 w-3.5 text-white/40" />
+                  <div className="alt-page-subtitle flex items-center gap-1.5 mt-0.5">
+                    <Mail className="h-3.5 w-3.5 opacity-70" />
                     <span>{cliente.email}</span>
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={agregarEmailCliente}
-                    className="mt-1 inline-flex items-center gap-1.5 rounded-lg border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-xs font-bold text-orange-200 transition hover:bg-orange-500/20 cursor-pointer"
+                    className="alt-btn alt-btn-secondary alt-btn-sm mt-1 inline-flex items-center gap-1 text-xs cursor-pointer"
                   >
-                    <Mail className="h-3.5 w-3.5" />
+                    <Mail className="h-3 w-3" />
                     <span>Agregar email</span>
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {/* Botón Desinstalación por falta de pago */}
               {(() => {
                 const tieneCuotasPendientes = Boolean(
@@ -634,57 +636,184 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                     type="button"
                     disabled={!tieneCuotasPendientes || procesandoDesinstalacion}
                     onClick={() => setModalDesinstalacion(true)}
-                    className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all shadow-md ${
-                      tieneCuotasPendientes
-                        ? "border-red-500/35 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:border-red-500/60 cursor-pointer active:scale-95"
-                        : "border-white/10 bg-white/5 text-white/30 cursor-not-allowed opacity-40"
-                    }`}
+                    className={`alt-btn ${tieneCuotasPendientes ? "alt-btn-danger" : "alt-btn-secondary"} alt-btn-sm flex items-center gap-1.5`}
+                    style={{ opacity: tieneCuotasPendientes ? 1 : 0.4 }}
                     title={
                       tieneCuotasPendientes
                         ? "Desinstalación por falta de pago"
                         : "El cliente no tiene cuotas ni saldos pendientes"
                     }
                   >
-                    <Ban className={`h-4 w-4 ${tieneCuotasPendientes ? "text-red-400" : "text-white/30"}`} />
+                    <Ban className="h-3.5 w-3.5" />
                     <span>Desinstalación por falta de pago</span>
                   </button>
                 );
               })()}
 
+              {/* Badge Deuda Total */}
               <div
-                className={`px-4 py-2 rounded-xl font-bold border flex flex-col items-center justify-center shadow-lg transition-all ${
-                  deudaTotal > 0
-                    ? "bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-amber-500/5"
-                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-emerald-500/5"
-                }`}
+                className={`alt-badge ${deudaTotal > 0 ? "alt-badge-amber" : "alt-badge-green"}`}
+                style={{ padding: "6px 12px", fontSize: "13px", fontWeight: 700, borderRadius: "4px" }}
               >
                 {deudaTotal > 0 ? (
-                  <>
-                    <div className="text-[10px] uppercase font-bold tracking-widest text-amber-400/80">DEUDA TOTAL</div>
-                    <div className="text-2xl font-black tracking-tight"><FormatearNumero numero={deudaTotal} /></div>
-                  </>
+                  <span>DEUDA: <FormatearNumero numero={deudaTotal} /></span>
                 ) : (
-                  <div className="text-xs font-extrabold tracking-wider uppercase px-2 py-1 text-emerald-400">SIN DEUDAS</div>
+                  <span>SIN DEUDAS</span>
                 )}
               </div>
             </div>
           </div>
 
+          {/* Panel de Accesos Rápidos — visible solo en listado general */}
+          {citaSeleccionada === 0 && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {/* Última cita */}
+              {(() => {
+                const citasActivas = citas.filter(c => Number(c.eliminado) !== 1);
+                const ultima = citasActivas[0] ?? null;
+                return (
+                  <div
+                    onClick={() => ultima && setearCitaSeleccionada(ultima)}
+                    className="alt-info-box"
+                    style={{ cursor: ultima ? "pointer" : "default", margin: 0, opacity: ultima ? 1 : 0.6 }}
+                  >
+                    <div className="alt-info-box-icon c-blue">
+                      <CalendarFold className="h-5 w-5" />
+                    </div>
+                    <div className="alt-info-box-content">
+                      <span className="alt-info-box-text">Última cita</span>
+                      <span className="alt-info-box-number" style={{ fontSize: "13px" }}>{ultima ? ultima.dia : "—"}</span>
+                      <span className="alt-info-box-sub truncate">{ultima ? `${ultima.hora} · ${ultima.asignado}` : "Sin historial"}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Próxima cita */}
+              {(() => {
+                const hoy = new Date();
+                hoy.setHours(0, 0, 0, 0);
+                const proxima = citas
+                  .filter(c => Number(c.eliminado) !== 1)
+                  .slice()
+                  .reverse()
+                  .find(c => {
+                    const d = new Date(c.dia_format + "T00:00:00");
+                    return d >= hoy;
+                  }) ?? null;
+                return (
+                  <div
+                    onClick={() => proxima && setearCitaSeleccionada(proxima)}
+                    className="alt-info-box"
+                    style={{ cursor: proxima ? "pointer" : "default", margin: 0, opacity: proxima ? 1 : 0.6 }}
+                  >
+                    <div className="alt-info-box-icon c-green">
+                      <Clock className="h-5 w-5" />
+                    </div>
+                    <div className="alt-info-box-content">
+                      <span className="alt-info-box-text">Próxima cita</span>
+                      <span className="alt-info-box-number" style={{ fontSize: "13px" }}>{proxima ? proxima.dia : "Sin agendar"}</span>
+                      <span className="alt-info-box-sub truncate">{proxima ? proxima.hora : "—"}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Deuda actual */}
+              <div
+                onClick={() => setPestanaCliente("facturas")}
+                className="alt-info-box"
+                style={{ cursor: "pointer", margin: 0 }}
+              >
+                <div className={`alt-info-box-icon ${deudaTotal > 0 ? "c-orange" : "c-green"}`}>
+                  <CircleDollarSign className="h-5 w-5" />
+                </div>
+                <div className="alt-info-box-content">
+                  <span className="alt-info-box-text">Deuda actual</span>
+                  <span className="alt-info-box-number" style={{ fontSize: "14px" }}>
+                    <FormatearNumero numero={deudaTotal} />
+                  </span>
+                  <span className="alt-info-box-sub">{deudaTotal > 0 ? "Ver facturas" : "Al día ✓"}</span>
+                </div>
+              </div>
+
+              {/* Tipo de servicio */}
+              {(() => {
+                const tieneInternet = citas.some(c => Number(c.eliminado) !== 1 && esInternet(c.tipo));
+                const tieneCamaras = citas.some(c => Number(c.eliminado) !== 1 && esCamaras(c.tipo));
+                return (
+                  <div className="alt-info-box" style={{ margin: 0 }}>
+                    <div className="alt-info-box-icon c-orange">
+                      <Wrench className="h-5 w-5" />
+                    </div>
+                    <div className="alt-info-box-content">
+                      <span className="alt-info-box-text">Servicio</span>
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {tieneInternet && <span className="alt-badge alt-badge-orange" style={{ fontSize: "9px" }}>Internet</span>}
+                        {tieneCamaras && <span className="alt-badge alt-badge-blue" style={{ fontSize: "9px" }}>Cámaras</span>}
+                        {!tieneInternet && !tieneCamaras && <span className="text-xs opacity-50">General</span>}
+                      </div>
+                      <span className="alt-info-box-sub">{citas.filter(c => Number(c.eliminado) !== 1).length} cita(s)</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Cobros recurrentes */}
+              <div
+                onClick={() => setPestanaCliente("facturas")}
+                className="alt-info-box"
+                style={{ cursor: "pointer", margin: 0 }}
+              >
+                <div className="alt-info-box-icon c-blue">
+                  <RefreshCw className="h-5 w-5" />
+                </div>
+                <div className="alt-info-box-content">
+                  <span className="alt-info-box-text">Recurrentes</span>
+                  <span className="alt-info-box-number" style={{ fontSize: "13px" }}>
+                    {recurrentes.filter(r => Number(r.activa)).length} activos
+                  </span>
+                  <span className="alt-info-box-sub truncate">
+                    {recurrentes.filter(r => Number(r.activa)).length > 0
+                      ? `$${recurrentes.filter(r => Number(r.activa)).reduce((a, r) => a + Number(r.monto), 0).toFixed(2)}/mes`
+                      : "Sin cobros"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Facturas */}
+              <div
+                onClick={() => setPestanaCliente("facturas")}
+                className="alt-info-box"
+                style={{ cursor: "pointer", margin: 0 }}
+              >
+                <div className={`alt-info-box-icon ${(resumenFacturacion?.pendientes ?? 0) + (resumenFacturacion?.vencidas ?? 0) > 0 ? "c-red" : "c-gray"}`}>
+                  <ReceiptText className="h-5 w-5" />
+                </div>
+                <div className="alt-info-box-content">
+                  <span className="alt-info-box-text">Facturas</span>
+                  <span className="alt-info-box-number" style={{ fontSize: "13px" }}>
+                    {(resumenFacturacion?.pendientes ?? 0) + (resumenFacturacion?.vencidas ?? 0) > 0
+                      ? `${(resumenFacturacion?.pendientes ?? 0) + (resumenFacturacion?.vencidas ?? 0)} pend.`
+                      : `${resumenFacturacion?.pagadas ?? 0} pagadas`}
+                  </span>
+                  <span className="alt-info-box-sub">Total: {resumenFacturacion?.total_facturas ?? 0}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Navegación de Pestañas cuando no hay cita seleccionada */}
           {citaSeleccionada === 0 && (
-            <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
+            <div className="alt-tabs">
               <button
                 type="button"
                 onClick={() => setPestanaCliente("citas")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition cursor-pointer ${
-                  pestanaCliente === "citas"
-                    ? "bg-orange-600 text-white shadow-lg shadow-orange-950/40"
-                    : "text-white/60 hover:bg-white/5 hover:text-white"
-                }`}
+                className={`alt-tab ${pestanaCliente === "citas" ? "active" : ""}`}
               >
                 <CalendarFold className="h-4 w-4" />
                 <span>Citas y Servicios</span>
-                <span className="rounded-full bg-black/30 px-2 py-0.5 text-xs font-black">
+                <span className="alt-badge alt-badge-gray" style={{ marginLeft: "6px" }}>
                   {citas.length}
                 </span>
               </button>
@@ -692,19 +821,15 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
               <button
                 type="button"
                 onClick={() => setPestanaCliente("facturas")}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition cursor-pointer ${
-                  pestanaCliente === "facturas"
-                    ? "bg-orange-600 text-white shadow-lg shadow-orange-950/40"
-                    : "text-white/60 hover:bg-white/5 hover:text-white"
-                }`}
+                className={`alt-tab ${pestanaCliente === "facturas" ? "active" : ""}`}
               >
                 <ReceiptText className="h-4 w-4" />
                 <span>Facturación y Recurrentes</span>
-                <span className="rounded-full bg-black/30 px-2 py-0.5 text-xs font-black">
+                <span className="alt-badge alt-badge-gray" style={{ marginLeft: "6px" }}>
                   {facturas.length}
                 </span>
-                {resumenFacturacion && resumenFacturacion.pendientes + resumenFacturacion.vencidas > 0 && (
-                  <span className="rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 text-[10px] font-black">
+                {resumenFacturacion && (resumenFacturacion.pendientes + resumenFacturacion.vencidas > 0) && (
+                  <span className="alt-badge alt-badge-amber" style={{ marginLeft: "6px" }}>
                     {resumenFacturacion.pendientes + resumenFacturacion.vencidas} pendientes
                   </span>
                 )}
@@ -715,33 +840,36 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
           {/* Vista cuando no hay cita seleccionada */}
           {citaSeleccionada === 0 ? (
             pestanaCliente === "citas" ? (
-              <div className="space-y-3">
+              <div className="alt-card">
+                <div className="alt-card-header flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CalendarFold className="h-4 w-4" style={{ color: "var(--alt-primary)" }} />
+                    <span>Historial de Citas y Servicios ({citas.length})</span>
+                  </div>
+                </div>
+
                 {citas.length === 0 ? (
-                  <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-8 text-center text-white/50 font-medium">
+                  <div className="alt-card-body text-center text-sm opacity-60 py-8">
                     Este cliente no tiene citas registradas.
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3">
+                  <div className="divide-y" style={{ borderColor: "var(--alt-card-border)" }}>
                     {citas.map((cita) => (
                       <div
                         key={cita.idcita}
-                        className={`bg-zinc-900/90 border rounded-2xl p-4 shadow-md transition-all ${
-                          Number(cita.eliminado) === 1
-                            ? "cursor-not-allowed opacity-60 grayscale border-zinc-600/40"
-                            : "cursor-pointer hover:scale-[1.005]"
-                        } ${
-                          cita.idcita === citaSeleccionada
-                            ? "border-orange-500 shadow-orange-500/10 bg-zinc-900"
-                            : "border-white/10 hover:border-orange-500/50 hover:shadow-lg"
+                        className={`p-4 transition-colors cursor-pointer flex flex-col gap-2.5 ${
+                          Number(cita.eliminado) === 1 ? "opacity-60 grayscale cursor-not-allowed" : "hover:bg-[rgba(255,255,255,0.03)]"
                         }`}
+                        style={{
+                          backgroundColor: cita.idcita === citaSeleccionada ? "rgba(243, 156, 18, 0.08)" : "transparent",
+                          borderLeft: cita.idcita === citaSeleccionada ? "3px solid var(--alt-primary)" : "3px solid transparent",
+                        }}
                         onClick={() => Number(cita.eliminado) !== 1 && setearCitaSeleccionada(cita)}
                       >
-                        <div className="flex min-w-0 flex-col gap-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2 text-white font-bold">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             {Number(cita.eliminado) === 1 ? (
-                              <div className="rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1 text-xs font-black text-red-300">
-                                CITA ELIMINADA
-                              </div>
+                              <span className="alt-badge alt-badge-red font-bold">CITA ELIMINADA</span>
                             ) : user?.rol === "superadmin" ? (
                               <button
                                 type="button"
@@ -749,99 +877,112 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                                   event.stopPropagation();
                                   void eliminarCita(cita.idcita);
                                 }}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/40 bg-red-500/10 text-red-400 transition hover:bg-red-500/20 cursor-pointer"
+                                className="alt-btn alt-btn-danger alt-btn-sm p-1 inline-flex items-center justify-center cursor-pointer"
                                 title="Deshabilitar cita"
                                 aria-label="Deshabilitar cita"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 className="h-3.5 w-3.5" />
                               </button>
                             ) : null}
 
-                            <div className="flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-bold text-cyan-200">
-                              <CalendarFold className="h-3.5 w-3.5" />
+                            <span className="alt-badge alt-badge-blue flex items-center gap-1">
+                              <CalendarFold className="h-3 w-3" />
                               <span>{cita.dia}</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-200">
-                              <Clock className="h-3.5 w-3.5" />
+                            </span>
+
+                            <span className="alt-badge alt-badge-orange flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
                               <span>{cita.hora}</span>
-                            </div>
+                            </span>
 
                             {esInternet(cita.tipo) && (
-                              <div className="rounded-full text-xs font-bold py-1 px-3 border border-orange-500/40 bg-orange-500/20 text-orange-200 flex items-center gap-1.5">
-                                <Globe className="h-3.5 w-3.5" />
+                              <span className="alt-badge alt-badge-orange flex items-center gap-1">
+                                <Globe className="h-3 w-3" />
                                 <span>INTERNET</span>
-                              </div>
+                              </span>
                             )}
 
                             {esCamaras(cita.tipo) && (
-                              <div className="rounded-full text-xs font-bold py-1 px-3 border border-blue-500/40 bg-blue-500/20 text-blue-200 flex items-center gap-1.5">
-                                <Cctv className="h-3.5 w-3.5" />
+                              <span className="alt-badge alt-badge-blue flex items-center gap-1">
+                                <Cctv className="h-3 w-3" />
                                 <span>CAMARAS</span>
-                              </div>
+                              </span>
                             )}
 
                             {esInstalacion(cita.tipo) && (
-                              <div className="rounded-full text-xs font-bold py-1 px-3 border border-indigo-500/40 bg-indigo-500/20 text-indigo-200 flex items-center gap-1.5">
-                                <Drill className="h-3.5 w-3.5" />
+                              <span className="alt-badge alt-badge-purple flex items-center gap-1">
+                                <Drill className="h-3 w-3" />
                                 <span>INSTALACION</span>
-                              </div>
+                              </span>
                             )}
 
                             {esSoporte(cita.tipo) && (
-                              <div className="rounded-full text-xs font-bold py-1 px-3 border border-emerald-500/40 bg-emerald-500/20 text-emerald-200 flex items-center gap-1.5">
-                                <Wrench className="h-3.5 w-3.5" />
+                              <span className="alt-badge alt-badge-green flex items-center gap-1">
+                                <Wrench className="h-3 w-3" />
                                 <span>SOPORTE</span>
-                              </div>
+                              </span>
                             )}
-                            <div
-                              className="rounded-full text-xs font-bold py-1 px-3 text-center border shadow-xs"
+
+                            <span
+                              className="alt-badge"
                               style={{
-                                backgroundColor: cita.color,
-                                borderColor: darkenColor(cita.color, 0.4),
+                                backgroundColor: cita.color || "#4b545c",
+                                color: "#ffffff",
+                                borderColor: darkenColor(cita.color || "#4b545c", 0.3),
                               }}
                             >
                               {cita.estado}
-                            </div>
-
-                            {Number(cita.deuda_cita || 0) > 0 && (
-                              <div className="rounded-full border border-amber-500/30 bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-200">
-                                Debe <FormatearNumero numero={Number(cita.deuda_cita || 0)} />
-                              </div>
-                            )}
-                            {Number(cita.pagado_cita || 0) > 0 && (
-                              <div className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-200">
-                                PAGADO <FormatearNumero numero={Number(cita.pagado_cita || 0)} />
-                              </div>
-                            )}
-                            {(cita.tipo == "camaras-tiene-nuevo-instalacion" ||
-                              cita.tipo == "camaras-tiene-existente-instalacion") && (
-                              <div className="text-xs text-amber-400 font-bold italic flex items-center gap-1">
-                                <TriangleAlert className="h-3.5 w-3.5" />
-                                <span>Ya tiene cámaras instaladas</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {cita.domicilio.trim() && (
-                            <div className="min-w-0 text-white/90 text-sm flex gap-2 items-start font-semibold">
-                              <House className="h-4 w-4 shrink-0 text-orange-400 mt-0.5" />
-                              <span className="min-w-0 flex-1 break-words leading-snug">{cita.domicilio}</span>
-                            </div>
-                          )}
-
-                          {cita.notas.trim() && (
-                            <div className="min-w-0 text-white/60 text-xs bg-black/20 p-2.5 rounded-xl border border-white/5">
-                              <p className="line-clamp-2 break-words whitespace-pre-wrap">
-                                <strong className="text-white/80">Notas:</strong> {cita.notas}
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-white/50">
-                            <span className="truncate italic">
-                              Asignado a <strong className="text-white/80">{cita.asignado}</strong>
                             </span>
                           </div>
+
+                          <div className="flex items-center gap-2">
+                            {Number(cita.deuda_cita || 0) > 0 && (
+                              <span className="alt-badge alt-badge-amber font-bold">
+                                Debe: <FormatearNumero numero={Number(cita.deuda_cita || 0)} />
+                              </span>
+                            )}
+                            {Number(cita.pagado_cita || 0) > 0 && (
+                              <span className="alt-badge alt-badge-green font-bold">
+                                Pagado: <FormatearNumero numero={Number(cita.pagado_cita || 0)} />
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {(cita.tipo === "camaras-tiene-nuevo-instalacion" ||
+                          cita.tipo === "camaras-tiene-existente-instalacion") && (
+                          <div className="text-xs text-amber-400 font-semibold flex items-center gap-1">
+                            <TriangleAlert className="h-3.5 w-3.5" />
+                            <span>Ya tiene cámaras instaladas</span>
+                          </div>
+                        )}
+
+                        {cita.domicilio.trim() && (
+                          <div className="text-sm flex gap-2 items-start font-medium" style={{ color: "var(--alt-text)" }}>
+                            <House className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--alt-primary)" }} />
+                            <span className="break-words">{cita.domicilio}</span>
+                          </div>
+                        )}
+
+                        {cita.notas.trim() && (
+                          <div
+                            className="text-xs p-2.5 rounded"
+                            style={{
+                              backgroundColor: "var(--alt-card-header)",
+                              border: "1px solid var(--alt-card-border)",
+                              color: "var(--alt-text-muted)",
+                            }}
+                          >
+                            <strong style={{ color: "var(--alt-text)" }}>Notas: </strong>
+                            <span className="whitespace-pre-wrap">{cita.notas}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-xs pt-1" style={{ color: "var(--alt-text-muted)" }}>
+                          <span>
+                            Asignado a: <strong style={{ color: "var(--alt-text)" }}>{cita.asignado}</strong>
+                          </span>
+                          <span className="text-xs underline hover:text-white">Ver detalles →</span>
                         </div>
                       </div>
                     ))}
@@ -850,207 +991,197 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
               </div>
             ) : (
               /* Sección de Facturas y Cobros Recurrentes */
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {/* Cobros Recurrentes Configurados */}
                 {recurrentes.length > 0 && (
-                  <div className="rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-xl">
-                    <div className="flex items-center gap-2 pb-3 border-b border-white/10">
-                      <RefreshCw className="h-5 w-5 text-orange-400" />
-                      <h3 className="text-base font-bold text-white tracking-wide">Cobros Recurrentes Mensuales</h3>
+                  <div className="alt-card">
+                    <div className="alt-card-header flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4" style={{ color: "var(--alt-primary)" }} />
+                      <span>Cobros Recurrentes Mensuales</span>
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {recurrentes.map((rec) => (
-                        <div
-                          key={rec.id}
-                          className={`rounded-xl border p-4 transition-all ${
-                            Number(rec.activa)
-                              ? "border-white/10 bg-zinc-950/40"
-                              : "border-white/5 bg-zinc-950/20 opacity-60"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <div className="text-xs font-black uppercase text-white tracking-wide">{rec.concepto}</div>
-                              <div className="text-xl font-black text-orange-400 mt-1">
+                    <div className="alt-card-body">
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {recurrentes.map((rec) => (
+                          <div
+                            key={rec.id}
+                            className="p-3.5 rounded border flex flex-col justify-between gap-3"
+                            style={{
+                              backgroundColor: "var(--alt-card-header)",
+                              borderColor: "var(--alt-card-border)",
+                              opacity: Number(rec.activa) ? 1 : 0.6,
+                            }}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--alt-text)" }}>
+                                  {rec.concepto}
+                                </div>
+                                <span className={`alt-badge ${Number(rec.activa) ? "alt-badge-green" : "alt-badge-gray"}`}>
+                                  {Number(rec.activa) ? "Activo" : "Pausado"}
+                                </span>
+                              </div>
+                              <div className="text-lg font-bold" style={{ color: "var(--alt-primary)" }}>
                                 <FormatearNumero numero={rec.monto} />
-                                <span className="text-xs font-normal text-white/40"> / mes</span>
+                                <span className="text-xs font-normal" style={{ color: "var(--alt-text-muted)" }}> / mes</span>
                               </div>
                             </div>
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase border ${
-                                Number(rec.activa)
-                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                                  : "border-white/10 bg-white/5 text-white/40"
-                              }`}
-                            >
-                              {Number(rec.activa) ? "Activo" : "Pausado"}
-                            </span>
-                          </div>
-                          <div className="mt-3 grid grid-cols-2 gap-1.5 text-xs text-white/50 border-t border-white/5 pt-2.5">
-                            <div>Vence día: <strong className="text-white/80">{rec.dia_vencimiento}</strong></div>
-                            <div>Generadas: <strong className="text-white/80">{rec.facturas_generadas}</strong></div>
-                            <div className="col-span-2">Próxima gen: <strong className="text-white/80">{rec.proxima_generacion}</strong></div>
-                          </div>
-                          <div className="mt-3 flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => toggleRecurrente(rec)}
-                              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-white/10 py-1.5 text-xs font-bold text-white/70 hover:bg-white/5 hover:text-white transition cursor-pointer"
-                            >
-                              {Number(rec.activa) ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                              <span>{Number(rec.activa) ? "Pausar" : "Reactivar"}</span>
-                            </button>
-                            {Number(rec.activa) === 0 && (
+
+                            <div className="grid grid-cols-2 gap-1 text-xs pt-2 border-t" style={{ borderColor: "var(--alt-card-border)", color: "var(--alt-text-muted)" }}>
+                              <div>Vence día: <strong style={{ color: "var(--alt-text)" }}>{rec.dia_vencimiento}</strong></div>
+                              <div>Generadas: <strong style={{ color: "var(--alt-text)" }}>{rec.facturas_generadas}</strong></div>
+                              <div className="col-span-2 truncate">Próx. gen: <strong style={{ color: "var(--alt-text)" }}>{rec.proxima_generacion}</strong></div>
+                            </div>
+
+                            <div className="flex gap-2 pt-1">
                               <button
                                 type="button"
-                                onClick={() => eliminarRecurrente(rec)}
-                                className="flex items-center justify-center gap-1 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500/20 hover:text-red-200 transition cursor-pointer active:scale-95"
-                                title="Eliminar cobro recurrente"
+                                onClick={() => toggleRecurrente(rec)}
+                                className="alt-btn alt-btn-secondary alt-btn-sm flex-1 flex items-center justify-center gap-1 cursor-pointer"
                               >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                <span>Eliminar</span>
+                                {Number(rec.activa) ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+                                <span>{Number(rec.activa) ? "Pausar" : "Reactivar"}</span>
                               </button>
-                            )}
+                              {Number(rec.activa) === 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => eliminarRecurrente(rec)}
+                                  className="alt-btn alt-btn-danger alt-btn-sm flex items-center justify-center gap-1 cursor-pointer"
+                                  title="Eliminar cobro recurrente"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                  <span>Eliminar</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Listado de Facturas */}
-                <div className="rounded-2xl border border-white/10 bg-zinc-900 shadow-xl overflow-hidden">
-                  <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <div className="alt-card">
+                  <div className="alt-card-header flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <ReceiptText className="h-5 w-5 text-orange-400" />
-                      <h3 className="text-base font-bold text-white tracking-wide">Facturas del Cliente</h3>
-                      <span className="text-xs text-white/40">({facturas.length})</span>
+                      <ReceiptText className="h-4 w-4" style={{ color: "var(--alt-primary)" }} />
+                      <span>Facturas del Cliente ({facturas.length})</span>
                     </div>
                   </div>
 
                   {facturas.length === 0 ? (
-                    <div className="p-8 text-center text-white/40 text-sm">
+                    <div className="alt-card-body text-center text-sm opacity-60 py-8">
                       No hay facturas generadas para este cliente todavía.
                     </div>
                   ) : (
-                    <div className="divide-y divide-white/5">
-                      {facturas.map((fac) => (
-                        <div
-                          key={fac.id}
-                          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 transition-colors ${
-                            fac.estado === "cancelada"
-                              ? "bg-zinc-950/40 opacity-75 hover:bg-zinc-950/60"
-                              : "hover:bg-white/[0.02]"
-                          }`}
-                        >
-                          <div className="space-y-1.5 min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-mono text-xs font-bold text-orange-300">
+                    <div className="overflow-x-auto">
+                      <table className="alt-table">
+                        <thead>
+                          <tr>
+                            <th>Factura #</th>
+                            <th>Origen</th>
+                            <th>Concepto</th>
+                            <th>Emisión</th>
+                            <th>Vence</th>
+                            <th className="text-right">Total / Saldo</th>
+                            <th>Estado</th>
+                            <th className="text-center">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {facturas.map((fac) => (
+                            <tr
+                              key={fac.id}
+                              style={{
+                                opacity: fac.estado === "cancelada" ? 0.6 : 1,
+                              }}
+                            >
+                              <td className="font-mono font-bold" style={{ color: "var(--alt-primary)" }}>
                                 {fac.numero_factura}
-                              </span>
-                              <span
-                                className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black uppercase ${
-                                  fac.origen === "recurrente"
-                                    ? "border-purple-500/30 bg-purple-500/10 text-purple-300"
-                                    : "border-white/10 bg-white/5 text-white/50"
-                                }`}
-                              >
-                                {fac.origen === "recurrente" ? "Recurrente" : "Manual"}
-                              </span>
-                              <span
-                                className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black uppercase ${
-                                  fac.estado === "pagada"
-                                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                                    : fac.estado === "vencida"
-                                    ? "border-red-500/30 bg-red-500/10 text-red-300"
-                                    : fac.estado === "cancelada"
-                                    ? "border-zinc-600/40 bg-zinc-700/20 text-zinc-400"
-                                    : "border-amber-500/30 bg-amber-500/10 text-amber-300"
-                                }`}
-                              >
-                                {fac.estado === "cancelada" ? "Cancelada (Falta de pago)" : fac.estado}
-                              </span>
-                            </div>
-                            <div className={`text-sm font-bold ${fac.estado === "cancelada" ? "text-white/60 line-through decoration-zinc-500" : "text-white/90"}`}>
-                              {fac.concepto || "Plan de pagos"}
-                            </div>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-white/45">
-                              <span>Emisión: <strong className="text-white/70">{fac.fecha_emision}</strong></span>
-                              <span>Vence: <strong className="text-white/70">{fac.vencimiento}</strong></span>
-                              {fac.fecha_pago && (
-                                <span className="text-emerald-400/90 font-semibold">
-                                  Pagado el: {fac.fecha_pago}
+                              </td>
+                              <td>
+                                <span className={`alt-badge ${fac.origen === "recurrente" ? "alt-badge-purple" : "alt-badge-gray"}`}>
+                                  {fac.origen === "recurrente" ? "Recurrente" : "Manual"}
                                 </span>
-                              )}
-                              {fac.metodo_nombre && (
-                                <span>Método: <strong className="text-white/70">{fac.metodo_nombre}</strong></span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 shrink-0">
-                            <div className="text-right">
-                              <div className={`text-base font-black ${fac.estado === "cancelada" ? "text-zinc-400" : "text-white"}`}>
-                                <FormatearNumero numero={fac.total} />
-                              </div>
-                              {fac.estado === "cancelada" ? (
-                                <div className="text-xs font-bold text-zinc-500 italic">
-                                  Cancelada
+                              </td>
+                              <td>
+                                <div className={`font-semibold ${fac.estado === "cancelada" ? "line-through opacity-60" : ""}`}>
+                                  {fac.concepto || "Plan de pagos"}
                                 </div>
-                              ) : Number(fac.saldo) > 0 ? (
-                                <div className="text-xs font-bold text-amber-400">
-                                  Saldo: <FormatearNumero numero={fac.saldo} />
+                                {fac.metodo_nombre && (
+                                  <div className="text-xs opacity-60">Método: {fac.metodo_nombre}</div>
+                                )}
+                              </td>
+                              <td className="text-xs whitespace-nowrap">{fac.fecha_emision}</td>
+                              <td className="text-xs whitespace-nowrap">{fac.vencimiento}</td>
+                              <td className="text-right whitespace-nowrap">
+                                <div className="font-bold">
+                                  <FormatearNumero numero={fac.total} />
                                 </div>
-                              ) : null}
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {/* Botón de Pago Rápido */}
-                              {fac.estado === "cancelada" ? (
-                                <span className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-700/50 bg-zinc-800/40 px-3 py-1.5 text-xs font-bold text-zinc-400">
-                                  <Ban className="h-3.5 w-3.5 text-zinc-500" />
-                                  <span>Cancelada</span>
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => togglePagoFactura(fac)}
-                                  disabled={guardandoPagoFactura}
-                                  title={Number(fac.pagado) ? "Factura Pagada (Clic para revertir)" : "Marcar como pagada"}
-                                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition shadow-sm cursor-pointer active:scale-95 ${
-                                    Number(fac.pagado)
-                                      ? "border border-emerald-500/30 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
-                                      : "border border-emerald-500/50 bg-emerald-600 text-white hover:bg-emerald-500 shadow-emerald-950/40"
+                                {fac.estado === "cancelada" ? (
+                                  <div className="text-xs opacity-50 italic">Cancelada</div>
+                                ) : Number(fac.saldo) > 0 ? (
+                                  <div className="text-xs font-semibold" style={{ color: "var(--alt-warning)" }}>
+                                    Saldo: <FormatearNumero numero={fac.saldo} />
+                                  </div>
+                                ) : null}
+                              </td>
+                              <td>
+                                <span
+                                  className={`alt-badge ${
+                                    fac.estado === "pagada"
+                                      ? "alt-badge-green"
+                                      : fac.estado === "vencida"
+                                      ? "alt-badge-red"
+                                      : fac.estado === "cancelada"
+                                      ? "alt-badge-gray"
+                                      : "alt-badge-amber"
                                   }`}
                                 >
-                                  {Number(fac.pagado) ? (
-                                    <>
-                                      <CheckCircle className="h-4 w-4 text-emerald-400" />
-                                      <span>Pagada</span>
-                                    </>
+                                  {fac.estado === "cancelada" ? "Cancelada" : fac.estado}
+                                </span>
+                              </td>
+                              <td className="text-center">
+                                <div className="flex items-center justify-center gap-1.5">
+                                  {fac.estado === "cancelada" ? (
+                                    <span className="alt-badge alt-badge-gray">Cancelada</span>
                                   ) : (
-                                    <>
-                                      <CircleDollarSign className="h-4 w-4" />
-                                      <span>Marcar Pagada</span>
-                                    </>
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePagoFactura(fac)}
+                                      disabled={guardandoPagoFactura}
+                                      title={Number(fac.pagado) ? "Factura Pagada (Clic para revertir)" : "Marcar como pagada"}
+                                      className={`alt-btn alt-btn-sm ${Number(fac.pagado) ? "alt-btn-success" : "alt-btn-primary"} flex items-center gap-1 cursor-pointer`}
+                                    >
+                                      {Number(fac.pagado) ? (
+                                        <>
+                                          <CheckCircle className="h-3.5 w-3.5" />
+                                          <span>Pagada</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CircleDollarSign className="h-3.5 w-3.5" />
+                                          <span>Pagar</span>
+                                        </>
+                                      )}
+                                    </button>
                                   )}
-                                </button>
-                              )}
 
-                              {/* Botón Descargar PDF */}
-                              <button
-                                type="button"
-                                onClick={() => descargarPdfFactura(fac.id, fac.numero_factura)}
-                                title="Descargar PDF de la factura"
-                                className="flex items-center gap-1 rounded-xl border border-orange-500/30 bg-orange-500/10 px-2.5 py-1.5 text-xs font-bold text-orange-300 hover:bg-orange-500/20 transition cursor-pointer"
-                              >
-                                <FileDown className="h-4 w-4" />
-                                <span className="hidden sm:inline">PDF</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => descargarPdfFactura(fac.id, fac.numero_factura)}
+                                    title="Descargar PDF"
+                                    className="alt-btn alt-btn-secondary alt-btn-sm flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <FileDown className="h-3.5 w-3.5" />
+                                    <span>PDF</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>
@@ -1058,17 +1189,17 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
             )
           ) : (
             /* Vista de Columna Única cuando hay Cita Seleccionada */
-            <div className="w-full space-y-5">
+            <div className="w-full space-y-4">
               {/* Sección de Plan de Pagos */}
               {idPago === null ? (
                 !mostrarPlanPagos ? (
                   <button
                     type="button"
-                    className="bg-cyan-600/90 border border-cyan-500/40 rounded-xl px-4 py-2.5 transition-all hover:bg-cyan-600 text-white font-bold flex items-center gap-2 shadow-lg shadow-cyan-950/40 cursor-pointer active:scale-95"
+                    className="alt-btn alt-btn-primary flex items-center gap-2 cursor-pointer"
                     onClick={() => setMostrarPlanPagos(true)}
                   >
                     <ClipboardPlus className="h-4 w-4" />
-                    <span className="text-sm">Agregar plan de pagos</span>
+                    <span>Agregar plan de pagos</span>
                   </button>
                 ) : (
                   <div className="w-full">
@@ -1097,10 +1228,10 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                     <button
                       type="button"
                       onClick={exportarPlanPdf}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-orange-400/40 bg-orange-500/10 px-3 py-1.5 text-xs font-bold text-orange-200 transition hover:bg-orange-500/20 cursor-pointer"
+                      className="alt-btn alt-btn-secondary alt-btn-sm flex items-center gap-1.5 cursor-pointer"
                     >
                       <FileDown className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Exportar PDF</span>
+                      <span>Exportar PDF</span>
                     </button>
                   }
                   onActualizado={() => {
@@ -1112,50 +1243,42 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
               )}
 
               {/* Formulario Detalles de la Cita */}
-              <div className="bg-zinc-900 border border-white/10 rounded-2xl p-5 shadow-xl transition-all space-y-4">
-                <div className="flex items-center gap-2 pb-3 border-b border-white/10">
-                  <List className="h-5 w-5 text-orange-400" />
-                  <h2 className="text-lg font-bold text-white tracking-wide">Detalles de la cita</h2>
+              <div className="alt-card">
+                <div className="alt-card-header flex items-center gap-2">
+                  <List className="h-4 w-4" style={{ color: "var(--alt-primary)" }} />
+                  <span>Detalles de la cita</span>
                 </div>
 
-                {citas
-                  .filter((cita) => cita.idcita === citaSeleccionada)
-                  .map((cita) => (
-                    <div key={cita.idcita} className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-3">
-                          <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
-                              Teléfono
-                            </label>
+                <div className="alt-card-body">
+                  {citas
+                    .filter((cita) => cita.idcita === citaSeleccionada)
+                    .map((cita) => (
+                      <div key={cita.idcita} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="alt-form-group">
+                            <label className="alt-label">Teléfono</label>
                             <input
                               name="telefono"
                               value={telefono}
                               onChange={(e) => setTelefono(e.target.value)}
-                              className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/20 transition-all"
+                              className="alt-input"
                             />
                           </div>
 
-                          <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
-                              Dirección
-                            </label>
+                          <div className="alt-form-group">
+                            <label className="alt-label">Dirección</label>
                             <input
                               name="direccion"
                               value={direccion}
                               onChange={(e) => setDireccion(e.target.value)}
-                              className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/20 uppercase transition-all"
+                              className="alt-input uppercase"
                             />
                           </div>
-                        </div>
 
-                        <div className="space-y-3">
-                          <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
-                              Asignar a
-                            </label>
+                          <div className="alt-form-group">
+                            <label className="alt-label">Asignar a</label>
                             <select
-                              className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/20 capitalize transition-all cursor-pointer"
+                              className="alt-select capitalize"
                               value={asignado}
                               onChange={(e) => setAsignado(e.target.value)}
                             >
@@ -1172,12 +1295,10 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                             </select>
                           </div>
 
-                          <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
-                              Estado
-                            </label>
+                          <div className="alt-form-group">
+                            <label className="alt-label">Estado</label>
                             <select
-                              className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/20 capitalize transition-all cursor-pointer"
+                              className="alt-select capitalize"
                               value={estado}
                               onChange={(e) => setEstado(e.target.value)}
                             >
@@ -1194,88 +1315,82 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                             </select>
                           </div>
                         </div>
-                      </div>
 
-                      <div>
-                        <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
-                          Notas
-                        </label>
-                        <textarea
-                          name="notas"
-                          value={notas}
-                          onChange={(e) => setNotas(e.target.value)}
-                          rows={6}
-                          className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 focus:ring-2 focus:ring-orange-500/20 transition-all resize-y"
-                        />
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-white/10">
-                        <div className="flex flex-wrap items-center gap-3">
-                          <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
-                              Fecha
-                            </label>
-                            <DatePicker
-                              selected={dateKeyToDate(fecha)}
-                              onChange={(date: Date | null) =>
-                                setFecha(date ? formatDateKey(date) : "")
-                              }
-                              filterDate={isSelectableAgendaDate}
-                              dayClassName={agendaDayClassName}
-                              dateFormat="MM/dd/yyyy"
-                              placeholderText="Seleccionar fecha"
-                              className="rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-all"
-                              wrapperClassName="w-full"
-                              calendarClassName="agenda-datepicker"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
-                              Hora
-                            </label>
-                            <DatePicker
-                              showTimeSelect
-                              showTimeSelectOnly
-                              timeIntervals={15}
-                              timeCaption="Hora"
-                              dateFormat="h:mm aa"
-                              calendarClassName="agenda-timepicker"
-                              className="w-32 rounded-xl border border-white/10 bg-zinc-950/60 px-3.5 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-all"
-                              title="Cambiar hora"
-                              selected={hora ?? undefined}
-                              onChange={(date: Date | null) => {
-                                if (!date) return;
-                                setHora(date);
-                                const formattedTime = `${date.getHours()}:${String(
-                                  date.getMinutes()
-                                ).padStart(2, "0")}`;
-                                setHorario(formattedTime);
-                              }}
-                            />
-                          </div>
+                        <div className="alt-form-group">
+                          <label className="alt-label">Notas</label>
+                          <textarea
+                            name="notas"
+                            value={notas}
+                            onChange={(e) => setNotas(e.target.value)}
+                            rows={5}
+                            className="alt-input resize-y"
+                          />
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={volverAlListado}
-                            className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
-                          >
-                            Volver
-                          </button>
+                        <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t" style={{ borderColor: "var(--alt-card-border)" }}>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="alt-form-group" style={{ margin: 0 }}>
+                              <label className="alt-label">Fecha</label>
+                              <DatePicker
+                                selected={dateKeyToDate(fecha)}
+                                onChange={(date: Date | null) =>
+                                  setFecha(date ? formatDateKey(date) : "")
+                                }
+                                filterDate={isSelectableAgendaDate}
+                                dayClassName={agendaDayClassName}
+                                dateFormat="MM/dd/yyyy"
+                                placeholderText="Seleccionar fecha"
+                                className="alt-input"
+                                wrapperClassName="w-full"
+                                calendarClassName="agenda-datepicker"
+                              />
+                            </div>
 
-                          <button
-                            type="button"
-                            onClick={() => actualizarCita()}
-                            className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 px-5 py-2 text-xs font-bold text-white transition-all shadow-md shadow-orange-950/40 cursor-pointer active:scale-95"
-                          >
-                            Guardar cambios
-                          </button>
+                            <div className="alt-form-group" style={{ margin: 0 }}>
+                              <label className="alt-label">Hora</label>
+                              <DatePicker
+                                showTimeSelect
+                                showTimeSelectOnly
+                                timeIntervals={15}
+                                timeCaption="Hora"
+                                dateFormat="h:mm aa"
+                                calendarClassName="agenda-timepicker"
+                                className="alt-input w-32"
+                                title="Cambiar hora"
+                                selected={hora ?? undefined}
+                                onChange={(date: Date | null) => {
+                                  if (!date) return;
+                                  setHora(date);
+                                  const formattedTime = `${date.getHours()}:${String(
+                                    date.getMinutes()
+                                  ).padStart(2, "0")}`;
+                                  setHorario(formattedTime);
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={volverAlListado}
+                              className="alt-btn alt-btn-secondary cursor-pointer"
+                            >
+                              Volver
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => actualizarCita()}
+                              className="alt-btn alt-btn-primary cursor-pointer"
+                            >
+                              Guardar cambios
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                </div>
               </div>
             </div>
           )}
@@ -1283,79 +1398,72 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
           {/* Modal de Registro / Confirmación de Pago de Factura */}
           {modalPagoFactura && (
             <div
-              className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm"
+              className="alt-modal-overlay"
               onMouseDown={() => setModalPagoFactura(null)}
             >
               <div
                 onMouseDown={(e) => e.stopPropagation()}
-                className="my-auto w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-2xl space-y-4"
+                className="alt-modal max-w-md w-full"
               >
-                <div className="flex items-start justify-between border-b border-white/10 pb-3">
-                  <div>
-                    <span className="text-xs font-black uppercase tracking-wider text-orange-400">Registrar Pago</span>
-                    <h3 className="text-lg font-black text-white">{modalPagoFactura.numero_factura}</h3>
+                <div className="alt-modal-header">
+                  <div className="alt-modal-title">
+                    Registrar Pago — Factura #{modalPagoFactura.numero_factura}
                   </div>
                   <button
                     type="button"
                     onClick={() => setModalPagoFactura(null)}
-                    className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white"
+                    className="alt-btn alt-btn-secondary alt-btn-sm p-1"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
 
-                <div className="rounded-xl border border-white/10 bg-zinc-950/60 p-3 text-sm space-y-1">
-                  <div className="text-xs text-white/50">Concepto: <strong className="text-white/80">{modalPagoFactura.concepto || "Plan de pagos"}</strong></div>
-                  <div className="text-xs text-white/50">Total a pagar: <strong className="text-emerald-400 font-bold"><FormatearNumero numero={modalPagoFactura.saldo || modalPagoFactura.total} /></strong></div>
-                </div>
+                <div className="alt-modal-body space-y-3">
+                  <div className="p-3 rounded border text-xs space-y-1" style={{ backgroundColor: "var(--alt-card-header)", borderColor: "var(--alt-card-border)" }}>
+                    <div style={{ color: "var(--alt-text-muted)" }}>Concepto: <strong style={{ color: "var(--alt-text)" }}>{modalPagoFactura.concepto || "Plan de pagos"}</strong></div>
+                    <div style={{ color: "var(--alt-text-muted)" }}>Total a pagar: <strong style={{ color: "var(--alt-success)" }}><FormatearNumero numero={modalPagoFactura.saldo || modalPagoFactura.total} /></strong></div>
+                  </div>
 
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
-                      Método de pago
-                    </label>
+                  <div className="alt-form-group">
+                    <label className="alt-label">Método de pago</label>
                     <select
                       value={metodoSeleccionadoModal}
                       onChange={(e) => setMetodoSeleccionadoModal(Number(e.target.value))}
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-all cursor-pointer"
+                      className="alt-select"
                     >
                       {metodosPago.map((m) => (
-                        <option key={m.id} value={m.id} style={{ background: "#18181b", color: "#fafafa" }}>{m.metodo}</option>
+                        <option key={m.id} value={m.id}>{m.metodo}</option>
                       ))}
                     </select>
                   </div>
 
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
-                      Fecha de pago
-                    </label>
+                  <div className="alt-form-group">
+                    <label className="alt-label">Fecha de pago</label>
                     <input
                       type="date"
                       value={fechaPagoModal}
                       onChange={(e) => setFechaPagoModal(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-all"
+                      className="alt-input"
                     />
                   </div>
 
-                  <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-white/50 mb-1 block">
-                      Nota o Comprobante (opcional)
-                    </label>
+                  <div className="alt-form-group">
+                    <label className="alt-label">Nota o Comprobante (opcional)</label>
                     <input
                       type="text"
                       placeholder="Ej: Transferencia Zelle #1234"
                       value={notaPagoModal}
                       onChange={(e) => setNotaPagoModal(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-all"
+                      className="alt-input"
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-3 border-t border-white/10">
+                <div className="alt-modal-footer">
                   <button
                     type="button"
                     onClick={() => setModalPagoFactura(null)}
-                    className="flex-1 rounded-xl border border-white/10 py-2.5 text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                    className="alt-btn alt-btn-secondary"
                   >
                     Cancelar
                   </button>
@@ -1363,7 +1471,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                     type="button"
                     disabled={guardandoPagoFactura}
                     onClick={confirmarPagoModal}
-                    className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 text-xs font-black text-white transition shadow-lg shadow-emerald-950/40 cursor-pointer active:scale-95 disabled:opacity-50"
+                    className="alt-btn alt-btn-success"
                   >
                     {guardandoPagoFactura ? "Guardando..." : "Confirmar Pago"}
                   </button>
@@ -1375,57 +1483,53 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
           {/* Modal de Confirmación: Desinstalación por Falta de Pago */}
           {modalDesinstalacion && (
             <div
-              className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm"
+              className="alt-modal-overlay"
               onMouseDown={() => !procesandoDesinstalacion && setModalDesinstalacion(false)}
             >
               <div
                 onMouseDown={(e) => e.stopPropagation()}
-                className="my-auto w-full max-w-lg rounded-2xl border border-red-500/30 bg-zinc-900 p-6 shadow-2xl space-y-5"
+                className="alt-modal max-w-lg w-full"
+                style={{ borderColor: "var(--alt-danger)" }}
               >
-                <div className="flex items-start justify-between border-b border-white/10 pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400">
-                      <AlertTriangle className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-black uppercase tracking-wider text-red-400">Acción Crítica</span>
-                      <h3 className="text-lg font-black text-white">Desinstalación por Falta de Pago</h3>
-                    </div>
+                <div className="alt-modal-header" style={{ borderBottomColor: "var(--alt-danger)" }}>
+                  <div className="alt-modal-title flex items-center gap-2" style={{ color: "var(--alt-danger)" }}>
+                    <AlertTriangle className="h-5 w-5" />
+                    <span>Desinstalación por Falta de Pago</span>
                   </div>
                   <button
                     type="button"
                     disabled={procesandoDesinstalacion}
                     onClick={() => setModalDesinstalacion(false)}
-                    className="rounded-lg p-1.5 text-white/50 hover:bg-white/10 hover:text-white disabled:opacity-30"
+                    className="alt-btn alt-btn-secondary alt-btn-sm p-1"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
 
-                <div className="rounded-xl border border-white/10 bg-zinc-950/60 p-4 text-xs sm:text-sm text-white/80 space-y-2.5 leading-relaxed">
-                  <p>
-                    Estás a punto de registrar la <strong className="text-white">desinstalación por falta de pago</strong> para el cliente <strong className="text-orange-400">{cliente?.nombre}</strong>.
+                <div className="alt-modal-body space-y-3">
+                  <p className="text-xs leading-relaxed" style={{ color: "var(--alt-text)" }}>
+                    Estás a punto de registrar la <strong style={{ color: "var(--alt-danger)" }}>desinstalación por falta de pago</strong> para el cliente <strong>{cliente?.nombre}</strong>.
                   </p>
-                  <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 space-y-1.5 text-xs text-red-200">
-                    <div className="font-bold flex items-center gap-1.5 text-red-300">
-                      <span>Efectos automáticos del proceso:</span>
+                  <div className="p-3 rounded border text-xs space-y-1.5" style={{ backgroundColor: "rgba(220, 53, 69, 0.1)", borderColor: "rgba(220, 53, 69, 0.3)" }}>
+                    <div className="font-bold" style={{ color: "var(--alt-danger)" }}>
+                      Efectos automáticos del proceso:
                     </div>
-                    <ul className="list-disc list-inside space-y-1 text-white/80">
-                      <li>Las citas activas cambiarán su estado a <strong className="text-white">DESINSTALACIÓN A PROGRAMAR</strong> con registro en notas.</li>
-                      <li>Todos los cobros recurrentes activos serán <strong className="text-white">pausados</strong> automáticamente.</li>
-                      <li>Se <strong className="text-white">cancelarán todos los saldos y cuotas pendientes</strong> del cliente para que no sumen deuda.</li>
-                      <li>Las cuotas canceladas <strong className="text-white">no se eliminarán</strong>; permanecerán en el historial identificadas en <span className="text-zinc-400 font-bold">color gris</span>.</li>
-                      <li>El cliente y sus facturas <strong className="text-white">no aparecerán más en las listas de vencidos ni pendientes</strong>.</li>
+                    <ul className="list-disc list-inside space-y-1" style={{ color: "var(--alt-text-muted)" }}>
+                      <li>Las citas activas cambiarán su estado a <strong style={{ color: "var(--alt-text)" }}>DESINSTALACIÓN A PROGRAMAR</strong>.</li>
+                      <li>Todos los cobros recurrentes activos serán <strong style={{ color: "var(--alt-text)" }}>pausados</strong> automáticamente.</li>
+                      <li>Se <strong style={{ color: "var(--alt-text)" }}>cancelarán todos los saldos y cuotas pendientes</strong>.</li>
+                      <li>Las cuotas canceladas <strong style={{ color: "var(--alt-text)" }}>no se eliminarán</strong>; permanecerán en el historial identificadas en color gris.</li>
+                      <li>El cliente <strong style={{ color: "var(--alt-text)" }}>no aparecerá en las listas de vencidos ni pendientes</strong>.</li>
                     </ul>
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="alt-modal-footer">
                   <button
                     type="button"
                     disabled={procesandoDesinstalacion}
                     onClick={() => setModalDesinstalacion(false)}
-                    className="flex-1 rounded-xl border border-white/10 py-2.5 text-xs font-bold text-white/70 hover:bg-white/10 hover:text-white transition cursor-pointer disabled:opacity-50"
+                    className="alt-btn alt-btn-secondary"
                   >
                     Cancelar
                   </button>
@@ -1433,10 +1537,10 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                     type="button"
                     disabled={procesandoDesinstalacion}
                     onClick={ejecutarDesinstalacionPorFaltaDePago}
-                    className="flex-1 rounded-xl bg-red-600 hover:bg-red-500 py-2.5 text-xs font-black text-white transition shadow-lg shadow-red-950/50 cursor-pointer active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="alt-btn alt-btn-danger flex items-center gap-1.5"
                   >
                     {procesandoDesinstalacion ? (
-                      <span>Procesando desinstalación...</span>
+                      <span>Procesando...</span>
                     ) : (
                       <>
                         <Ban className="h-4 w-4" />
