@@ -233,6 +233,16 @@ export default function HojaInspeccion({
     setCargadoDeCotizacion(false);
   };
 
+  const handleUpdateItem = (
+    index: number,
+    field: Partial<InspeccionItem>,
+  ) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], ...field };
+    setItems(newItems);
+    setCargadoDeCotizacion(false);
+  };
+
   // Guarda materiales, notas y dibujo sin requerir firma
   const handleSaveWithoutFirma = async () => {
     setSaving(true);
@@ -604,7 +614,7 @@ export default function HojaInspeccion({
         />
       )}
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="bg-zinc-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95dvh]">
+        <div className="bg-zinc-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl shadow-2xl overflow-hidden flex flex-col h-[95dvh]">
           {/* Header */}
           <div className="bg-zinc-800 px-4 py-3 border-b border-white/10 flex justify-between items-center shrink-0">
             <div className="flex items-center gap-2.5">
@@ -679,10 +689,10 @@ export default function HojaInspeccion({
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
               </div>
             ) : activeTab === "materiales" ? (
-              <>
-                {/* Add Item Form */}
+              <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+                {/* Panel Izquierdo: Formulario de Agregar Material */}
                 {!bloqueada && (
-                  <div className="p-4 border-b border-white/10 bg-zinc-950/40 flex flex-col gap-3 shrink-0">
+                  <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 border-b md:border-b-0 md:border-r border-white/10 p-4 bg-zinc-950/40 flex flex-col gap-3 overflow-y-auto">
                     <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
                       Agregar material
                     </p>
@@ -707,127 +717,157 @@ export default function HojaInspeccion({
                       )}
                     </div>
 
-                  {/* Producto selector */}
-                  <div>
-                    <label className="block text-xs font-semibold text-white/60 mb-1">
-                      Producto
-                    </label>
-                    <select
-                      value={selectedProducto}
-                      onChange={(e) =>
-                        setSelectedProducto(
-                          e.target.value ? Number(e.target.value) : "",
-                        )
-                      }
-                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50">
-                      <option value="">Selecciona un producto...</option>
-                      {productosFiltrados.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.descrip} — Stock: {p.stock}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Cantidad + Detalle en fila */}
-                  <div className="flex gap-2">
-                    <div className="w-24 shrink-0">
+                    {/* Producto selector */}
+                    <div>
                       <label className="block text-xs font-semibold text-white/60 mb-1">
-                        Cant.
+                        Producto
                       </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={cantidad}
-                        onChange={(e) => setCantidad(Number(e.target.value))}
-                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50 text-center"
-                      />
+                      <select
+                        value={selectedProducto}
+                        onChange={(e) =>
+                          setSelectedProducto(
+                            e.target.value ? Number(e.target.value) : "",
+                          )
+                        }
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500/50">
+                        <option value="">Selecciona un producto...</option>
+                        {productosFiltrados.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.descrip} — Stock: {p.stock}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="flex-1">
-                      <label className="block text-xs font-semibold text-white/60 mb-1">
-                        Detalle (opcional)
-                      </label>
-                      <input
-                        type="text"
-                        value={detalle}
-                        onChange={(e) => setDetalle(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-                        placeholder="Color, largo, etc."
-                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50"
-                      />
-                    </div>
-                  </div>
 
-                  <button
-                    onClick={handleAddItem}
-                    disabled={!selectedProducto || cantidad <= 0}
-                    className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
-                    <Plus className="w-4 h-4" />
-                    Agregar material
-                  </button>
-                </div>
+                    {/* Cantidad + Detalle en fila */}
+                    <div className="flex gap-2">
+                      <div className="w-20 shrink-0">
+                        <label className="block text-xs font-semibold text-white/60 mb-1">
+                          Cant.
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={cantidad}
+                          onChange={(e) => setCantidad(Number(e.target.value))}
+                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-orange-500/50 text-center"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-semibold text-white/60 mb-1">
+                          Detalle (opcional)
+                        </label>
+                        <input
+                          type="text"
+                          value={detalle}
+                          onChange={(e) => setDetalle(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                          placeholder="Color, largo, etc."
+                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500/50"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleAddItem}
+                      disabled={!selectedProducto || cantidad <= 0}
+                      className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors mt-1">
+                      <Plus className="w-4 h-4" />
+                      Agregar material
+                    </button>
+                  </div>
                 )}
 
-                {/* Items list wrapper */}
-                <div className="flex-1 flex flex-col min-h-0 p-4">
+                {/* Panel Derecho: Lista de Materiales */}
+                <div className="flex-1 flex flex-col min-h-0 p-4 bg-zinc-900/40 overflow-hidden">
+                  <div className="flex items-center justify-between mb-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-white/70 uppercase tracking-wider">
+                        Lista de materiales
+                      </p>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                        {items.length} {items.length === 1 ? "ítem" : "ítems"}
+                      </span>
+                    </div>
+                    {cargadoDeCotizacion && (
+                      <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
+                        <FileText className="w-3 h-3" />
+                        Pre-cargado desde cotización
+                      </span>
+                    )}
+                  </div>
+
                   {items.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-white/30">
-                      <PackageSearch className="w-10 h-10 mb-2 opacity-40" />
-                      <p className="text-sm">No hay materiales cargados</p>
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-white/30 border border-dashed border-white/10 rounded-2xl bg-zinc-950/20">
+                      <PackageSearch className="w-12 h-12 mb-3 opacity-30 text-orange-400" />
+                      <p className="text-sm font-semibold text-white/60">No hay materiales agregados</p>
+                      <p className="text-xs text-white/40 mt-1 max-w-xs">
+                        Selecciona un producto del panel izquierdo y presiona "Agregar material" para incluirlo en la hoja de inspección.
+                      </p>
                     </div>
                   ) : (
-                    <>
-                      <div className="flex items-center justify-between mb-2 shrink-0">
-                        <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
-                          Lista de materiales ({items.length})
-                        </p>
-                        {cargadoDeCotizacion && (
-                          <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
-                            <FileText className="w-3 h-3" />
-                            Pre-cargado desde cotización
-                          </span>
-                        )}
-                      </div>
-                      {/* The scrollable list of items */}
-                      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2">
-                        {items.map((item, index) => (
-                          <div
-                            key={index}
-                            className="flex items-start gap-3 bg-zinc-800/60 border border-white/8 rounded-xl p-3 shrink-0">
-                            {/* Cantidad badge */}
-                            <div className="shrink-0 bg-orange-500/15 border border-orange-500/30 rounded-lg px-2 py-1 text-center min-w-[2.5rem]">
-                              <span className="text-orange-300 font-bold text-sm">
+                    <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 min-h-0">
+                      {items.map((item, index) => (
+                        <div
+                          key={`${item.producto_id}-${index}`}
+                          className="grid grid-cols-[72px_1fr_auto] gap-2.5 bg-zinc-800/70 border border-white/10 rounded-xl p-2.5 shrink-0 items-center hover:border-white/20 transition-colors">
+                          <div>
+                            <label className="block text-[9px] font-bold text-white/40 uppercase mb-1">
+                              Cant.
+                            </label>
+                            {bloqueada ? (
+                              <div className="bg-orange-500/15 border border-orange-500/30 rounded-lg px-2 py-1.5 text-center text-orange-300 font-bold text-xs">
                                 {item.cantidad}
-                              </span>
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-white font-semibold text-sm leading-tight">
-                                {item.producto_descrip}
-                              </p>
-                              {item.detalle && (
-                                <p className="text-white/50 text-xs mt-0.5 italic">
-                                  {item.detalle}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Delete */}
-                            {!bloqueada && (
-                              <button
-                                onClick={() => handleRemoveItem(index)}
-                                className="shrink-0 p-1.5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              </div>
+                            ) : (
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.cantidad}
+                                onChange={(e) =>
+                                  handleUpdateItem(index, { cantidad: Number(e.target.value) })
+                                }
+                                className="w-full bg-zinc-950 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-orange-500/50 font-bold"
+                              />
                             )}
                           </div>
-                        ))}
-                      </div>
-                    </>
+
+                          <div className="min-w-0">
+                            <p className="text-white font-semibold text-xs leading-snug mb-1.5">
+                              {item.producto_descrip}
+                            </p>
+                            {bloqueada ? (
+                              item.detalle && (
+                                <p className="text-white/50 text-[11px] italic">{item.detalle}</p>
+                              )
+                            ) : (
+                              <input
+                                type="text"
+                                value={item.detalle}
+                                maxLength={255}
+                                onChange={(e) =>
+                                  handleUpdateItem(index, { detalle: e.target.value })
+                                }
+                                placeholder="Detalle (opcional)"
+                                className="w-full bg-zinc-950 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none focus:border-orange-500/50"
+                              />
+                            )}
+                          </div>
+
+                          {!bloqueada && (
+                            <button
+                              onClick={() => handleRemoveItem(index)}
+                              className="self-center p-2 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                              title="Eliminar material">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-              </>
+              </div>
             ) : activeTab === "dibujo" ? (
               /* Dibujo Tab */
               <CanvasDibujo

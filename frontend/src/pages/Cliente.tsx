@@ -27,6 +27,10 @@ import {
   X,
   Ban,
   AlertTriangle,
+  Phone,
+  MapPin,
+  Save,
+  FileText,
 } from "lucide-react";
 import { darkenColor } from "../utils/colores";
 import DatePicker from "react-datepicker";
@@ -160,6 +164,7 @@ export default function Cliente() {
   const [guardandoPagoFactura, setGuardandoPagoFactura] = useState(false);
   const [modalDesinstalacion, setModalDesinstalacion] = useState(false);
   const [procesandoDesinstalacion, setProcesandoDesinstalacion] = useState(false);
+  const [guardandoCita, setGuardandoCita] = useState(false);
 
   const esInternet = (tipo: string) => (tipo || "").toLowerCase().includes("internet");
   const esCamaras = (tipo: string) => {
@@ -397,6 +402,7 @@ export default function Cliente() {
       return;
     }
 
+    setGuardandoCita(true);
     try {
       const res = await fetch(`${API_URL}/api/citas/actualizar/${citaSeleccionada}`, {
         method: "PUT",
@@ -416,6 +422,7 @@ export default function Cliente() {
 
       if (!res.ok) {
         console.error("Error al actualizar la cita. Código:", res.status);
+        alert("Error al actualizar la cita.");
         return;
       }
 
@@ -430,13 +437,14 @@ export default function Cliente() {
         setCliente({ ...cliente, email: emailNormalizado });
         setEmailEdicion(emailNormalizado);
       }
+
+      alert("Cita actualizada correctamente.");
+      await cargarInicioCliente();
     } catch (error) {
       console.error("Error al actualizar la cita:", error);
       alert("Error al actualizar la cita. Por favor, inténtalo de nuevo.");
-    }
-    finally {
-      alert("Cita actualizada correctamente.");
-      cargarInicioCliente();
+    } finally {
+      setGuardandoCita(false);
     }
   };
 
@@ -1188,97 +1196,168 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
               </div>
             )
           ) : (
-            /* Vista de Columna Única cuando hay Cita Seleccionada */
+            /* Vista Detallada de Cita Seleccionada */
             <div className="w-full space-y-4">
-              {/* Sección de Plan de Pagos */}
-              {idPago === null ? (
-                !mostrarPlanPagos ? (
-                  <button
-                    type="button"
-                    className="alt-btn alt-btn-primary flex items-center gap-2 cursor-pointer"
-                    onClick={() => setMostrarPlanPagos(true)}
-                  >
-                    <ClipboardPlus className="h-4 w-4" />
-                    <span>Agregar plan de pagos</span>
-                  </button>
-                ) : (
-                  <div className="w-full">
-                    <PlanDePagos
-                      idCliente={idCliente || ""}
-                      idCita={citaSeleccionada}
-                      onGuardado={() => {
-                        const citaActual = citas.find((c) => c.idcita === citaSeleccionada);
-                        if (citaActual) setearCitaSeleccionada(citaActual);
-                        cargarInicioCliente();
-                        setMostrarPlanPagos(false);
-                      }}
-                    />
-                  </div>
-                )
-              ) : (
-                <VerPlanDePagos
-                  idPago={idPago}
-                  idCita={citaSeleccionada}
-                  total={totalPlan}
-                  enganche={enganchePlan}
-                  metodoEnganche={metodoEnganchePlan}
-                  idMetodoEnganche={idMetodoEnganchePlan}
-                  cuotas={cuotas}
-                  headerAction={
-                    <button
-                      type="button"
-                      onClick={exportarPlanPdf}
-                      className="alt-btn alt-btn-secondary alt-btn-sm flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <FileDown className="h-3.5 w-3.5" />
-                      <span>Exportar PDF</span>
-                    </button>
-                  }
-                  onActualizado={() => {
-                    const citaActual = citas.find((c) => c.idcita === citaSeleccionada);
-                    if (citaActual) setearCitaSeleccionada(citaActual);
-                    cargarInicioCliente();
-                  }}
-                />
-              )}
+              {citas
+                .filter((cita) => cita.idcita === citaSeleccionada)
+                .map((cita) => (
+                  <div key={cita.idcita} className="space-y-4">
+                    {/* Card Principal: Datos de la Cita */}
+                    <div className="alt-card">
+                      <div className="alt-card-header flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={volverAlListado}
+                            className="alt-btn alt-btn-secondary alt-btn-sm flex items-center gap-1 cursor-pointer"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            <span>Volver</span>
+                          </button>
 
-              {/* Formulario Detalles de la Cita */}
-              <div className="alt-card">
-                <div className="alt-card-header flex items-center gap-2">
-                  <List className="h-4 w-4" style={{ color: "var(--alt-primary)" }} />
-                  <span>Detalles de la cita</span>
-                </div>
+                          <span className="font-bold text-sm text-white">
+                            Cita #{cita.idcita}
+                          </span>
 
-                <div className="alt-card-body">
-                  {citas
-                    .filter((cita) => cita.idcita === citaSeleccionada)
-                    .map((cita) => (
-                      <div key={cita.idcita} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="alt-form-group">
-                            <label className="alt-label">Teléfono</label>
-                            <input
-                              name="telefono"
-                              value={telefono}
-                              onChange={(e) => setTelefono(e.target.value)}
-                              className="alt-input"
+                          <span className="alt-badge alt-badge-blue flex items-center gap-1">
+                            <CalendarFold className="h-3 w-3" />
+                            <span>{cita.dia}</span>
+                          </span>
+
+                          <span className="alt-badge alt-badge-orange flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{cita.hora}</span>
+                          </span>
+
+                          {esInternet(cita.tipo) && (
+                            <span className="alt-badge alt-badge-orange flex items-center gap-1">
+                              <Globe className="h-3 w-3" />
+                              <span>INTERNET</span>
+                            </span>
+                          )}
+
+                          {esCamaras(cita.tipo) && (
+                            <span className="alt-badge alt-badge-blue flex items-center gap-1">
+                              <Cctv className="h-3 w-3" />
+                              <span>CÁMARAS</span>
+                            </span>
+                          )}
+
+                          {esInstalacion(cita.tipo) && (
+                            <span className="alt-badge alt-badge-purple flex items-center gap-1">
+                              <Drill className="h-3 w-3" />
+                              <span>INSTALACIÓN</span>
+                            </span>
+                          )}
+
+                          {esSoporte(cita.tipo) && (
+                            <span className="alt-badge alt-badge-green flex items-center gap-1">
+                              <Wrench className="h-3 w-3" />
+                              <span>SOPORTE</span>
+                            </span>
+                          )}
+
+                          <span
+                            className="alt-badge"
+                            style={{
+                              backgroundColor: cita.color || "#4b545c",
+                              color: "#ffffff",
+                              borderColor: darkenColor(cita.color || "#4b545c", 0.3),
+                            }}
+                          >
+                            {cita.estado}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={guardandoCita}
+                            onClick={() => actualizarCita()}
+                            className="alt-btn alt-btn-primary alt-btn-sm flex items-center gap-1.5 cursor-pointer shadow-sm"
+                          >
+                            <Save className="h-3.5 w-3.5" />
+                            <span>{guardandoCita ? "Guardando..." : "Guardar Cambios"}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-4 sm:p-6 space-y-4">
+                        {(cita.tipo === "camaras-tiene-nuevo-instalacion" ||
+                          cita.tipo === "camaras-tiene-existente-instalacion") && (
+                          <div className="alt-notice alt-notice-info">
+                            <div className="flex items-center gap-2 text-xs font-semibold">
+                              <TriangleAlert className="h-4 w-4" />
+                              <span>Información técnica: El cliente ya tiene cámaras instaladas previamente.</span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="alt-form-group m-0">
+                            <label className="alt-label">Fecha de la Cita</label>
+                            <DatePicker
+                              selected={dateKeyToDate(fecha)}
+                              onChange={(date: Date | null) =>
+                                setFecha(date ? formatDateKey(date) : "")
+                              }
+                              filterDate={isSelectableAgendaDate}
+                              dayClassName={agendaDayClassName}
+                              dateFormat="MM/dd/yyyy"
+                              placeholderText="Seleccionar fecha"
+                              className="alt-input w-full"
+                              wrapperClassName="w-full"
+                              calendarClassName="agenda-datepicker"
                             />
                           </div>
 
-                          <div className="alt-form-group">
-                            <label className="alt-label">Dirección</label>
-                            <input
-                              name="direccion"
-                              value={direccion}
-                              onChange={(e) => setDireccion(e.target.value)}
-                              className="alt-input uppercase"
+                          <div className="alt-form-group m-0">
+                            <label className="alt-label">Hora de la Cita</label>
+                            <DatePicker
+                              showTimeSelect
+                              showTimeSelectOnly
+                              timeIntervals={15}
+                              timeCaption="Hora"
+                              dateFormat="h:mm aa"
+                              calendarClassName="agenda-timepicker"
+                              className="alt-input w-full"
+                              title="Cambiar hora"
+                              selected={hora ?? undefined}
+                              onChange={(date: Date | null) => {
+                                if (!date) return;
+                                setHora(date);
+                                const formattedTime = `${date.getHours()}:${String(
+                                  date.getMinutes()
+                                ).padStart(2, "0")}`;
+                                setHorario(formattedTime);
+                              }}
                             />
                           </div>
 
-                          <div className="alt-form-group">
-                            <label className="alt-label">Asignar a</label>
+                          <div className="alt-form-group m-0">
+                            <label className="alt-label">Estado</label>
                             <select
-                              className="alt-select capitalize"
+                              className="alt-select capitalize w-full"
+                              value={estado}
+                              onChange={(e) => setEstado(e.target.value)}
+                            >
+                              <option key={cita.idestado} value={cita.idestado}>
+                                {cita.estado}
+                              </option>
+                              {estados
+                                .filter((e) => e.id !== cita.idestado)
+                                .map((est) => (
+                                  <option key={est.id} value={est.id}>
+                                    {est.estado}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+
+                          <div className="alt-form-group m-0">
+                            <label className="alt-label">Técnico Asignado</label>
+                            <select
+                              className="alt-select capitalize w-full"
                               value={asignado}
                               onChange={(e) => setAsignado(e.target.value)}
                             >
@@ -1295,103 +1374,149 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                             </select>
                           </div>
 
-                          <div className="alt-form-group">
-                            <label className="alt-label">Estado</label>
-                            <select
-                              className="alt-select capitalize"
-                              value={estado}
-                              onChange={(e) => setEstado(e.target.value)}
-                            >
-                              <option key={cita.idestado} value={cita.idestado}>
-                                {cita.estado}
-                              </option>
-                              {estados
-                                .filter((e) => e.id !== cita.idestado)
-                                .map((est) => (
-                                  <option key={est.id} value={est.id}>
-                                    {est.estado}
-                                  </option>
-                                ))}
-                            </select>
+                          <div className="alt-form-group m-0">
+                            <label className="alt-label">Teléfono de Contacto</label>
+                            <input
+                              name="telefono"
+                              value={telefono}
+                              onChange={(e) => setTelefono(e.target.value)}
+                              placeholder="(555) 000-0000"
+                              className="alt-input w-full"
+                            />
+                          </div>
+
+                          <div className="alt-form-group m-0">
+                            <label className="alt-label">Dirección / Domicilio</label>
+                            <input
+                              name="direccion"
+                              value={direccion}
+                              onChange={(e) => setDireccion(e.target.value)}
+                              placeholder="Calle, número, ciudad..."
+                              className="alt-input uppercase w-full"
+                            />
                           </div>
                         </div>
 
-                        <div className="alt-form-group">
-                          <label className="alt-label">Notas</label>
+                        <div className="alt-form-group m-0 pt-2">
+                          <label className="alt-label">Observaciones y Notas de la Cita</label>
                           <textarea
                             name="notas"
                             value={notas}
                             onChange={(e) => setNotas(e.target.value)}
-                            rows={5}
-                            className="alt-input resize-y"
+                            rows={3}
+                            placeholder="Escribe aquí observaciones, acuerdos o instrucciones de esta cita..."
+                            className="alt-input resize-y w-full"
                           />
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t" style={{ borderColor: "var(--alt-card-border)" }}>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <div className="alt-form-group" style={{ margin: 0 }}>
-                              <label className="alt-label">Fecha</label>
-                              <DatePicker
-                                selected={dateKeyToDate(fecha)}
-                                onChange={(date: Date | null) =>
-                                  setFecha(date ? formatDateKey(date) : "")
-                                }
-                                filterDate={isSelectableAgendaDate}
-                                dayClassName={agendaDayClassName}
-                                dateFormat="MM/dd/yyyy"
-                                placeholderText="Seleccionar fecha"
-                                className="alt-input"
-                                wrapperClassName="w-full"
-                                calendarClassName="agenda-datepicker"
-                              />
-                            </div>
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t" style={{ borderColor: "var(--alt-card-border)" }}>
+                          <button
+                            type="button"
+                            onClick={volverAlListado}
+                            className="alt-btn alt-btn-secondary alt-btn-sm cursor-pointer"
+                          >
+                            Volver al listado
+                          </button>
+                          <button
+                            type="button"
+                            disabled={guardandoCita}
+                            onClick={() => actualizarCita()}
+                            className="alt-btn alt-btn-primary alt-btn-sm flex items-center gap-1.5 cursor-pointer shadow-sm"
+                          >
+                            <Save className="h-3.5 w-3.5" />
+                            <span>{guardandoCita ? "Guardando..." : "Guardar Cambios"}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
-                            <div className="alt-form-group" style={{ margin: 0 }}>
-                              <label className="alt-label">Hora</label>
-                              <DatePicker
-                                showTimeSelect
-                                showTimeSelectOnly
-                                timeIntervals={15}
-                                timeCaption="Hora"
-                                dateFormat="h:mm aa"
-                                calendarClassName="agenda-timepicker"
-                                className="alt-input w-32"
-                                title="Cambiar hora"
-                                selected={hora ?? undefined}
-                                onChange={(date: Date | null) => {
-                                  if (!date) return;
-                                  setHora(date);
-                                  const formattedTime = `${date.getHours()}:${String(
-                                    date.getMinutes()
-                                  ).padStart(2, "0")}`;
-                                  setHorario(formattedTime);
-                                }}
-                              />
+                    {/* Plan de Pagos de la Cita (Ancho Completo) */}
+                    {idPago === null ? (
+                      !mostrarPlanPagos ? (
+                        <div className="alt-card">
+                          <div className="alt-card-header flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <CircleDollarSign className="h-4 w-4" style={{ color: "var(--alt-primary)" }} />
+                              <span className="font-bold">Plan de Pagos de la Cita</span>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-2">
+                          <div className="p-6 flex flex-col items-center justify-center text-center space-y-3">
+                            <div className="w-12 h-12 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
+                              <ClipboardPlus className="h-6 w-6" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-white m-0">Esta cita no tiene Plan de Pagos</h4>
+                              <p className="text-xs text-white/50 mt-1 max-w-sm">
+                                Puedes agregar un plan de cuotas y enganche para este servicio.
+                              </p>
+                            </div>
                             <button
                               type="button"
-                              onClick={volverAlListado}
-                              className="alt-btn alt-btn-secondary cursor-pointer"
+                              className="alt-btn alt-btn-primary alt-btn-sm flex items-center gap-1.5 cursor-pointer shadow-md"
+                              onClick={() => setMostrarPlanPagos(true)}
                             >
-                              Volver
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => actualizarCita()}
-                              className="alt-btn alt-btn-primary cursor-pointer"
-                            >
-                              Guardar cambios
+                              <ClipboardPlus className="h-4 w-4" />
+                              <span>Agregar Plan de Pagos</span>
                             </button>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
+                      ) : (
+                        <div className="alt-card">
+                          <div className="alt-card-header flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <ClipboardPlus className="h-4 w-4" style={{ color: "var(--alt-primary)" }} />
+                              <span className="font-bold">Crear Plan de Pagos</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setMostrarPlanPagos(false)}
+                              className="alt-btn alt-btn-secondary alt-btn-sm text-xs"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                          <div className="p-4">
+                            <PlanDePagos
+                              idCliente={idCliente || ""}
+                              idCita={citaSeleccionada}
+                              onGuardado={() => {
+                                const citaActual = citas.find((c) => c.idcita === citaSeleccionada);
+                                if (citaActual) setearCitaSeleccionada(citaActual);
+                                cargarInicioCliente();
+                                setMostrarPlanPagos(false);
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    ) : (
+                      <VerPlanDePagos
+                        idPago={idPago}
+                        idCita={citaSeleccionada}
+                        total={totalPlan}
+                        enganche={enganchePlan}
+                        metodoEnganche={metodoEnganchePlan}
+                        idMetodoEnganche={idMetodoEnganchePlan}
+                        cuotas={cuotas}
+                        headerAction={
+                          <button
+                            type="button"
+                            onClick={exportarPlanPdf}
+                            className="alt-btn alt-btn-secondary alt-btn-sm flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <FileDown className="h-3.5 w-3.5" />
+                            <span>Exportar PDF</span>
+                          </button>
+                        }
+                        onActualizado={() => {
+                          const citaActual = citas.find((c) => c.idcita === citaSeleccionada);
+                          if (citaActual) setearCitaSeleccionada(citaActual);
+                          cargarInicioCliente();
+                        }}
+                      />
+                    )}
+                  </div>
+                ))}
             </div>
           )}
 

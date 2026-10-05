@@ -193,276 +193,256 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
 
   return loading ? <Loading /> : (
     <div className="w-full space-y-4">
-      <div className="flex items-center gap-2 mb-1">
-        <CreditCard className="h-5 w-5 text-orange-400" />
-        <div className="text-lg font-bold text-white">Plan de Pagos</div>
-      </div>
-
-      <div className="rounded-2xl border border-white/10 bg-zinc-900 shadow-lg shadow-black/20 p-5 space-y-4">
-        <p className="text-xs font-bold tracking-wide text-white/40 uppercase">Configuracion</p>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="space-y-1">
-            <label className="text-xs text-white/50 flex items-center gap-1">
-              <DollarSign className="h-3 w-3 text-orange-400" />
-              Monto total
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">$</span>
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={montoTotal || ""}
-                placeholder="0.00"
-                onChange={(e) => setMontoTotal(Number(e.target.value))}
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 pl-7 pr-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-white/50 flex items-center gap-1">
-              <DollarSign className="h-3 w-3 text-orange-400" />
-              Enganche
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">$</span>
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={enganche || ""}
-                placeholder="0.00"
-                onChange={(e) => setEnganche(Number(e.target.value))}
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 pl-7 pr-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-white/50 flex items-center gap-1">
-              <CreditCard className="h-3 w-3 text-orange-400" />
-              Metodo enganche
-            </label>
-            <select
-              value={idMetodoEnganche || ""}
-              onChange={(e) => setIdMetodoEnganche(Number(e.target.value))}
-              disabled={enganche <= 0}
-              className={`w-full rounded-xl border px-3 py-2 text-sm text-white outline-none transition-colors ${enganche > 0
-                ? "border-white/10 bg-zinc-950/40 focus:border-orange-500/60"
-                : "cursor-not-allowed border-white/5 bg-white/5 text-white/30"
-                }`}
-            >
-              <option value="">Sin metodo</option>
-              {metodosPago.map((metodo) => (
-                <option key={metodo.id} value={metodo.id}>
-                  {metodo.metodo}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-white/50 flex items-center gap-1">
-              <Percent className="h-3 w-3 text-orange-400" />
-              Interes por cuota (%)
-            </label>
-            <div className="relative">
-              <input
-                type="number"
-                min={0}
-                step={0.1}
-                value={interesGlobal || ""}
-                placeholder="0"
-                onChange={(e) => setInteresGlobal(Number(e.target.value))}
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors"
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 text-sm">%</span>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-white/50 flex items-center gap-1">
-              <Hash className="h-3 w-3 text-orange-400" />
-              Nro de cuotas
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={60}
-              value={numCuotas}
-              onChange={(e) => setNumCuotas(Math.max(0, Number(e.target.value)))}
-              className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-white/50 flex items-center gap-1">
-              <Repeat className="h-3 w-3 text-orange-400" />
-              Frecuencia
-            </label>
-            <select
-              value={frecuenciaCuotas}
-              onChange={(e) => setFrecuenciaCuotas(e.target.value as FrecuenciaCuotas)}
-              className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors"
-            >
-              <option value="mensual">Mensuales</option>
-              <option value="quincenal">Quincenales</option>
-              <option value="semanal">Semanales</option>
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs text-white/50 flex items-center gap-1">
-              <Calendar className="h-3 w-3 text-orange-400" />
-              Primer vencimiento
-            </label>
-            <input
-              type="date"
-              value={primerVencimiento}
-              onChange={(e) => setPrimerVencimiento(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/60 transition-colors [color-scheme:dark]"
-            />
+      <div className="alt-card">
+        <div className="alt-card-header">
+          <div className="alt-card-header-title">
+            <CreditCard className="h-4 w-4" style={{ color: "var(--alt-primary)" }} />
+            <span>Configuración del Nuevo Plan de Pagos</span>
           </div>
         </div>
 
-        <div className="flex items-start gap-2 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-100">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-300" />
-          <span>El enganche se registra al crear el plan y no se puede modificar despues.</span>
-        </div>
-
-        {montoTotal > 0 && (
-          <div className="flex flex-wrap gap-3 pt-1">
-            <div className="flex items-center gap-2 rounded-xl bg-black/20 border border-white/10 px-3 py-1.5 text-xs">
-              <span className="text-white/40">Saldo para cuotas:</span>
-              <span className="text-white font-bold"><FormatearNumero numero={saldoFinanciado} /></span>
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="alt-form-group m-0">
+              <label className="alt-label">Monto total</label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--alt-text-muted)" }}>$</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={montoTotal || ""}
+                  placeholder="0.00"
+                  onChange={(e) => setMontoTotal(Number(e.target.value))}
+                  className="alt-input pl-6 pr-2 py-1.5 text-xs w-full"
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2 rounded-xl bg-black/20 border border-white/10 px-3 py-1.5 text-xs">
-              <span className="text-white/40">Total con interes:</span>
-              <span className="text-orange-400 font-bold"><FormatearNumero numero={totalConEnganche} /></span>
+
+            <div className="alt-form-group m-0">
+              <label className="alt-label">Enganche</label>
+              <div className="relative">
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--alt-text-muted)" }}>$</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={enganche || ""}
+                  placeholder="0.00"
+                  onChange={(e) => setEnganche(Number(e.target.value))}
+                  className="alt-input pl-6 pr-2 py-1.5 text-xs w-full"
+                />
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 rounded-xl bg-black/20 border border-white/10 px-3 py-1.5 text-xs">
-              <span className="text-white/40">Base por cuota:</span>
-              <span className="text-white font-bold"><FormatearNumero numero={montoPorCuota} /></span>
+            <div className="alt-form-group m-0">
+              <label className="alt-label">Método del Enganche</label>
+              <select
+                value={idMetodoEnganche || ""}
+                onChange={(e) => setIdMetodoEnganche(Number(e.target.value))}
+                disabled={enganche <= 0}
+                className="alt-select py-1.5 text-xs w-full"
+              >
+                <option value="">Sin método</option>
+                {metodosPago.map((metodo) => (
+                  <option key={metodo.id} value={metodo.id}>
+                    {metodo.metodo}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="alt-form-group m-0">
+              <label className="alt-label">Interés por Cuota (%)</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={interesGlobal || ""}
+                  placeholder="0"
+                  onChange={(e) => setInteresGlobal(Number(e.target.value))}
+                  className="alt-input pr-6 pl-2 py-1.5 text-xs w-full"
+                />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--alt-text-muted)" }}>%</span>
+              </div>
+            </div>
+
+            <div className="alt-form-group m-0">
+              <label className="alt-label">Nro de Cuotas</label>
+              <input
+                type="number"
+                min={0}
+                max={60}
+                value={numCuotas}
+                onChange={(e) => setNumCuotas(Math.max(0, Number(e.target.value)))}
+                className="alt-input py-1.5 text-xs w-full"
+              />
+            </div>
+
+            <div className="alt-form-group m-0">
+              <label className="alt-label">Frecuencia</label>
+              <select
+                value={frecuenciaCuotas}
+                onChange={(e) => setFrecuenciaCuotas(e.target.value as FrecuenciaCuotas)}
+                className="alt-select py-1.5 text-xs w-full"
+              >
+                <option value="mensual">Mensuales</option>
+                <option value="quincenal">Quincenales</option>
+                <option value="semanal">Semanales</option>
+              </select>
+            </div>
+
+            <div className="alt-form-group m-0">
+              <label className="alt-label">Primer Vencimiento</label>
+              <input
+                type="date"
+                value={primerVencimiento}
+                onChange={(e) => setPrimerVencimiento(e.target.value)}
+                className="alt-input py-1.5 text-xs w-full"
+              />
             </div>
           </div>
-        )}
+
+          <div className="alt-notice alt-notice-info">
+            <div className="flex items-center gap-2 text-xs">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>El enganche se registra al crear el plan y no se puede modificar después.</span>
+            </div>
+          </div>
+
+          {montoTotal > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              <div className="p-2.5 rounded border text-xs flex justify-between items-center" style={{ backgroundColor: "var(--alt-card-header)", borderColor: "var(--alt-card-border)" }}>
+                <span style={{ color: "var(--alt-text-muted)" }}>Saldo para cuotas:</span>
+                <span className="font-bold text-white"><FormatearNumero numero={saldoFinanciado} /></span>
+              </div>
+              <div className="p-2.5 rounded border text-xs flex justify-between items-center" style={{ backgroundColor: "var(--alt-card-header)", borderColor: "var(--alt-card-border)" }}>
+                <span style={{ color: "var(--alt-text-muted)" }}>Total con interés:</span>
+                <span className="font-bold text-orange-400"><FormatearNumero numero={totalConEnganche} /></span>
+              </div>
+              <div className="p-2.5 rounded border text-xs flex justify-between items-center" style={{ backgroundColor: "var(--alt-card-header)", borderColor: "var(--alt-card-border)" }}>
+                <span style={{ color: "var(--alt-text-muted)" }}>Base por cuota:</span>
+                <span className="font-bold text-white"><FormatearNumero numero={montoPorCuota} /></span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {cuotas.length > 0 && (
-        <div className="rounded-2xl border border-white/10 bg-zinc-900 shadow-lg shadow-black/20 overflow-hidden">
-          <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b border-white/10 text-xs font-bold tracking-wide text-white/40 uppercase">
-            <div className="col-span-1">#</div>
-            <div className="col-span-4 flex items-center gap-1"><DollarSign className="h-3 w-3" /> Monto</div>
-            <div className="col-span-3 flex items-center gap-1"><Percent className="h-3 w-3" /> Interes</div>
-            <div className="col-span-4 flex items-center gap-1"><Calendar className="h-3 w-3" /> Vencimiento</div>
+        <div className="alt-card">
+          <div className="alt-card-header">
+            <span className="alt-card-header-title text-sm">Cuotas Generadas</span>
           </div>
 
-          <div className="divide-y divide-white/5">
-            {cuotas.map((cuota, index) => {
-              const montoConInteres = cuota.monto + (cuota.monto * cuota.interes) / 100;
-              return (
-                <div key={index} className="grid grid-cols-12 gap-2 items-center px-4 py-2.5 hover:bg-white/[0.03] transition-colors">
-                  <div className="col-span-1">
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-500/20 text-orange-400 text-xs font-bold">
-                      {index + 1}
-                    </span>
-                  </div>
-
-                  <div className="col-span-4 relative">
-                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/30 text-xs">$</span>
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={cuota.monto || ""}
-                      placeholder="0.00"
-                      onChange={(e) => handleMontoChange(index, Number(e.target.value))}
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950/40 pl-6 pr-2 py-1.5 text-sm text-white outline-none focus:border-orange-500/50 transition-colors"
-                    />
-                  </div>
-
-                  <div className="col-span-3 relative">
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.1}
-                      value={cuota.interes || ""}
-                      placeholder="0"
-                      onChange={(e) => handleInteresChange(index, Number(e.target.value))}
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-2 pr-6 py-1.5 text-sm text-white outline-none focus:border-orange-500/50 transition-colors"
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 text-xs">%</span>
-                  </div>
-
-                  <div className="col-span-4">
-                    <input
-                      type="date"
-                      value={cuota.fecha_vencimiento}
-                      onChange={(e) => handleFechaChange(index, e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-2 py-1.5 text-xs text-white outline-none focus:border-orange-500/50 transition-colors [color-scheme:dark]"
-                    />
-                  </div>
-
-                  {cuota.interes > 0 && (
-                    <div className="col-span-12 grid grid-cols-12 gap-2 mt-1">
-                      <div className="col-span-1"></div>
-                      <div className="col-span-11">
-                        <span className="text-xs text-orange-400 font-bold">
-                          = <FormatearNumero numero={montoConInteres} /> con interés
+          <div className="overflow-x-auto">
+            <table className="alt-table">
+              <thead>
+                <tr>
+                  <th style={{ width: "60px" }}>#</th>
+                  <th>Monto Base</th>
+                  <th>Interés (%)</th>
+                  <th>Monto con Interés</th>
+                  <th>Vencimiento</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cuotas.map((cuota, index) => {
+                  const montoConInteres = cuota.monto + (cuota.monto * cuota.interes) / 100;
+                  return (
+                    <tr key={index}>
+                      <td>
+                        <span className="alt-badge alt-badge-orange">#{index + 1}</span>
+                      </td>
+                      <td>
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--alt-text-muted)" }}>$</span>
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={cuota.monto || ""}
+                            placeholder="0.00"
+                            onChange={(e) => handleMontoChange(index, Number(e.target.value))}
+                            className="alt-input pl-5 pr-2 py-1 text-xs w-full max-w-[130px]"
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={cuota.interes || ""}
+                            placeholder="0"
+                            onChange={(e) => handleInteresChange(index, Number(e.target.value))}
+                            className="alt-input pr-5 pl-2 py-1 text-xs w-full max-w-[90px]"
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--alt-text-muted)" }}>%</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="font-mono font-bold text-xs text-orange-400">
+                          <FormatearNumero numero={montoConInteres} />
                         </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                      </td>
+                      <td>
+                        <input
+                          type="date"
+                          value={cuota.fecha_vencimiento}
+                          onChange={(e) => handleFechaChange(index, e.target.value)}
+                          className="alt-input py-1 text-xs w-full max-w-[150px]"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-white/10 bg-black/20">
-            <div className="col-span-5">
-              <span className="text-xs text-white/40">Total real:</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 border-t" style={{ borderColor: "var(--alt-card-border)", backgroundColor: "var(--alt-card-header)" }}>
+            <div className="text-xs">
+              <span style={{ color: "var(--alt-text-muted)" }}>Total real:</span>
               <span className={`ml-2 text-sm font-bold ${Math.abs(diferencia) < 0.01 ? "text-green-400" : "text-orange-400"}`}>
                 <FormatearNumero numero={totalConEnganche} />
               </span>
             </div>
 
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={handleGuardar}
-                className={`flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold transition-all ${guardado ? "bg-green-500 text-white" : "bg-orange-500 hover:bg-orange-600 text-white"}`}
-              >
-                <Plus className="h-4 w-4" />
-                {guardado ? "Guardado" : "Guardar plan de pagos"}
-              </button>
-            </div>
+            <button
+              onClick={handleGuardar}
+              className={`alt-btn ${guardado ? "alt-btn-success" : "alt-btn-primary"} alt-btn-sm flex items-center gap-1.5 cursor-pointer shadow-sm`}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{guardado ? "Guardado con éxito" : "Guardar Plan de Pagos"}</span>
+            </button>
           </div>
         </div>
       )}
 
       {errorGuardar && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
-          {errorGuardar}
+        <div className="alt-notice alt-notice-error">
+          <span>{errorGuardar}</span>
         </div>
       )}
 
       {cuotas.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-8 text-center">
-          <CreditCard className="h-8 w-8 text-white/20 mx-auto mb-2" />
-          <p className="text-sm text-white/30">
+        <div className="alt-card p-8 text-center space-y-2">
+          <CreditCard className="h-8 w-8 mx-auto opacity-30" style={{ color: "var(--alt-primary)" }} />
+          <p className="text-xs" style={{ color: "var(--alt-text-muted)" }}>
             {engancheCubreTotal && numCuotas === 0
-              ? "El pago se registrara completo mediante el enganche."
-              : "Ingresa un monto y cuotas para comenzar"}
+              ? "El pago se registrará completo mediante el enganche."
+              : "Ingresa un monto y cuotas para comenzar a configurar el plan."}
           </p>
           {engancheCubreTotal && numCuotas === 0 && (
             <button
               onClick={handleGuardar}
-              className={'mx-auto mt-4 flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold transition-all ' + (guardado ? "bg-green-500 text-white" : "bg-orange-500 hover:bg-orange-600 text-white")}
+              className={`alt-btn ${guardado ? "alt-btn-success" : "alt-btn-primary"} alt-btn-sm mx-auto mt-3 flex items-center gap-1.5 cursor-pointer`}
             >
-              <Plus className="h-4 w-4" />
-              {guardado ? "Guardado" : "Guardar pago completo"}
+              <Plus className="h-3.5 w-3.5" />
+              <span>{guardado ? "Guardado" : "Guardar pago completo"}</span>
             </button>
           )}
         </div>
