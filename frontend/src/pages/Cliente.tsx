@@ -8,7 +8,6 @@ import {
   Cctv,
   Wrench,
   TriangleAlert,
-  List,
   Clock,
   House,
   ClipboardPlus,
@@ -27,10 +26,7 @@ import {
   X,
   Ban,
   AlertTriangle,
-  Phone,
-  MapPin,
   Save,
-  FileText,
 } from "lucide-react";
 import { darkenColor } from "../utils/colores";
 import DatePicker from "react-datepicker";

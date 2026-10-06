@@ -774,9 +774,6 @@ export default function Inicio() {
 
   const [query, setQuery] = useState("");
   const [resultados, setResultados] = useState<Cliente[]>([]);
-  const [clienteSeleccionado, setClienteSeleccionado] = useState<Number | null>(
-    null,
-  );
 
   const buscarClientes = async (q: string) => {
     if (!q) {
@@ -993,7 +990,6 @@ export default function Inicio() {
                 onClick={() => {
                   setQuery("");
                   setResultados([]);
-                  setClienteSeleccionado(null);
                 }}
                 className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 p-0 text-white/60 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-200"
               >

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CreditCard, Calendar, Percent, DollarSign, Hash, Plus, AlertTriangle, Repeat } from "lucide-react";
+import { CreditCard, Plus, AlertTriangle } from "lucide-react";
 import FormatearNumero from "../components/FormatearNumero";
 import Loading from "../components/Loading";
 
