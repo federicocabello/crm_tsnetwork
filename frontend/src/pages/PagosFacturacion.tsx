@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -19,8 +19,6 @@ import {
   X,
   CheckCircle2,
   RotateCcw,
-  Sparkles,
-  Calendar,
   Trash2,
 } from "lucide-react";
 
@@ -182,8 +180,8 @@ export default function PagosFacturacion() {
   // Navegación
   const [pestana, setPestana] = useState<Pestana>("facturas");
   const [mes] = useState(mesInicial);
-  const [desde, setDesde] = useState(desdeInicial);
-  const [hasta, setHasta] = useState(hastaInicial);
+  const [desde] = useState(desdeInicial);
+  const [hasta] = useState(hastaInicial);
 
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [movimientos, setMovimientos] = useState<RespuestaMovimientos>({

@@ -11,7 +11,7 @@ interface FirmaModalProps {
 export default function FirmaModal({
   onConfirm,
   onCancel,
-  showLeyenda = false,
+  showLeyenda: _showLeyenda = false,
   requirePhoto = false,
 }: FirmaModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -30,7 +30,6 @@ export default function FirmaModal({
       fileInputRef.current.click();
     }
   }, [showPhoto]);
-  const showLeyendaState = showLeyenda;
 
   useEffect(() => {
     const canvas = canvasRef.current;
