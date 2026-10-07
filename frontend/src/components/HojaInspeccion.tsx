@@ -10,6 +10,11 @@ import {
   PencilRuler,
   ListChecks,
   StickyNote,
+  Clock,
+  Calendar,
+  Edit3,
+  History,
+  Sparkles,
 } from "lucide-react";
 import CanvasDibujo from "./CanvasDibujo";
 import FirmaModal from "./FirmaModal";
@@ -50,6 +55,56 @@ interface InspeccionItem {
   detalle: string;
 }
 
+interface NotaEntry {
+  id: number;
+  timestamp?: string;
+  contenido: string;
+}
+
+const formatTimestamp = () => {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = pad(now.getDate());
+  const month = pad(now.getMonth() + 1);
+  const year = now.getFullYear();
+  const hours = pad(now.getHours());
+  const minutes = pad(now.getMinutes());
+  return `[${day}/${month}/${year} ${hours}:${minutes}]`;
+};
+
+const appendNewNote = (existingNotes: string, newText: string): string => {
+  const trimmedNew = newText.trim();
+  if (!trimmedNew) return (existingNotes || "").trim();
+
+  const timestamp = formatTimestamp();
+  const formattedNewEntry = `${timestamp}\n${trimmedNew}`;
+
+  const trimmedExisting = (existingNotes || "").trim();
+  if (!trimmedExisting) {
+    return formattedNewEntry;
+  }
+  return `${trimmedExisting}\n\n---\n\n${formattedNewEntry}`;
+};
+
+const parseNotesHistory = (rawNotes: string): NotaEntry[] => {
+  if (!rawNotes || !rawNotes.trim()) return [];
+  const chunks = rawNotes.split(/\n\s*---\s*\n/).map((c) => c.trim()).filter(Boolean);
+  return chunks.map((chunk, idx) => {
+    const match = chunk.match(/^(\[\d{1,2}\/\d{1,2}\/\d{4}[^\]]*\])\s*\n?([\s\S]*)$/);
+    if (match) {
+      return {
+        id: idx,
+        timestamp: match[1],
+        contenido: match[2].trim(),
+      };
+    }
+    return {
+      id: idx,
+      contenido: chunk,
+    };
+  });
+};
+
 export default function HojaInspeccion({
   idCita,
   idHoja,
@@ -71,6 +126,8 @@ export default function HojaInspeccion({
   const [detalle, setDetalle] = useState<string>("");
 
   const [notas, setNotas] = useState<string>("");
+  const [nuevaNota, setNuevaNota] = useState<string>("");
+  const [modoEdicionCompleta, setModoEdicionCompleta] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<"materiales" | "dibujo" | "notas">(
     "materiales",
@@ -247,9 +304,10 @@ export default function HojaInspeccion({
   const handleSaveWithoutFirma = async () => {
     setSaving(true);
     try {
+      const notasFinal = appendNewNote(notas, nuevaNota);
       const formData = new FormData();
       formData.append("items", JSON.stringify(items));
-      formData.append("notas", notas);
+      formData.append("notas", notasFinal);
       if (dibujoFile) {
         formData.append("dibujo", dibujoFile);
       } else if (mapaEliminado || !dibujoUrl) {
@@ -262,6 +320,8 @@ export default function HojaInspeccion({
       });
 
       if (res.ok) {
+        setNotas(notasFinal);
+        setNuevaNota("");
         onSaved();
         alert("Cambios guardados correctamente");
       } else {
@@ -290,9 +350,10 @@ export default function HojaInspeccion({
     setShowFirmaModal(false);
     setSaving(true);
     try {
+      const notasFinal = appendNewNote(notas, nuevaNota);
       const formData = new FormData();
       formData.append("items", JSON.stringify(items));
-      formData.append("notas", notas);
+      formData.append("notas", notasFinal);
       if (dibujoFile) {
         formData.append("dibujo", dibujoFile);
       } else if (mapaEliminado || !dibujoUrl) {
@@ -310,6 +371,8 @@ export default function HojaInspeccion({
       });
 
       if (res.ok) {
+        setNotas(notasFinal);
+        setNuevaNota("");
         onSaved();
         onClose();
       } else {
@@ -366,6 +429,14 @@ export default function HojaInspeccion({
             </section>`
       : "";
 
+    const currentNotas = appendNewNote(notas, nuevaNota);
+    const notasSection = (currentNotas && currentNotas.trim() !== "")
+      ? `<section class="section avoid-break">
+              <h2>Notas / Observaciones</h2>
+              <div style="background:#f9fafb; border:1px solid #d1d5db; padding:10px; border-radius:4px; white-space:pre-wrap; font-size:11px; color:#374151; line-height:1.4;">${escapePdfHtml(currentNotas)}</div>
+            </section>`
+      : "";
+
     const rows = items
       .filter((item) => !shouldHideProductInPdf(item.producto_descrip))
       .map(
@@ -395,7 +466,7 @@ export default function HojaInspeccion({
     const html = `
       <html>
         <head>
-          <title>Hoja de inspecci&oacute;n ${escapePdfHtml(idCita)}</title>
+          <title>Hoja de Inspecci&oacute;n ${escapePdfHtml(idCita)}</title>
           <style>
             @page { size: letter; margin: 14mm; }
             * { box-sizing: border-box; }
@@ -583,6 +654,8 @@ export default function HojaInspeccion({
             </section>
 
             ${mapaSection}
+
+            ${notasSection}
 
             ${firmaUrl ? `
             <section class="final-signature">
@@ -894,20 +967,113 @@ export default function HojaInspeccion({
               />
             ) : (
               /* Notas Tab */
-              <div className="flex-1 flex flex-col p-4 min-h-0">
-                <p className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">
-                  Notas de inspección
-                </p>
-                <textarea
-                  value={notas}
-                  onChange={(e) => setNotas(e.target.value)}
-                  placeholder="Escribe aquí observaciones generales, condiciones del lugar, acuerdos, etc."
-                  rows={10}
-                  className="flex-1 w-full bg-zinc-950/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 resize-none leading-relaxed"
-                />
-                <p className="text-xs text-white/25 mt-2">
-                  Las notas se guardan junto con los materiales al presionar "Guardar Cambios".
-                </p>
+              <div className="flex-1 flex flex-col p-4 md:p-5 min-h-0 bg-zinc-900/30 overflow-hidden">
+                {/* Header con título y switch de modo */}
+                <div className="flex items-center justify-between mb-3 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-orange-400" />
+                      Historial y Registro de Notas
+                    </p>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                      {parseNotesHistory(notas).length}{" "}
+                      {parseNotesHistory(notas).length === 1 ? "nota" : "notas"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setModoEdicionCompleta(!modoEdicionCompleta)}
+                    className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-lg border border-white/10 transition-colors">
+                    <Edit3 className="w-3.5 h-3.5 text-orange-400" />
+                    {modoEdicionCompleta ? "Volver a vista organizada" : "Editar historial completo"}
+                  </button>
+                </div>
+
+                {modoEdicionCompleta ? (
+                  /* Modo edición libre / corrección de historial */
+                  <div className="flex-1 flex flex-col min-h-0 gap-2">
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-300/90 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span>
+                        Modo de edición directa. Puedes modificar o corregir el texto completo del historial. Cada nota se separa con <code>---</code>.
+                      </span>
+                    </div>
+                    <textarea
+                      value={notas}
+                      onChange={(e) => setNotas(e.target.value)}
+                      placeholder="Historial completo de notas..."
+                      className="flex-1 w-full bg-zinc-950 border border-white/10 rounded-xl px-4 py-3 text-xs md:text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 resize-none font-mono leading-relaxed"
+                    />
+                  </div>
+                ) : (
+                  /* Modo regular: Historial arriba/scrollable + Formulario para nueva nota */
+                  <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
+                    {/* Historial de Notas previas */}
+                    <div className="flex-1 flex flex-col min-h-0 bg-zinc-950/40 border border-white/10 rounded-xl p-3 overflow-hidden">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5 shrink-0">
+                        <span className="text-[11px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+                          <History className="w-3.5 h-3.5 text-zinc-400" />
+                          Notas anteriores
+                        </span>
+                      </div>
+
+                      {parseNotesHistory(notas).length === 0 ? (
+                        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-white/40">
+                          <StickyNote className="w-10 h-10 mb-2 opacity-25 text-orange-400" />
+                          <p className="text-xs font-semibold text-white/60">No hay notas registradas</p>
+                          <p className="text-[11px] text-white/40 mt-1 max-w-xs">
+                            Escribe una nueva nota en el panel contiguo. Al guardar, se registrará con la fecha del día actual.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-0">
+                          {parseNotesHistory(notas).map((item) => (
+                            <div
+                              key={item.id}
+                              className="bg-zinc-900/90 border border-white/10 rounded-xl p-3 hover:border-white/20 transition-colors shadow-sm">
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-orange-500/15 text-orange-400 border border-orange-500/30">
+                                  <Calendar className="w-3 h-3" />
+                                  {item.timestamp || "Fecha no registrada"}
+                                </span>
+                              </div>
+                              <p className="text-xs md:text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed">
+                                {item.contenido}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Editor de Nueva Nota */}
+                    <div className="w-full md:w-80 lg:w-96 flex flex-col shrink-0 bg-zinc-900/70 border border-white/10 rounded-xl p-3.5">
+                      <div className="flex items-center justify-between mb-2 shrink-0">
+                        <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
+                          <Plus className="w-3.5 h-3.5 text-orange-400" />
+                          Nueva Nota
+                        </span>
+                        <span className="text-[10px] font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">
+                          {formatTimestamp()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-white/50 mb-2 leading-tight">
+                        Escribe las observaciones de hoy. Se anexará automáticamente con la fecha al guardar.
+                      </p>
+                      <textarea
+                        value={nuevaNota}
+                        onChange={(e) => setNuevaNota(e.target.value)}
+                        placeholder="Escribe aquí las observaciones, condiciones o novedades de hoy..."
+                        rows={5}
+                        className="flex-1 w-full bg-zinc-950 border border-white/10 rounded-xl px-3 py-2.5 text-xs md:text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-orange-500/50 resize-none leading-relaxed"
+                      />
+                      <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-white/40">
+                        <span>Se guardará al pulsar:</span>
+                        <span className="font-semibold text-orange-400">"Guardar Cambios"</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
