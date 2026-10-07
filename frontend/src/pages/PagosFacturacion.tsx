@@ -117,7 +117,7 @@ type FacturaDetalle = {
   }>;
 };
 
-type Pestana = "facturas" | "pagos" | "recurrentes" | "resumen";
+type Pestana = "facturas" | "pagos" | "recurrentes";
 type Estado = "todos" | "pendiente" | "vencida" | "pagada" | "cancelada";
 type Origen = "todos" | "manual" | "recurrente";
 
@@ -203,6 +203,7 @@ export default function PagosFacturacion() {
   const [origen, setOrigen] = useState<Origen>("todos");
   const [metodo, setMetodo] = useState("");
   const [pagina, setPagina] = useState(1);
+  const [porPagina, setPorPagina] = useState<number>(10);
 
   // Modales
   const [detalleId, setDetalleId] = useState<number | null>(null);
@@ -250,7 +251,7 @@ export default function PagosFacturacion() {
     try {
       const params = new URLSearchParams({
         pagina: String(pagina),
-        por_pagina: "10",
+        por_pagina: String(porPagina),
         vista: pestana,
         estado: pestana === "pagos" ? "pagada" : estado,
         origen,
@@ -288,6 +289,7 @@ export default function PagosFacturacion() {
     origen,
     pagina,
     pestana,
+    porPagina,
     queryAplicada,
     url,
   ]);
@@ -523,7 +525,6 @@ export default function PagosFacturacion() {
             { id: "facturas", label: "Facturas", icon: <FileText style={{width:13,height:13}} /> },
             { id: "pagos", label: "Pagadas", icon: <CheckCircle2 style={{width:13,height:13}} /> },
             { id: "recurrentes", label: "Recurrentes", icon: <RefreshCw style={{width:13,height:13}} /> },
-            { id: "resumen", label: "Resumen", icon: <Wallet style={{width:13,height:13}} /> },
           ] as { id: Pestana; label: string; icon: React.ReactNode }[]).map(tab => (
             <button
               key={tab.id}
@@ -581,6 +582,24 @@ export default function PagosFacturacion() {
               </select>
               <ChevronDown style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", width: 12, height: 12, color: "var(--alt-text-muted)", pointerEvents: "none" }} />
             </div>
+            <div style={{ position: "relative" }}>
+              <select
+                className="alt-select"
+                value={porPagina}
+                onChange={e => {
+                  setPorPagina(Number(e.target.value));
+                  setPagina(1);
+                }}
+                title="Cantidad por página"
+              >
+                <option value={5}>5 por pág.</option>
+                <option value={10}>10 por pág.</option>
+                <option value={25}>25 por pág.</option>
+                <option value={50}>50 por pág.</option>
+                <option value={100}>100 por pág.</option>
+              </select>
+              <ChevronDown style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", width: 12, height: 12, color: "var(--alt-text-muted)", pointerEvents: "none" }} />
+            </div>
             <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "var(--alt-text-muted)" }}>
               {movimientos.total} resultado(s)
             </span>
@@ -603,9 +622,18 @@ export default function PagosFacturacion() {
         )}
 
         {/* CONTENT */}
-        {pestana === "resumen" && <ResumenTab resumen={resumen} vencidasCantidad={vencidasMes.length} deudaTotal={deudaTotal} />}
         {(pestana === "facturas" || pestana === "pagos") && (
-          <TablaMovimientos pestana={pestana} respuesta={movimientos} cargando={cargandoLista} setPagina={setPagina} abrirDetalle={setDetalleId} abrirPagoRapido={setModalPagoRapido} descargarPdf={descargarPdf} />
+          <TablaMovimientos
+            pestana={pestana}
+            respuesta={movimientos}
+            cargando={cargandoLista}
+            porPagina={porPagina}
+            setPorPagina={setPorPagina}
+            setPagina={setPagina}
+            abrirDetalle={setDetalleId}
+            abrirPagoRapido={setModalPagoRapido}
+            descargarPdf={descargarPdf}
+          />
         )}
         {pestana === "recurrentes" && (
           <TabRecurrentes items={recurrentes} cargando={cargandoLista} query={queryAplicada} abrirModal={() => setModalRecurrente(true)} alternar={alternarRecurrencia} eliminar={eliminarRecurrente} abrirDetalle={setDetalleId} descargarPdf={descargarPdf} />
@@ -644,11 +672,21 @@ export default function PagosFacturacion() {
 
 
 function TablaMovimientos({
-  pestana, respuesta, cargando, setPagina, abrirDetalle, abrirPagoRapido, descargarPdf,
+  pestana,
+  respuesta,
+  cargando,
+  porPagina,
+  setPorPagina,
+  setPagina,
+  abrirDetalle,
+  abrirPagoRapido,
+  descargarPdf,
 }: {
   pestana: "facturas" | "pagos";
   respuesta: RespuestaMovimientos;
   cargando: boolean;
+  porPagina: number;
+  setPorPagina: (n: number) => void;
   setPagina: (p: number) => void;
   abrirDetalle: (id: number) => void;
   abrirPagoRapido: (m: Movimiento) => void;
@@ -656,7 +694,8 @@ function TablaMovimientos({
 }) {
   return (
     <div style={{ opacity: cargando ? 0.5 : 1, transition: "opacity 0.2s" }}>
-      <div style={{ overflowX: "auto" }}>
+      {/* VISTA TABLA (DESKTOP: md+) */}
+      <div className="hidden md:block" style={{ overflowX: "auto" }}>
         <table className="alt-table" style={{ minWidth: 780 }}>
           <thead>
             <tr>
@@ -731,7 +770,7 @@ function TablaMovimientos({
                         <FileDown style={{ width: 13, height: 13, color: "#f97316" }} />
                       </button>
                       <button onClick={() => facturaId && abrirDetalle(facturaId)} className="alt-btn alt-btn-secondary alt-btn-sm">
-                        Detalle
+                        Detalles
                       </button>
                     </div>
                   </td>
@@ -742,33 +781,203 @@ function TablaMovimientos({
         </table>
       </div>
 
+      {/* VISTA TARJETAS (MOBILE: < md) */}
+      <div className="md:hidden flex flex-col gap-3 p-3">
+        {respuesta.items.map(item => {
+          const itemEstado = item.estado || estadoMovimiento(item);
+          const facturaId = item.factura_id || item.id || 0;
+          const numeroFac = item.numero_factura || `FAC-${String(facturaId).padStart(6, "0")}`;
+          return (
+            <div
+              key={item.movimiento_id || item.id}
+              className="rounded-xl p-3.5 space-y-3 shadow-sm"
+              style={{
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}>
+              {/* Top: Factura Nro + Badges */}
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  onClick={() => facturaId && abrirDetalle(facturaId)}
+                  className="font-mono font-black text-xs text-orange-400 hover:underline text-left bg-transparent border-none p-0 cursor-pointer">
+                  {numeroFac}
+                </button>
+                <div className="flex items-center gap-1.5">
+                  <span className={`alt-badge ${item.origen === "recurrente" ? "alt-badge-blue" : "alt-badge-gray"}`}>
+                    {item.origen === "recurrente" ? "Recurrente" : "Manual"}
+                  </span>
+                  <EstadoBadge estado={itemEstado} />
+                </div>
+              </div>
+
+              {/* Cliente */}
+              <div className="flex items-center gap-2.5">
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: 800, color: "rgba(255,255,255,0.6)", flexShrink: 0 }}>
+                  {iniciales(item.cliente_nombre)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <Link
+                    to={`/clientes/${item.cliente_id}`}
+                    style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--alt-text)", display: "block", textDecoration: "none" }}
+                    className="truncate hover:underline">
+                    {item.cliente_nombre}
+                  </Link>
+                  {item.telefono && (
+                    <span className="td-muted text-xs block truncate">{item.telefono}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Data Grid */}
+              <div
+                className="grid grid-cols-2 gap-2 text-xs pt-2.5"
+                style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                <div>
+                  <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                    {pestana === "pagos" ? "Fecha Pago" : "Vencimiento"}
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: "0.78rem", color: pestana === "pagos" ? "#4ade80" : itemEstado === "vencida" ? "#f87171" : "var(--alt-text)" }}>
+                    {pestana === "pagos" ? fecha(item.fecha_pago || item.fechapago) : fecha(item.vencimiento)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                    Emisión
+                  </span>
+                  <span className="text-white/70 font-semibold">{fecha(item.fecha_emision)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                    Total
+                  </span>
+                  <span className="font-bold text-white font-mono">{dinero(item.monto)}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                    Saldo
+                  </span>
+                  {Number(item.saldo) > 0 ? (
+                    <span style={{ color: "#fbbf24", fontWeight: 700 }} className="font-mono">
+                      {dinero(item.saldo)}
+                    </span>
+                  ) : (
+                    <span style={{ color: "var(--alt-text-muted)" }}>—</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div
+                className="flex items-center justify-end gap-2 pt-2.5"
+                style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                {itemEstado !== "pagada" && itemEstado !== "cancelada" && (
+                  <button onClick={() => abrirPagoRapido(item)} className="alt-btn alt-btn-success alt-btn-sm flex-1 justify-center">
+                    <CircleDollarSign style={{ width: 13, height: 13 }} /> Cobrar
+                  </button>
+                )}
+                <button
+                  onClick={() => facturaId && descargarPdf(facturaId, numeroFac)}
+                  className="alt-btn alt-btn-secondary alt-btn-sm alt-btn-icon"
+                  title="PDF">
+                  <FileDown style={{ width: 14, height: 14, color: "#f97316" }} />
+                </button>
+                <button
+                  onClick={() => facturaId && abrirDetalle(facturaId)}
+                  className="alt-btn alt-btn-secondary alt-btn-sm flex-1 justify-center">
+                  Detalles
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {!respuesta.items.length && !cargando && (
         <div style={{ padding: "40px 16px", textAlign: "center", color: "var(--alt-text-muted)", fontSize: "0.8rem" }}>
           No se encontraron facturas con los filtros actuales.
         </div>
       )}
 
-      {respuesta.paginas > 1 && (
-        <div className="alt-pagination" style={{ justifyContent: "space-between" }}>
-          <span style={{ fontSize: "0.72rem", color: "var(--alt-text-muted)" }}>
-            Página <strong style={{ color: "var(--alt-text)" }}>{respuesta.pagina}</strong> de <strong style={{ color: "var(--alt-text)" }}>{respuesta.paginas}</strong>
-          </span>
-          <div style={{ display: "flex", gap: 4 }}>
-            <button className="alt-page-btn" disabled={respuesta.pagina <= 1} onClick={() => setPagina(respuesta.pagina - 1)}>
-              <ChevronLeft style={{ width: 13, height: 13 }} />
-            </button>
-            {Array.from({ length: Math.min(respuesta.paginas, 7) }, (_, i) => {
-              const p = i + 1;
-              return (
-                <button key={p} className={`alt-page-btn${p === respuesta.pagina ? " active" : ""}`} onClick={() => setPagina(p)}>
-                  {p}
-                </button>
-              );
-            })}
-            <button className="alt-page-btn" disabled={respuesta.pagina >= respuesta.paginas} onClick={() => setPagina(respuesta.pagina + 1)}>
-              <ChevronRight style={{ width: 13, height: 13 }} />
-            </button>
+      {respuesta.total > 0 && (
+        <div
+          className="alt-pagination"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 10,
+            padding: "10px 16px",
+          }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.72rem", color: "var(--alt-text-muted)" }}>
+              Mostrando <strong style={{ color: "var(--alt-text)" }}>{respuesta.items.length}</strong> de{" "}
+              <strong style={{ color: "var(--alt-text)" }}>{respuesta.total}</strong>
+              {respuesta.paginas > 1 && (
+                <>
+                  {" "}| Página <strong style={{ color: "var(--alt-text)" }}>{respuesta.pagina}</strong> de{" "}
+                  <strong style={{ color: "var(--alt-text)" }}>{respuesta.paginas}</strong>
+                </>
+              )}
+            </span>
+            <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+              <select
+                className="alt-select"
+                style={{ padding: "3px 22px 3px 8px", fontSize: "0.72rem", height: 26 }}
+                value={porPagina}
+                onChange={e => {
+                  setPorPagina(Number(e.target.value));
+                  setPagina(1);
+                }}
+                title="Cantidad por página">
+                <option value={5}>5 / pág.</option>
+                <option value={10}>10 / pág.</option>
+                <option value={25}>25 / pág.</option>
+                <option value={50}>50 / pág.</option>
+                <option value={100}>100 / pág.</option>
+              </select>
+              <ChevronDown
+                style={{
+                  position: "absolute",
+                  right: 5,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 11,
+                  height: 11,
+                  color: "var(--alt-text-muted)",
+                  pointerEvents: "none",
+                }}
+              />
+            </div>
           </div>
+
+          {respuesta.paginas > 1 && (
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                className="alt-page-btn"
+                disabled={respuesta.pagina <= 1}
+                onClick={() => setPagina(respuesta.pagina - 1)}>
+                <ChevronLeft style={{ width: 13, height: 13 }} />
+              </button>
+              {Array.from({ length: Math.min(respuesta.paginas, 7) }, (_, i) => {
+                const p = i + 1;
+                return (
+                  <button
+                    key={p}
+                    className={`alt-page-btn${p === respuesta.pagina ? " active" : ""}`}
+                    onClick={() => setPagina(p)}>
+                    {p}
+                  </button>
+                );
+              })}
+              <button
+                className="alt-page-btn"
+                disabled={respuesta.pagina >= respuesta.paginas}
+                onClick={() => setPagina(respuesta.pagina + 1)}>
+                <ChevronRight style={{ width: 13, height: 13 }} />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -821,8 +1030,8 @@ function TabRecurrentes({
         </button>
       </div>
 
-      {/* Table */}
-      <div style={{ overflowX: "auto" }}>
+      {/* VISTA TABLA (DESKTOP: md+) */}
+      <div className="hidden md:block" style={{ overflowX: "auto" }}>
         <table className="alt-table" style={{ minWidth: 760 }}>
           <thead>
             <tr>
@@ -871,7 +1080,7 @@ function TabRecurrentes({
                     </button>
                     <button disabled={!item.ultima_factura_id} onClick={() => item.ultima_factura_id && abrirDetalle(item.ultima_factura_id)}
                       className="alt-btn alt-btn-secondary alt-btn-sm">
-                      Detalle
+                      Detalles
                     </button>
                     <button onClick={() => alternar(item)}
                       className={`alt-btn alt-btn-sm ${Number(item.activa) ? "alt-btn-secondary" : "alt-btn-success"}`}>
@@ -890,6 +1099,103 @@ function TabRecurrentes({
         </table>
       </div>
 
+      {/* VISTA TARJETAS (MOBILE: < md) */}
+      <div className="md:hidden flex flex-col gap-3 p-3">
+        {visibles.map(item => (
+          <div
+            key={item.id}
+            className="rounded-xl p-3.5 space-y-3 shadow-sm"
+            style={{
+              opacity: Number(item.activa) ? 1 : 0.6,
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.08)",
+            }}>
+            {/* Top: Cliente + Status */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(167,139,250,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800, color: "#c4b5fd", flexShrink: 0 }}>
+                  {iniciales(item.cliente_nombre)}
+                </div>
+                <Link to={`/clientes/${item.cliente_id}`} style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--alt-text)", textDecoration: "none" }}
+                  className="truncate hover:underline">
+                  {item.cliente_nombre}
+                </Link>
+              </div>
+              <span className={`alt-badge ${Number(item.activa) ? "alt-badge-green" : "alt-badge-gray"}`}>
+                {Number(item.activa) ? "Activo" : "Pausado"}
+              </span>
+            </div>
+
+            {/* Concepto */}
+            <div className="text-xs text-white/80 font-medium">
+              {item.concepto}
+            </div>
+
+            {/* Data Grid */}
+            <div
+              className="grid grid-cols-2 gap-2 text-xs pt-2"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              <div>
+                <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                  Monto/mes
+                </span>
+                <span className="font-mono font-bold text-white">{dinero(item.monto)}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                  Día vencimiento
+                </span>
+                <span className="text-white/70 font-semibold">Día {item.dia_vencimiento}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                  Próx. generación
+                </span>
+                <span className="text-white/70 font-semibold">{fecha(item.proxima_generacion)}</span>
+              </div>
+              <div>
+                <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                  Facturas generadas
+                </span>
+                <span className="text-white/70 font-semibold">{item.facturas_generadas}</span>
+              </div>
+            </div>
+
+            {/* Actions Footer */}
+            <div
+              className="flex items-center justify-end gap-2 pt-2.5"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              <button
+                disabled={!item.ultima_factura_id}
+                onClick={() => item.ultima_factura_id && descargarPdf(item.ultima_factura_id, item.ultimo_numero_factura || `FAC-${String(item.ultima_factura_id).padStart(6,"0")}`)}
+                className="alt-btn alt-btn-secondary alt-btn-sm alt-btn-icon"
+                title="PDF">
+                <FileDown style={{ width: 13, height: 13, color: "#f97316" }} />
+              </button>
+              <button
+                disabled={!item.ultima_factura_id}
+                onClick={() => item.ultima_factura_id && abrirDetalle(item.ultima_factura_id)}
+                className="alt-btn alt-btn-secondary alt-btn-sm">
+                Detalles
+              </button>
+              <button
+                onClick={() => alternar(item)}
+                className={`alt-btn alt-btn-sm ${Number(item.activa) ? "alt-btn-secondary" : "alt-btn-success"}`}>
+                {Number(item.activa) ? <><Pause style={{ width: 11, height: 11 }} /> Pausar</> : <><Play style={{ width: 11, height: 11 }} /> Reactivar</>}
+              </button>
+              {Number(item.activa) === 0 && (
+                <button
+                  onClick={() => eliminar(item)}
+                  className="alt-btn alt-btn-danger alt-btn-sm"
+                  title="Eliminar">
+                  <Trash2 style={{ width: 12, height: 12 }} />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
       {!visibles.length && !cargando && (
         <div style={{ padding: "40px 16px", textAlign: "center", color: "var(--alt-text-muted)", fontSize: "0.8rem" }}>
           No hay cobros recurrentes configurados.
@@ -900,190 +1206,7 @@ function TabRecurrentes({
 }
 
 
-function ResumenTab({
-  resumen,
-  vencidasCantidad,
-  deudaTotal,
-}: {
-  resumen: Resumen | null;
-  vencidasCantidad: number;
-  deudaTotal: number;
-}) {
-  const proximos = (resumen?.proximos_vencimientos || []).slice(0, 10);
-  const deudas = (resumen?.deuda_por_cliente || []).slice(0, 10);
 
-  return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
-      {/* Resumen rápido en fila */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
-        {[
-          {
-            label: "Cobrado (mes actual)",
-            value: dinero(resumen?.pagadas_mes?.total),
-            color: "#34d399",
-          },
-          {
-            label: "Cuotas cobradas",
-            value: `${resumen?.pagadas_mes?.cuotas || 0}`,
-            color: "rgba(255,255,255,0.7)",
-          },
-          {
-            label: "Facturas vencidas",
-            value: `${vencidasCantidad}`,
-            color: "#f87171",
-          },
-          {
-            label: "Deuda total clientes",
-            value: dinero(deudaTotal),
-            color: "#f87171",
-          },
-        ].map((s) => (
-          <div
-            key={s.label}
-            className="rounded-xl px-3.5 sm:px-4 py-3 sm:py-3.5"
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.07)",
-            }}>
-            <div
-              className="text-[10px] font-bold uppercase tracking-wider mb-1 truncate"
-              style={{ color: "rgba(255,255,255,0.38)" }}
-              title={s.label}>
-              {s.label}
-            </div>
-            <div className="text-base sm:text-xl font-black truncate" style={{ color: s.color }}>
-              {s.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Tablas */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Próximos vencimientos */}
-        <div
-          className="rounded-xl overflow-hidden"
-          style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div
-            className="flex items-center gap-2 px-4 sm:px-5 py-3 sm:py-3.5"
-            style={{
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
-              background: "rgba(255,255,255,0.02)",
-            }}>
-            <AlertCircle className="h-3.5 w-3.5" style={{ color: "#f97316" }} />
-            <h2
-              className="text-xs font-black uppercase tracking-wider"
-              style={{ color: "rgba(255,255,255,0.65)" }}>
-              Próximos Vencimientos
-            </h2>
-          </div>
-          <div>
-            {proximos.length ? (
-              proximos.map((item) => (
-                <Link
-                  key={item.id}
-                  to={`/clientes/${item.cliente_id}`}
-                  className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 sm:py-3.5 transition-colors block"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background =
-                      "rgba(255,255,255,0.025)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "transparent")
-                  }>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold uppercase text-white truncate">
-                      {item.cliente_nombre}
-                    </div>
-                    <div
-                      className="text-[10px] mt-0.5"
-                      style={{ color: "rgba(255,255,255,0.38)" }}>
-                      Vence: {fecha(item.vencimiento)}
-                    </div>
-                  </div>
-                  <span
-                    className="font-black text-xs sm:text-sm shrink-0"
-                    style={{ color: "#fb923c" }}>
-                    {dinero(item.monto)}
-                  </span>
-                </Link>
-              ))
-            ) : (
-              <div
-                className="py-12 sm:py-14 text-center text-xs"
-                style={{ color: "rgba(255,255,255,0.22)" }}>
-                No hay vencimientos próximos.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Clientes con mayor deuda */}
-        <div
-          className="rounded-xl overflow-hidden"
-          style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div
-            className="flex items-center gap-2 px-4 sm:px-5 py-3 sm:py-3.5"
-            style={{
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
-              background: "rgba(255,255,255,0.02)",
-            }}>
-            <Wallet className="h-3.5 w-3.5" style={{ color: "#f87171" }} />
-            <h2
-              className="text-xs font-black uppercase tracking-wider"
-              style={{ color: "rgba(255,255,255,0.65)" }}>
-              Clientes con Mayor Deuda
-            </h2>
-          </div>
-          <div>
-            {deudas.length ? (
-              deudas.map((item) => (
-                <Link
-                  key={item.id}
-                  to={`/clientes/${item.id}`}
-                  className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 sm:py-3.5 transition-colors block"
-                  style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background =
-                      "rgba(255,255,255,0.025)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "transparent")
-                  }>
-                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                    <div
-                      className="h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0"
-                      style={{
-                        background: "rgba(239,68,68,0.12)",
-                        color: "#f87171",
-                      }}>
-                      {iniciales(item.nombre)}
-                    </div>
-                    <span className="text-xs font-bold uppercase text-white truncate">
-                      {item.nombre}
-                    </span>
-                  </div>
-                  <span
-                    className="font-black text-xs sm:text-sm shrink-0"
-                    style={{ color: "#f87171" }}>
-                    {dinero(item.deuda_total)}
-                  </span>
-                </Link>
-              ))
-            ) : (
-              <div
-                className="py-12 sm:py-14 text-center text-xs"
-                style={{ color: "rgba(255,255,255,0.22)" }}>
-                Sin clientes con deuda acumulada.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ==========================================
 // Componente: Drawer Detalle Factura
@@ -1170,372 +1293,434 @@ function DrawerDetalle({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end"
-      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 md:p-6 overflow-y-auto"
+      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
       onMouseDown={cerrar}>
-      <aside
+      <div
         onMouseDown={(e) => e.stopPropagation()}
-        className="h-full w-full sm:max-w-md overflow-y-auto"
+        className="relative w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl overflow-hidden shadow-2xl my-auto"
         style={{
-          background: "#0f0f17",
-          borderLeft: "1px solid rgba(255,255,255,0.08)",
+          background: "#0d0d14",
+          border: "1px solid rgba(255,255,255,0.12)",
         }}>
         {/* Header */}
         <div
-          className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 sticky top-0 z-10"
+          className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 shrink-0"
           style={{
-            background: "#0f0f17",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            background: "#14141f",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
           }}>
-          <div>
+          <div className="flex items-center gap-3">
             <div
-              className="text-[10px] font-bold uppercase tracking-widest mb-1"
-              style={{ color: "#f97316" }}>
-              Detalle de Factura
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: "rgba(249,115,22,0.15)",
+                border: "1px solid rgba(249,115,22,0.3)",
+                color: "#fb923c",
+              }}>
+              <ReceiptText className="w-5 h-5" />
             </div>
-            <h2 className="text-lg sm:text-xl font-black text-white font-mono">
-              {detalle?.numero_factura || "Cargando..."}
-            </h2>
+            <div>
+              <div
+                className="text-[10px] font-bold uppercase tracking-widest"
+                style={{ color: "#f97316" }}>
+                Detalle de Factura
+              </div>
+              <h2 className="text-lg sm:text-2xl font-black text-white font-mono leading-tight">
+                {detalle?.numero_factura || "Cargando..."}
+              </h2>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {detalle && (
               <button
                 onClick={descargar}
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-lg text-xs font-bold cursor-pointer hover:bg-orange-500/20"
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-lg text-xs font-bold cursor-pointer hover:bg-orange-500/20 transition-colors"
                 style={{
                   background: "rgba(249,115,22,0.1)",
                   border: "1px solid rgba(249,115,22,0.25)",
                   color: "#fb923c",
                 }}>
-                <FileDown className="h-3.5 w-3.5" /> PDF
+                <FileDown className="h-3.5 w-3.5" /> Descargar PDF
               </button>
             )}
             <button
               onClick={cerrar}
-              className="p-1 cursor-pointer hover:text-white"
-              style={{ color: "rgba(255,255,255,0.38)" }}>
+              className="p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
+              style={{ color: "rgba(255,255,255,0.5)" }}>
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
+        {/* Body */}
         {detalle ? (
-          <div className="p-4 sm:p-6 space-y-4">
-            {/* Info cliente */}
-            <div
-              className="rounded-xl p-3.5 sm:p-4 space-y-3.5"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}>
-              <div className="flex items-center gap-3">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-7">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
+              
+              {/* Left Column: Info Factura + Cliente + Acciones de Cobro (5 cols) */}
+              <div className="lg:col-span-5 space-y-4">
+                
+                {/* Cliente Card */}
                 <div
-                  className="h-10 w-10 rounded-full flex items-center justify-center font-black shrink-0"
+                  className="rounded-xl p-4 sm:p-5 space-y-4"
                   style={{
-                    background: "rgba(249,115,22,0.14)",
-                    color: "#fb923c",
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.07)",
                   }}>
-                  {iniciales(detalle.cliente_nombre)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <Link
-                    to={`/clientes/${detalle.cliente_id}`}
-                    className="font-black uppercase text-sm hover:underline block truncate"
-                    style={{ color: "#fff" }}>
-                    {detalle.cliente_nombre}
-                  </Link>
-                  <div
-                    className="text-xs mt-0.5 truncate"
-                    style={{ color: "rgba(255,255,255,0.38)" }}>
-                    {detalle.telefono || "Sin teléfono"}
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className="grid grid-cols-2 gap-3 text-xs pt-3"
-                style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <div>
-                  <div
-                    className="text-[10px] uppercase font-bold mb-1"
-                    style={{ color: "rgba(255,255,255,0.32)" }}>
-                    Emisión
-                  </div>
-                  <div className="text-white font-bold">
-                    {fecha(detalle.fecha_emision)}
-                  </div>
-                </div>
-                <div>
-                  <div
-                    className="text-[10px] uppercase font-bold mb-1"
-                    style={{ color: "rgba(255,255,255,0.32)" }}>
-                    Origen
-                  </div>
-                  <span
-                    className="inline-block rounded px-2 py-0.5 text-[10px] font-black uppercase"
-                    style={
-                      detalle.origen === "recurrente"
-                        ? {
-                            background: "rgba(167,139,250,0.15)",
-                            color: "#c4b5fd",
-                          }
-                        : {
-                            background: "rgba(255,255,255,0.06)",
-                            color: "rgba(255,255,255,0.45)",
-                          }
-                    }>
-                    {detalle.origen === "recurrente" ? "Recurrente" : "Manual"}
-                  </span>
-                </div>
-                <div>
-                  <div
-                    className="text-[10px] uppercase font-bold mb-1"
-                    style={{ color: "rgba(255,255,255,0.32)" }}>
-                    Concepto
-                  </div>
-                  <div className="text-white font-bold truncate">
-                    {detalle.concepto || "Plan de pagos"}
-                  </div>
-                </div>
-                <div>
-                  <div
-                    className="text-[10px] uppercase font-bold mb-1"
-                    style={{ color: "rgba(255,255,255,0.32)" }}>
-                    Total
-                  </div>
-                  <div
-                    className="font-black text-sm sm:text-base"
-                    style={{ color: "#fb923c" }}>
-                    {dinero(detalle.total)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Panel de cobro */}
-            <div
-              className="rounded-xl p-3.5 sm:p-4 space-y-3"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}>
-              <div
-                className="text-[10px] font-bold uppercase tracking-wider"
-                style={{ color: "rgba(255,255,255,0.38)" }}>
-                Registrar Cobro
-              </div>
-              <div className="flex items-center gap-2">
-                <label
-                  className="text-xs font-bold shrink-0"
-                  style={{ color: "rgba(255,255,255,0.45)" }}>
-                  Método:
-                </label>
-                <div className="relative flex-1">
-                  <select
-                    value={metodoId}
-                    onChange={(e) => setMetodoId(e.target.value)}
-                    className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg text-xs outline-none cursor-pointer transition-all hover:bg-white/[0.08] focus:border-orange-500/60"
-                    style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      color: "#fff",
-                    }}>
-                    {metodos.map((m) => (
-                      <option
-                        key={m.id}
-                        value={m.id}
-                        style={{ background: "#18181b", color: "#fafafa" }}>
-                        {m.metodo}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40" />
-                </div>
-              </div>
-
-              {estaCancelada ? (
-                <div
-                  className="flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold"
-                  style={{
-                    background: "rgba(113,113,122,0.14)",
-                    border: "1px solid rgba(113,113,122,0.25)",
-                    color: "#a1a1aa",
-                  }}>
-                  <AlertCircle className="h-4 w-4" /> Factura Cancelada por Falta de Pago
-                </div>
-              ) : !todoPagado ? (
-                <button
-                  disabled={guardando}
-                  onClick={() => toggleFactura(true)}
-                  className="flex w-full items-center justify-center gap-2 py-2.5 sm:py-3 rounded-xl text-xs font-black cursor-pointer disabled:opacity-50 active:scale-95 hover:brightness-110"
-                  style={{ background: "#059669", color: "#fff" }}>
-                  {guardando ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CircleDollarSign className="h-4 w-4" />
-                  )}
-                  Marcar factura como PAGADA
-                </button>
-              ) : (
-                <div className="space-y-2">
-                  <div
-                    className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold"
-                    style={{
-                      background: "rgba(16,185,129,0.1)",
-                      border: "1px solid rgba(16,185,129,0.2)",
-                      color: "#34d399",
-                    }}>
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Factura
-                    Completamente Cobrada
-                  </div>
-                  <button
-                    disabled={guardando}
-                    onClick={() => toggleFactura(false)}
-                    className="flex w-full items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold cursor-pointer disabled:opacity-50 hover:bg-white/10"
-                    style={{
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.07)",
-                      color: "rgba(255,255,255,0.45)",
-                    }}>
-                    <RotateCcw className="h-3.5 w-3.5" /> Revertir a Pendiente
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Cuotas */}
-            <div>
-              <div
-                className="text-[10px] font-bold uppercase tracking-wider mb-2.5"
-                style={{ color: "rgba(255,255,255,0.38)" }}>
-                Cuotas ({detalle.cuotas.length})
-              </div>
-              <div className="space-y-2">
-                {detalle.cuotas.map((c) => {
-                  const cuotaEstado =
-                    Number(c.pagado) === 1
-                      ? "pagada"
-                      : Number(c.pagado) === 2
-                        ? "cancelada"
-                        : "pendiente";
-                  return (
+                  <div className="flex items-center gap-3.5">
                     <div
-                      key={c.id}
-                      className="rounded-xl p-3 sm:p-4 space-y-2"
+                      className="h-12 w-12 rounded-xl flex items-center justify-center font-black text-base shrink-0"
                       style={{
-                        background:
-                          Number(c.pagado) === 2
-                            ? "rgba(113,113,122,0.05)"
-                            : "rgba(255,255,255,0.025)",
-                        border:
-                          Number(c.pagado) === 2
-                            ? "1px solid rgba(113,113,122,0.15)"
-                            : "1px solid rgba(255,255,255,0.06)",
+                        background: "rgba(249,115,22,0.15)",
+                        color: "#fb923c",
+                        border: "1px solid rgba(249,115,22,0.25)",
                       }}>
-                      <div className="flex items-center justify-between gap-2">
-                        <EstadoBadge estado={cuotaEstado} />
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`font-black text-sm ${
-                              Number(c.pagado) === 2
-                                ? "text-zinc-500 line-through"
-                                : "text-white"
-                            }`}>
-                            {dinero(c.monto)}
-                          </span>
-                          {Number(c.pagado) === 2 ? (
-                            <span
-                              className="px-2 py-0.5 rounded text-[10px] font-bold"
-                              style={{
-                                background: "rgba(113,113,122,0.15)",
-                                color: "#a1a1aa",
-                                border: "1px solid rgba(113,113,122,0.25)",
-                              }}>
-                              Cancelada
-                            </span>
-                          ) : (
-                            <button
-                              disabled={guardando}
-                              onClick={() =>
-                                toggleCuota(c.id, Number(c.pagado) === 0)
-                              }
-                              className="px-2.5 py-1 rounded-md text-[10px] font-black cursor-pointer disabled:opacity-50 hover:brightness-110 active:scale-95"
-                              style={
-                                Number(c.pagado)
-                                  ? {
-                                      background: "rgba(16,185,129,0.1)",
-                                      color: "#34d399",
-                                      border: "1px solid rgba(16,185,129,0.2)",
-                                    }
-                                  : {
-                                      background: "rgba(249,115,22,0.1)",
-                                      color: "#fb923c",
-                                      border: "1px solid rgba(249,115,22,0.2)",
-                                    }
-                              }>
-                              {Number(c.pagado) ? "Revertir" : "Cobrar"}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    <div
-                      className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] pt-1"
-                      style={{ color: "rgba(255,255,255,0.38)" }}>
-                      <div>
-                        Vence{" "}
-                        <strong style={{ color: "rgba(255,255,255,0.65)" }}>
-                          {fecha(c.vencimiento)}
-                        </strong>
-                      </div>
-                      <div>
-                        Cobrado{" "}
-                        <strong style={{ color: "rgba(255,255,255,0.65)" }}>
-                          {fecha(c.fecha_pago)}
-                        </strong>
-                      </div>
-                      <div className="col-span-2 sm:col-span-1">
-                        Método{" "}
-                        <strong style={{ color: "rgba(255,255,255,0.65)" }}>
-                          {c.metodo_nombre || "—"}
-                        </strong>
+                      {iniciales(detalle.cliente_nombre)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        to={`/clientes/${detalle.cliente_id}`}
+                        className="font-black uppercase text-sm sm:text-base hover:underline block truncate"
+                        style={{ color: "#fff" }}>
+                        {detalle.cliente_nombre}
+                      </Link>
+                      <div
+                        className="text-xs mt-0.5 truncate"
+                        style={{ color: "rgba(255,255,255,0.45)" }}>
+                        {detalle.telefono ? `Tel: ${detalle.telefono}` : "Sin teléfono"}
                       </div>
                     </div>
-                    {c.nota && (
-                      <div
-                        className="mt-1.5 text-[10px]"
-                        style={{
-                          color: "rgba(255,255,255,0.38)",
-                          borderTop: "1px solid rgba(255,255,255,0.05)",
-                          paddingTop: 6,
-                        }}>
-                        {c.nota}
-                      </div>
-                    )}
                   </div>
-                );
-              })}
-              </div>
-            </div>
 
-            <Link
-              to={`/clientes/${detalle.cliente_id}`}
-              className="flex w-full items-center justify-center py-2.5 sm:py-3 rounded-xl text-xs font-black text-white hover:bg-white/10 active:scale-95"
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}>
-              Abrir Perfil del Cliente
-            </Link>
+                  <div
+                    className="grid grid-cols-2 gap-3 text-xs pt-3.5"
+                    style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div>
+                      <div
+                        className="text-[10px] uppercase font-bold mb-1"
+                        style={{ color: "rgba(255,255,255,0.35)" }}>
+                        Fecha Emisión
+                      </div>
+                      <div className="text-white font-bold">
+                        {fecha(detalle.fecha_emision)}
+                      </div>
+                    </div>
+                    <div>
+                      <div
+                        className="text-[10px] uppercase font-bold mb-1"
+                        style={{ color: "rgba(255,255,255,0.35)" }}>
+                        Tipo / Origen
+                      </div>
+                      <span
+                        className="inline-block rounded px-2 py-0.5 text-[10px] font-black uppercase"
+                        style={
+                          detalle.origen === "recurrente"
+                            ? {
+                                background: "rgba(167,139,250,0.15)",
+                                color: "#c4b5fd",
+                              }
+                            : {
+                                background: "rgba(255,255,255,0.06)",
+                                color: "rgba(255,255,255,0.6)",
+                              }
+                        }>
+                        {detalle.origen === "recurrente" ? "Recurrente" : "Manual"}
+                      </span>
+                    </div>
+                    <div className="col-span-2">
+                      <div
+                        className="text-[10px] uppercase font-bold mb-1"
+                        style={{ color: "rgba(255,255,255,0.35)" }}>
+                        Concepto
+                      </div>
+                      <div className="text-white font-medium">
+                        {detalle.concepto || "Plan de pagos"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Total amount highlight box */}
+                  <div
+                    className="rounded-xl p-3.5 flex items-center justify-between"
+                    style={{
+                      background: "rgba(249,115,22,0.08)",
+                      border: "1px solid rgba(249,115,22,0.2)",
+                    }}>
+                    <div>
+                      <div
+                        className="text-[10px] font-bold uppercase tracking-wider"
+                        style={{ color: "rgba(251,146,60,0.8)" }}>
+                        Monto Total
+                      </div>
+                      <div className="text-xs text-white/50">
+                        {detalle.cuotas.length} cuota(s) programadas
+                      </div>
+                    </div>
+                    <div
+                      className="font-black text-xl sm:text-2xl font-mono"
+                      style={{ color: "#fb923c" }}>
+                      {dinero(detalle.total)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Panel de Cobro Global */}
+                <div
+                  className="rounded-xl p-4 sm:p-5 space-y-3.5"
+                  style={{
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                  }}>
+                  <div
+                    className="text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: "rgba(255,255,255,0.45)" }}>
+                    Acciones de Factura
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <label
+                      className="text-xs font-bold shrink-0"
+                      style={{ color: "rgba(255,255,255,0.6)" }}>
+                      Método de pago:
+                    </label>
+                    <div className="relative flex-1">
+                      <select
+                        value={metodoId}
+                        onChange={(e) => setMetodoId(e.target.value)}
+                        className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg text-xs outline-none cursor-pointer transition-all hover:bg-white/[0.08] focus:border-orange-500/60"
+                        style={{
+                          background: "rgba(255,255,255,0.06)",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          color: "#fff",
+                        }}>
+                        {metodos.map((m) => (
+                          <option
+                            key={m.id}
+                            value={m.id}
+                            style={{ background: "#18181b", color: "#fafafa" }}>
+                            {m.metodo}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40" />
+                    </div>
+                  </div>
+
+                  {estaCancelada ? (
+                    <div
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold"
+                      style={{
+                        background: "rgba(113,113,122,0.14)",
+                        border: "1px solid rgba(113,113,122,0.25)",
+                        color: "#a1a1aa",
+                      }}>
+                      <AlertCircle className="h-4 w-4" /> Factura Cancelada por Falta de Pago
+                    </div>
+                  ) : !todoPagado ? (
+                    <button
+                      disabled={guardando}
+                      onClick={() => toggleFactura(true)}
+                      className="flex w-full items-center justify-center gap-2 py-3 rounded-xl text-xs font-black cursor-pointer disabled:opacity-50 active:scale-[0.98] hover:brightness-110 shadow-lg transition-all"
+                      style={{ background: "#059669", color: "#fff" }}>
+                      {guardando ? (
+                        <LoaderCircle className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CircleDollarSign className="h-4 w-4" />
+                      )}
+                      Marcar factura completa como PAGADA
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div
+                        className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold"
+                        style={{
+                          background: "rgba(16,185,129,0.1)",
+                          border: "1px solid rgba(16,185,129,0.2)",
+                          color: "#34d399",
+                        }}>
+                        <CheckCircle2 className="h-4 w-4" /> Factura Completamente Cobrada
+                      </div>
+                      <button
+                        disabled={guardando}
+                        onClick={() => toggleFactura(false)}
+                        className="flex w-full items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold cursor-pointer disabled:opacity-50 hover:bg-white/10 transition-colors"
+                        style={{
+                          background: "rgba(255,255,255,0.04)",
+                          border: "1px solid rgba(255,255,255,0.07)",
+                          color: "rgba(255,255,255,0.55)",
+                        }}>
+                        <RotateCcw className="h-3.5 w-3.5" /> Revertir a Pendiente
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Enlace Perfil */}
+                <Link
+                  to={`/clientes/${detalle.cliente_id}`}
+                  className="flex w-full items-center justify-center py-2.5 sm:py-3 rounded-xl text-xs font-bold text-white hover:bg-white/10 active:scale-[0.98] transition-colors"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                  }}>
+                  Ver Perfil Completo del Cliente →
+                </Link>
+              </div>
+
+              {/* Right Column: Cuotas Desglosadas (7 cols) */}
+              <div className="lg:col-span-7 flex flex-col min-h-0">
+                <div
+                  className="rounded-xl p-4 sm:p-5 flex-1 flex flex-col space-y-3"
+                  style={{
+                    background: "rgba(255,255,255,0.02)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                  }}>
+                  <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                    <div
+                      className="text-xs font-bold uppercase tracking-wider text-white/70 flex items-center gap-2">
+                      <span>Desglose de Cuotas</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/15 text-orange-400 border border-orange-500/30">
+                        {detalle.cuotas.length}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-white/40">
+                      Puedes cobrar o revertir cuotas individualmente
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 overflow-y-auto max-h-[500px] pr-1">
+                    {detalle.cuotas.map((c, idx) => {
+                      const cuotaEstado =
+                        Number(c.pagado) === 1
+                          ? "pagada"
+                          : Number(c.pagado) === 2
+                            ? "cancelada"
+                            : "pendiente";
+                      return (
+                        <div
+                          key={c.id}
+                          className="rounded-xl p-3.5 space-y-2 transition-colors hover:border-white/20"
+                          style={{
+                            background:
+                              Number(c.pagado) === 2
+                                ? "rgba(113,113,122,0.05)"
+                                : Number(c.pagado) === 1
+                                  ? "rgba(16,185,129,0.04)"
+                                  : "rgba(255,255,255,0.03)",
+                            border:
+                              Number(c.pagado) === 2
+                                ? "1px solid rgba(113,113,122,0.15)"
+                                : Number(c.pagado) === 1
+                                  ? "1px solid rgba(16,185,129,0.18)"
+                                  : "1px solid rgba(255,255,255,0.08)",
+                          }}>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono font-bold text-white/40">
+                                #{idx + 1}
+                              </span>
+                              <EstadoBadge estado={cuotaEstado} />
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`font-black text-sm sm:text-base font-mono ${
+                                  Number(c.pagado) === 2
+                                    ? "text-zinc-500 line-through"
+                                    : Number(c.pagado) === 1
+                                      ? "text-emerald-400"
+                                      : "text-white"
+                                }`}>
+                                {dinero(c.monto)}
+                              </span>
+                              {Number(c.pagado) === 2 ? (
+                                <span
+                                  className="px-2 py-0.5 rounded text-[10px] font-bold"
+                                  style={{
+                                    background: "rgba(113,113,122,0.15)",
+                                    color: "#a1a1aa",
+                                    border: "1px solid rgba(113,113,122,0.25)",
+                                  }}>
+                                  Cancelada
+                                </span>
+                              ) : (
+                                <button
+                                  disabled={guardando}
+                                  onClick={() =>
+                                    toggleCuota(c.id, Number(c.pagado) === 0)
+                                  }
+                                  className="px-3 py-1.5 rounded-lg text-xs font-black cursor-pointer disabled:opacity-50 hover:brightness-110 active:scale-95 transition-all"
+                                  style={
+                                    Number(c.pagado)
+                                      ? {
+                                          background: "rgba(16,185,129,0.15)",
+                                          color: "#34d399",
+                                          border: "1px solid rgba(16,185,129,0.3)",
+                                        }
+                                      : {
+                                          background: "rgba(249,115,22,0.15)",
+                                          color: "#fb923c",
+                                          border: "1px solid rgba(249,115,22,0.3)",
+                                        }
+                                  }>
+                                  {Number(c.pagado) ? "Revertir" : "Cobrar"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div
+                            className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1.5"
+                            style={{ color: "rgba(255,255,255,0.45)" }}>
+                            <div>
+                              Vence:{" "}
+                              <strong style={{ color: "rgba(255,255,255,0.75)" }}>
+                                {fecha(c.vencimiento)}
+                              </strong>
+                            </div>
+                            <div>
+                              Cobrado:{" "}
+                              <strong style={{ color: "rgba(255,255,255,0.75)" }}>
+                                {fecha(c.fecha_pago)}
+                              </strong>
+                            </div>
+                            <div className="col-span-2 sm:col-span-1">
+                              Método:{" "}
+                              <strong style={{ color: "rgba(255,255,255,0.75)" }}>
+                                {c.metodo_nombre || "—"}
+                              </strong>
+                            </div>
+                          </div>
+                          {c.nota && (
+                            <div
+                              className="mt-1 text-xs text-white/50 pt-1.5"
+                              style={{
+                                borderTop: "1px solid rgba(255,255,255,0.05)",
+                              }}>
+                              Nota: {c.nota}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+            </div>
           </div>
         ) : (
-          <div className="h-64 flex items-center justify-center">
+          <div className="h-72 flex flex-col items-center justify-center gap-3">
             <LoaderCircle
-              className="h-7 w-7 animate-spin"
+              className="h-8 w-8 animate-spin"
               style={{ color: "#f97316" }}
             />
+            <span className="text-xs text-white/40 font-bold uppercase tracking-wider">
+              Cargando información de factura...
+            </span>
           </div>
         )}
-      </aside>
+      </div>
     </div>
   );
 }
