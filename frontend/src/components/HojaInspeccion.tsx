@@ -604,6 +604,27 @@ export default function HojaInspeccion({
               letter-spacing: .08em;
               color: #374151;
             }
+            .warranty-box {
+              border: 2px solid #f97316;
+              background-color: #fff7ed;
+              padding: 16px;
+              border-radius: 8px;
+              margin-top: 25px;
+              font-size: 11px;
+              line-height: 1.5;
+              break-inside: avoid;
+            }
+            .warranty-box h3 {
+              color: #c2410c;
+              margin: 0 0 10px 0;
+              font-size: 13px;
+              text-transform: uppercase;
+              font-weight: 800;
+              text-align: center;
+              letter-spacing: 0.05em;
+              border-bottom: 1px solid #fdba74;
+              padding-bottom: 8px;
+            }
             .avoid-break { break-inside: avoid; }
           </style>
         </head>
@@ -655,12 +676,29 @@ export default function HojaInspeccion({
 
             ${mapaSection}
 
-            ${notasSection}
+            <section class="warranty-box">
+              <h3>T&eacute;rminos, Condiciones y Garant&iacute;a</h3>
+              <p style="margin-top:0;margin-bottom:12px;text-align:center;font-size:12px;">
+                <strong style="color:#b91c1c;text-transform:uppercase;">En caso de que el cliente no cumpla con los pagos tenemos derecho a retirar los equipos instalados.</strong>
+              </p>
+              <strong>Resumen de T&eacute;rminos y Condiciones:</strong>
+              <ul style="margin:5px 0 10px 0;padding-left:20px;">
+                <li>Al utilizar nuestros servicios usted acepta los t&eacute;rminos y condiciones de TS Network.</li>
+                <li>El equipo de c&aacute;maras pasa a ser del cliente una vez que termina de pagar el trabajo en su totalidad.</li>
+                <li>El cliente no puede alterar o cambiar los accesos al equipo ni resetear hasta que no quede saldado el total de la deuda.</li>
+                <li>Los t&eacute;rminos y condiciones pueden cambiar y es obligaci&oacute;n del cliente revisar peri&oacute;dicamente la p&aacute;gina para informarse sobre estos cambios.</li>
+              </ul>
+              <strong>T&eacute;rminos de Garant&iacute;a:</strong>
+              <ul style="margin:5px 0 0 0;padding-left:20px;">
+                <li>La garant&iacute;a <strong>NO CUBRE</strong>: Equipos con golpes o da&ntilde;os f&iacute;sicos, cables da&ntilde;ados por causas externas ni fallas provocadas por variaciones o subidas de tensi&oacute;n el&eacute;ctrica.</li>
+                <li><strong>Garant&iacute;a por 6 meses</strong> (falla atribuible &uacute;nicamente a problema de equipo).</li>
+              </ul>
+            </section>
 
             ${firmaUrl ? `
             <section class="final-signature">
               <div style="font-size: 10px; color: #374151; line-height: 1.4; margin-bottom: 12px; background: #f9fafb; border: 1px solid #d1d5db; padding: 8px 10px; border-radius: 4px;">
-                <strong>Aceptaci&oacute;n del Cliente:</strong> Al firmar este documento, el cliente declara que ha le&iacute;do, comprendido y acepta los t&eacute;rminos y condiciones establecidos por TS Network, incluyendo garant&iacute;a, t&eacute;rminos de pago, manejo de informaci&oacute;n personal e identificaci&oacute;n, y autorizaciones de contacto.
+                <strong>Aceptaci&oacute;n del Cliente:</strong> Al firmar este documento y utilizar nuestros servicios, el cliente declara que acepta los t&eacute;rminos y condiciones de TS Network, reconociendo que el equipo de c&aacute;maras pasa a ser de su propiedad una vez que termina de pagar el trabajo en su totalidad, que no puede alterar accesos ni resetear el equipo hasta saldar el total de la deuda, y que es obligaci&oacute;n del cliente revisar peri&oacute;dicamente la p&aacute;gina para informarse sobre cambios en los t&eacute;rminos y condiciones.
               </div>
               <h2>Firma de conformidad</h2>
               <div class="signature-layout">

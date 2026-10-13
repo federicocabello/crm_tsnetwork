@@ -198,6 +198,21 @@ export default function FirmaModal({
 
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1.5">
                 <h4 className="font-bold text-orange-700 text-xs uppercase tracking-wide">
+                  Términos y Condiciones del Servicio:
+                </h4>
+                <p>
+                  Al utilizar nuestros servicios usted acepta los términos y condiciones de TS Network.
+                </p>
+                <p>
+                  El equipo de cámaras pasa a ser del cliente una vez que termina de pagar el trabajo en su totalidad.
+                </p>
+                <p>
+                  El cliente no puede alterar o cambiar los accesos al equipo ni resetear hasta que no quede saldado el total de la deuda.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1.5">
+                <h4 className="font-bold text-orange-700 text-xs uppercase tracking-wide">
                   Términos de Garantía:
                 </h4>
                 <p>
@@ -210,10 +225,13 @@ export default function FirmaModal({
 
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1.5">
                 <h4 className="font-bold text-orange-700 text-xs uppercase tracking-wide">
-                  Términos de Pago:
+                  Términos de Pago y Propiedad:
                 </h4>
                 <p>
-                  Cuando exista un plan de pagos, se generará un usuario y contraseña provisional. Una vez finalizado el plan de pagos, el acceso se establecerá como principal.
+                  El equipo de cámaras pasa a ser del cliente una vez que termina de pagar el trabajo en su totalidad.
+                </p>
+                <p>
+                  Cuando exista un plan de pagos, se generará un usuario y contraseña provisional. El cliente no puede alterar o cambiar los accesos al equipo ni resetear hasta que no quede saldado el total de la deuda. Una vez finalizado el plan de pagos y saldado el total, el acceso se establecerá como principal.
                 </p>
                 <p>
                   Si el cliente no completa el plan de pagos dentro del plazo establecido, la empresa podrá proceder con la desinstalación y recuperación del equipo suministrado. Como consecuencia del incumplimiento, se aplicará un cargo de <strong>US$1,000</strong> por concepto de desinstalación, recuperación del equipo y gastos administrativos.
@@ -280,12 +298,21 @@ export default function FirmaModal({
                 </p>
               </div>
 
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1.5">
+                <h4 className="font-bold text-orange-700 text-xs uppercase tracking-wide">
+                  Modificación de Términos y Condiciones:
+                </h4>
+                <p>
+                  Los términos y condiciones pueden cambiar y es obligación del cliente revisar periódicamente la página para informarse sobre estos cambios.
+                </p>
+              </div>
+
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-3.5 text-orange-900">
                 <h4 className="font-bold text-orange-800 uppercase tracking-wide mb-1 text-xs">
                   Aceptación del Cliente
                 </h4>
                 <p>
-                  Al firmar este documento, el cliente declara que ha leído, comprendido y acepta los términos anteriormente establecidos, incluyendo el manejo de su información personal, la conservación de su identificación para fines comerciales legítimos y las autorizaciones de contacto seleccionadas.
+                  Al utilizar nuestros servicios y firmar este documento, usted acepta los términos y condiciones de TS Network. El cliente declara que ha leído, comprendido y acepta los términos anteriormente establecidos, incluyendo que el equipo de cámaras pasa a ser de su propiedad una vez terminado de pagar el trabajo en su totalidad, que no puede alterar o cambiar los accesos al equipo ni resetear hasta que no quede saldado el total de la deuda, el manejo de su información personal, la conservación de su identificación para fines comerciales legítimos, las autorizaciones de contacto seleccionadas, y que los términos y condiciones pueden cambiar y es su obligación revisar periódicamente la página para informarse sobre estos cambios.
                 </p>
               </div>
             </div>

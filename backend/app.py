@@ -1768,6 +1768,36 @@ def generar_pdf_cotizacion(id_hoja):
             resumen = Table(filas_resumen, colWidths=[45 * mm, 40 * mm], hAlign="RIGHT")
             resumen.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#27272a")), ("TEXTCOLOR", (0, 0), (-1, -1), colors.white), ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("LINEABOVE", (0, -1), (-1, -1), 0.7, colors.HexColor("#71717a")), ("PADDING", (0, 0), (-1, -1), 7)]))
             contenido.append(resumen)
+            contenido.append(Spacer(1, 6 * mm))
+
+            estilo_terminos_cot = ParagraphStyle(
+                "TerminosCot",
+                fontName="Helvetica",
+                fontSize=7.5,
+                leading=10,
+                textColor=colors.HexColor("#431407"),
+            )
+            estilo_terminos_cot_tit = ParagraphStyle(
+                "TerminosCotTit",
+                fontName="Helvetica-Bold",
+                fontSize=8.5,
+                leading=11,
+                textColor=colors.HexColor("#c2410c"),
+            )
+            terminos_cot_items = [
+                Paragraph("<b>RESUMEN DE TÉRMINOS Y CONDICIONES DEL SERVICIO</b>", estilo_terminos_cot_tit),
+                Paragraph("• Al utilizar nuestros servicios usted acepta los términos y condiciones de TS Network.", estilo_terminos_cot),
+                Paragraph("• El equipo de cámaras pasa a ser del cliente una vez que termina de pagar el trabajo en su totalidad.", estilo_terminos_cot),
+                Paragraph("• El cliente no puede alterar o cambiar los accesos al equipo ni resetear hasta que no quede saldado el total de la deuda.", estilo_terminos_cot),
+                Paragraph("• Los términos y condiciones pueden cambiar y es obligación del cliente revisar periódicamente la página para informarse sobre estos cambios.", estilo_terminos_cot),
+            ]
+            tabla_terminos_cot = Table([[terminos_cot_items]], colWidths=[170 * mm])
+            tabla_terminos_cot.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
+                ("BOX", (0, 0), (-1, -1), 0.75, colors.HexColor("#fdba74")),
+                ("PADDING", (0, 0), (-1, -1), 6),
+            ]))
+            contenido.append(tabla_terminos_cot)
         documento.build(contenido)
 
         mysql.connection.commit()

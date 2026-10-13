@@ -1097,7 +1097,40 @@ def _generar_pdf_factura(factura, cuotas):
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
     ]))
     contenido.append(tabla_cuotas)
-    contenido.append(Spacer(1, 14 * mm))
+    contenido.append(Spacer(1, 5 * mm))
+
+    # ── 4.5. TÉRMINOS Y CONDICIONES RESUMEN ────────────────────────────────
+    estilo_terminos_titulo = ParagraphStyle(
+        "TerminosTitulo",
+        fontName="Helvetica-Bold",
+        fontSize=8,
+        leading=10.5,
+        textColor=colors.HexColor("#c2410c"),
+    )
+    estilo_terminos_texto = ParagraphStyle(
+        "TerminosTexto",
+        fontName="Helvetica",
+        fontSize=7,
+        leading=9.5,
+        textColor=colors.HexColor("#431407"),
+    )
+
+    terminos_items = [
+        Paragraph("<b>RESUMEN DE TÉRMINOS Y CONDICIONES DEL SERVICIO</b>", estilo_terminos_titulo),
+        Paragraph("• Al utilizar nuestros servicios usted acepta los términos y condiciones de TS Network.", estilo_terminos_texto),
+        Paragraph("• El equipo de cámaras pasa a ser del cliente una vez que termina de pagar el trabajo en su totalidad.", estilo_terminos_texto),
+        Paragraph("• El cliente no puede alterar o cambiar los accesos al equipo ni resetear hasta que no quede saldado el total de la deuda.", estilo_terminos_texto),
+        Paragraph("• Los términos y condiciones pueden cambiar y es obligación del cliente revisar periódicamente la página para informarse sobre estos cambios.", estilo_terminos_texto),
+    ]
+
+    tabla_terminos = Table([[terminos_items]], colWidths=[ancho_util])
+    tabla_terminos.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
+        ("BOX", (0, 0), (-1, -1), 0.75, colors.HexColor("#fdba74")),
+        ("PADDING", (0, 0), (-1, -1), 5),
+    ]))
+    contenido.append(tabla_terminos)
+    contenido.append(Spacer(1, 6 * mm))
 
     # ── 5. FOOTER ─────────────────────────────────────────────────────────
     contenido.append(HRFlowable(

@@ -564,6 +564,15 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
 <section class="client"><h2>Cliente y cita</h2><div class="grid"><div><strong>Cliente:</strong> ${escapeHtml(cliente.nombre)}</div><div><strong>Telefono:</strong> ${escapeHtml(citaActual.telefono) || "-"}</div><div><strong>Email:</strong> ${escapeHtml(cliente.email) || "-"}</div><div><strong>Fecha:</strong> ${escapeHtml(citaActual.dia)} ${escapeHtml(citaActual.hora)}</div><div class="wide"><strong>Domicilio:</strong> ${escapeHtml(citaActual.domicilio) || "-"}</div></div></section>
 <section class="summary"><div><span>Total</span><strong>${moneda(total)}</strong></div><div class="paid"><span>Total pagado</span><strong>${moneda(pagado)}</strong></div><div class="pending"><span>Falta pagar</span><strong>${moneda(pendiente)}</strong></div></section>
 <table><thead><tr><th>#</th><th>Vencimiento</th><th>Metodo</th><th>Estado</th><th class="money">Monto</th></tr></thead><tbody>${filas || '<tr><td class="empty" colspan="5">El pago fue cubierto completamente con el enganche.</td></tr>'}</tbody></table>
+<section style="margin-top:24px;padding:14px 16px;border:1px solid #fdba74;background:#fff7ed;border-radius:6px;font-size:11px;color:#431407;line-height:1.5;">
+  <strong style="display:block;text-transform:uppercase;color:#c2410c;margin-bottom:6px;font-size:11px;font-weight:800;">Resumen de Términos y Condiciones</strong>
+  <ul style="margin:0;padding-left:18px;">
+    <li>Al utilizar nuestros servicios usted acepta los términos y condiciones de TS Network.</li>
+    <li>El equipo de cámaras pasa a ser del cliente una vez que termina de pagar el trabajo en su totalidad.</li>
+    <li>El cliente no puede alterar o cambiar los accesos al equipo ni resetear hasta que no quede saldado el total de la deuda.</li>
+    <li>Los términos y condiciones pueden cambiar y es obligación del cliente revisar periódicamente la página para informarse sobre estos cambios.</li>
+  </ul>
+</section>
 <footer>Resumen del plan de pagos emitido por TS Network.</footer></main><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));<\/script></body></html>`);
     ventana.document.close();
   };
