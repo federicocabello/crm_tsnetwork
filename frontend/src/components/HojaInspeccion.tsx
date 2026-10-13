@@ -10,6 +10,11 @@ import {
   PencilRuler,
   ListChecks,
   StickyNote,
+  Clock,
+  Calendar,
+  Edit3,
+  History,
+  Sparkles,
 } from "lucide-react";
 import CanvasDibujo from "./CanvasDibujo";
 import FirmaModal from "./FirmaModal";
@@ -50,6 +55,56 @@ interface InspeccionItem {
   detalle: string;
 }
 
+interface NotaEntry {
+  id: number;
+  timestamp?: string;
+  contenido: string;
+}
+
+const formatTimestamp = () => {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = pad(now.getDate());
+  const month = pad(now.getMonth() + 1);
+  const year = now.getFullYear();
+  const hours = pad(now.getHours());
+  const minutes = pad(now.getMinutes());
+  return `[${day}/${month}/${year} ${hours}:${minutes}]`;
+};
+
+const appendNewNote = (existingNotes: string, newText: string): string => {
+  const trimmedNew = newText.trim();
+  if (!trimmedNew) return (existingNotes || "").trim();
+
+  const timestamp = formatTimestamp();
+  const formattedNewEntry = `${timestamp}\n${trimmedNew}`;
+
+  const trimmedExisting = (existingNotes || "").trim();
+  if (!trimmedExisting) {
+    return formattedNewEntry;
+  }
+  return `${trimmedExisting}\n\n---\n\n${formattedNewEntry}`;
+};
+
+const parseNotesHistory = (rawNotes: string): NotaEntry[] => {
+  if (!rawNotes || !rawNotes.trim()) return [];
+  const chunks = rawNotes.split(/\n\s*---\s*\n/).map((c) => c.trim()).filter(Boolean);
+  return chunks.map((chunk, idx) => {
+    const match = chunk.match(/^(\[\d{1,2}\/\d{1,2}\/\d{4}[^\]]*\])\s*\n?([\s\S]*)$/);
+    if (match) {
+      return {
+        id: idx,
+        timestamp: match[1],
+        contenido: match[2].trim(),
+      };
+    }
+    return {
+      id: idx,
+      contenido: chunk,
+    };
+  });
+};
+
 export default function HojaInspeccion({
   idCita,
   idHoja,
@@ -71,6 +126,8 @@ export default function HojaInspeccion({
   const [detalle, setDetalle] = useState<string>("");
 
   const [notas, setNotas] = useState<string>("");
+  const [nuevaNota, setNuevaNota] = useState<string>("");
+  const [modoEdicionCompleta, setModoEdicionCompleta] = useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<"materiales" | "dibujo" | "notas">(
     "materiales",
@@ -233,13 +290,24 @@ export default function HojaInspeccion({
     setCargadoDeCotizacion(false);
   };
 
+  const handleUpdateItem = (
+    index: number,
+    field: Partial<InspeccionItem>,
+  ) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], ...field };
+    setItems(newItems);
+    setCargadoDeCotizacion(false);
+  };
+
   // Guarda materiales, notas y dibujo sin requerir firma
   const handleSaveWithoutFirma = async () => {
     setSaving(true);
     try {
+      const notasFinal = appendNewNote(notas, nuevaNota);
       const formData = new FormData();
       formData.append("items", JSON.stringify(items));
-      formData.append("notas", notas);
+      formData.append("notas", notasFinal);
       if (dibujoFile) {
         formData.append("dibujo", dibujoFile);
       } else if (mapaEliminado || !dibujoUrl) {
@@ -252,6 +320,8 @@ export default function HojaInspeccion({
       });
 
       if (res.ok) {
+        setNotas(notasFinal);
+        setNuevaNota("");
         onSaved();
         alert("Cambios guardados correctamente");
       } else {
@@ -280,9 +350,10 @@ export default function HojaInspeccion({
     setShowFirmaModal(false);
     setSaving(true);
     try {
+      const notasFinal = appendNewNote(notas, nuevaNota);
       const formData = new FormData();
       formData.append("items", JSON.stringify(items));
-      formData.append("notas", notas);
+      formData.append("notas", notasFinal);
       if (dibujoFile) {
         formData.append("dibujo", dibujoFile);
       } else if (mapaEliminado || !dibujoUrl) {
@@ -300,6 +371,8 @@ export default function HojaInspeccion({
       });
 
       if (res.ok) {
+        setNotas(notasFinal);
+        setNuevaNota("");
         onSaved();
         onClose();
       } else {
@@ -356,6 +429,14 @@ export default function HojaInspeccion({
             </section>`
       : "";
 
+    const currentNotas = appendNewNote(notas, nuevaNota);
+    const notasSection = (currentNotas && currentNotas.trim() !== "")
+      ? `<section class="section avoid-break">
+              <h2>Notas / Observaciones</h2>
+              <div style="background:#f9fafb; border:1px solid #d1d5db; padding:10px; border-radius:4px; white-space:pre-wrap; font-size:11px; color:#374151; line-height:1.4;">${escapePdfHtml(currentNotas)}</div>
+            </section>`
+      : "";
+
     const rows = items
       .filter((item) => !shouldHideProductInPdf(item.producto_descrip))
       .map(
@@ -385,7 +466,7 @@ export default function HojaInspeccion({
     const html = `
       <html>
         <head>
-          <title>Hoja de inspecci&oacute;n ${escapePdfHtml(idCita)}</title>
+          <title>Hoja de Inspecci&oacute;n ${escapePdfHtml(idCita)}</title>
           <style>
             @page { size: letter; margin: 14mm; }
             * { box-sizing: border-box; }
@@ -644,7 +725,7 @@ export default function HojaInspeccion({
         />
       )}
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="bg-zinc-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95dvh]">
+        <div className="bg-zinc-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl shadow-2xl overflow-hidden flex flex-col h-[95dvh]">
           {/* Header */}
           <div className="bg-zinc-800 px-4 py-3 border-b border-white/10 flex justify-between items-center shrink-0">
             <div className="flex items-center gap-2.5">
@@ -719,10 +800,10 @@ export default function HojaInspeccion({
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
               </div>
             ) : activeTab === "materiales" ? (
-              <>
-                {/* Add Item Form */}
+              <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+                {/* Panel Izquierdo: Formulario de Agregar Material */}
                 {!bloqueada && (
-                  <div className="p-4 border-b border-white/10 bg-zinc-950/40 flex flex-col gap-3 shrink-0">
+                  <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 border-b md:border-b-0 md:border-r border-white/10 p-4 bg-zinc-950/40 flex flex-col gap-3 overflow-y-auto">
                     <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
                       Agregar material
                     </p>
@@ -747,127 +828,157 @@ export default function HojaInspeccion({
                       )}
                     </div>
 
-                  {/* Producto selector */}
-                  <div>
-                    <label className="block text-xs font-semibold text-white/60 mb-1">
-                      Producto
-                    </label>
-                    <select
-                      value={selectedProducto}
-                      onChange={(e) =>
-                        setSelectedProducto(
-                          e.target.value ? Number(e.target.value) : "",
-                        )
-                      }
-                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50">
-                      <option value="">Selecciona un producto...</option>
-                      {productosFiltrados.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.descrip} — Stock: {p.stock}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Cantidad + Detalle en fila */}
-                  <div className="flex gap-2">
-                    <div className="w-24 shrink-0">
+                    {/* Producto selector */}
+                    <div>
                       <label className="block text-xs font-semibold text-white/60 mb-1">
-                        Cant.
+                        Producto
                       </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={cantidad}
-                        onChange={(e) => setCantidad(Number(e.target.value))}
-                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50 text-center"
-                      />
+                      <select
+                        value={selectedProducto}
+                        onChange={(e) =>
+                          setSelectedProducto(
+                            e.target.value ? Number(e.target.value) : "",
+                          )
+                        }
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500/50">
+                        <option value="">Selecciona un producto...</option>
+                        {productosFiltrados.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.descrip} — Stock: {p.stock}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="flex-1">
-                      <label className="block text-xs font-semibold text-white/60 mb-1">
-                        Detalle (opcional)
-                      </label>
-                      <input
-                        type="text"
-                        value={detalle}
-                        onChange={(e) => setDetalle(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-                        placeholder="Color, largo, etc."
-                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500/50"
-                      />
-                    </div>
-                  </div>
 
-                  <button
-                    onClick={handleAddItem}
-                    disabled={!selectedProducto || cantidad <= 0}
-                    className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
-                    <Plus className="w-4 h-4" />
-                    Agregar material
-                  </button>
-                </div>
+                    {/* Cantidad + Detalle en fila */}
+                    <div className="flex gap-2">
+                      <div className="w-20 shrink-0">
+                        <label className="block text-xs font-semibold text-white/60 mb-1">
+                          Cant.
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={cantidad}
+                          onChange={(e) => setCantidad(Number(e.target.value))}
+                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-orange-500/50 text-center"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-semibold text-white/60 mb-1">
+                          Detalle (opcional)
+                        </label>
+                        <input
+                          type="text"
+                          value={detalle}
+                          onChange={(e) => setDetalle(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                          placeholder="Color, largo, etc."
+                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500/50"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleAddItem}
+                      disabled={!selectedProducto || cantidad <= 0}
+                      className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors mt-1">
+                      <Plus className="w-4 h-4" />
+                      Agregar material
+                    </button>
+                  </div>
                 )}
 
-                {/* Items list wrapper */}
-                <div className="flex-1 flex flex-col min-h-0 p-4">
+                {/* Panel Derecho: Lista de Materiales */}
+                <div className="flex-1 flex flex-col min-h-0 p-4 bg-zinc-900/40 overflow-hidden">
+                  <div className="flex items-center justify-between mb-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-white/70 uppercase tracking-wider">
+                        Lista de materiales
+                      </p>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                        {items.length} {items.length === 1 ? "ítem" : "ítems"}
+                      </span>
+                    </div>
+                    {cargadoDeCotizacion && (
+                      <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
+                        <FileText className="w-3 h-3" />
+                        Pre-cargado desde cotización
+                      </span>
+                    )}
+                  </div>
+
                   {items.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-white/30">
-                      <PackageSearch className="w-10 h-10 mb-2 opacity-40" />
-                      <p className="text-sm">No hay materiales cargados</p>
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-white/30 border border-dashed border-white/10 rounded-2xl bg-zinc-950/20">
+                      <PackageSearch className="w-12 h-12 mb-3 opacity-30 text-orange-400" />
+                      <p className="text-sm font-semibold text-white/60">No hay materiales agregados</p>
+                      <p className="text-xs text-white/40 mt-1 max-w-xs">
+                        Selecciona un producto del panel izquierdo y presiona "Agregar material" para incluirlo en la hoja de inspección.
+                      </p>
                     </div>
                   ) : (
-                    <>
-                      <div className="flex items-center justify-between mb-2 shrink-0">
-                        <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
-                          Lista de materiales ({items.length})
-                        </p>
-                        {cargadoDeCotizacion && (
-                          <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
-                            <FileText className="w-3 h-3" />
-                            Pre-cargado desde cotización
-                          </span>
-                        )}
-                      </div>
-                      {/* The scrollable list of items */}
-                      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2">
-                        {items.map((item, index) => (
-                          <div
-                            key={index}
-                            className="flex items-start gap-3 bg-zinc-800/60 border border-white/8 rounded-xl p-3 shrink-0">
-                            {/* Cantidad badge */}
-                            <div className="shrink-0 bg-orange-500/15 border border-orange-500/30 rounded-lg px-2 py-1 text-center min-w-[2.5rem]">
-                              <span className="text-orange-300 font-bold text-sm">
+                    <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 min-h-0">
+                      {items.map((item, index) => (
+                        <div
+                          key={`${item.producto_id}-${index}`}
+                          className="grid grid-cols-[72px_1fr_auto] gap-2.5 bg-zinc-800/70 border border-white/10 rounded-xl p-2.5 shrink-0 items-center hover:border-white/20 transition-colors">
+                          <div>
+                            <label className="block text-[9px] font-bold text-white/40 uppercase mb-1">
+                              Cant.
+                            </label>
+                            {bloqueada ? (
+                              <div className="bg-orange-500/15 border border-orange-500/30 rounded-lg px-2 py-1.5 text-center text-orange-300 font-bold text-xs">
                                 {item.cantidad}
-                              </span>
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-white font-semibold text-sm leading-tight">
-                                {item.producto_descrip}
-                              </p>
-                              {item.detalle && (
-                                <p className="text-white/50 text-xs mt-0.5 italic">
-                                  {item.detalle}
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Delete */}
-                            {!bloqueada && (
-                              <button
-                                onClick={() => handleRemoveItem(index)}
-                                className="shrink-0 p-1.5 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              </div>
+                            ) : (
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.cantidad}
+                                onChange={(e) =>
+                                  handleUpdateItem(index, { cantidad: Number(e.target.value) })
+                                }
+                                className="w-full bg-zinc-950 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-orange-500/50 font-bold"
+                              />
                             )}
                           </div>
-                        ))}
-                      </div>
-                    </>
+
+                          <div className="min-w-0">
+                            <p className="text-white font-semibold text-xs leading-snug mb-1.5">
+                              {item.producto_descrip}
+                            </p>
+                            {bloqueada ? (
+                              item.detalle && (
+                                <p className="text-white/50 text-[11px] italic">{item.detalle}</p>
+                              )
+                            ) : (
+                              <input
+                                type="text"
+                                value={item.detalle}
+                                maxLength={255}
+                                onChange={(e) =>
+                                  handleUpdateItem(index, { detalle: e.target.value })
+                                }
+                                placeholder="Detalle (opcional)"
+                                className="w-full bg-zinc-950 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none focus:border-orange-500/50"
+                              />
+                            )}
+                          </div>
+
+                          {!bloqueada && (
+                            <button
+                              onClick={() => handleRemoveItem(index)}
+                              className="self-center p-2 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                              title="Eliminar material">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-              </>
+              </div>
             ) : activeTab === "dibujo" ? (
               /* Dibujo Tab */
               <CanvasDibujo
@@ -894,20 +1005,113 @@ export default function HojaInspeccion({
               />
             ) : (
               /* Notas Tab */
-              <div className="flex-1 flex flex-col p-4 min-h-0">
-                <p className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">
-                  Notas de inspección
-                </p>
-                <textarea
-                  value={notas}
-                  onChange={(e) => setNotas(e.target.value)}
-                  placeholder="Escribe aquí observaciones generales, condiciones del lugar, acuerdos, etc."
-                  rows={10}
-                  className="flex-1 w-full bg-zinc-950/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 resize-none leading-relaxed"
-                />
-                <p className="text-xs text-white/25 mt-2">
-                  Las notas se guardan junto con los materiales al presionar "Guardar Cambios".
-                </p>
+              <div className="flex-1 flex flex-col p-4 md:p-5 min-h-0 bg-zinc-900/30 overflow-hidden">
+                {/* Header con título y switch de modo */}
+                <div className="flex items-center justify-between mb-3 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-orange-400" />
+                      Historial y Registro de Notas
+                    </p>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                      {parseNotesHistory(notas).length}{" "}
+                      {parseNotesHistory(notas).length === 1 ? "nota" : "notas"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setModoEdicionCompleta(!modoEdicionCompleta)}
+                    className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-lg border border-white/10 transition-colors">
+                    <Edit3 className="w-3.5 h-3.5 text-orange-400" />
+                    {modoEdicionCompleta ? "Volver a vista organizada" : "Editar historial completo"}
+                  </button>
+                </div>
+
+                {modoEdicionCompleta ? (
+                  /* Modo edición libre / corrección de historial */
+                  <div className="flex-1 flex flex-col min-h-0 gap-2">
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-300/90 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 shrink-0 text-amber-400" />
+                      <span>
+                        Modo de edición directa. Puedes modificar o corregir el texto completo del historial. Cada nota se separa con <code>---</code>.
+                      </span>
+                    </div>
+                    <textarea
+                      value={notas}
+                      onChange={(e) => setNotas(e.target.value)}
+                      placeholder="Historial completo de notas..."
+                      className="flex-1 w-full bg-zinc-950 border border-white/10 rounded-xl px-4 py-3 text-xs md:text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-orange-500/50 resize-none font-mono leading-relaxed"
+                    />
+                  </div>
+                ) : (
+                  /* Modo regular: Historial arriba/scrollable + Formulario para nueva nota */
+                  <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
+                    {/* Historial de Notas previas */}
+                    <div className="flex-1 flex flex-col min-h-0 bg-zinc-950/40 border border-white/10 rounded-xl p-3 overflow-hidden">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5 shrink-0">
+                        <span className="text-[11px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+                          <History className="w-3.5 h-3.5 text-zinc-400" />
+                          Notas anteriores
+                        </span>
+                      </div>
+
+                      {parseNotesHistory(notas).length === 0 ? (
+                        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-white/40">
+                          <StickyNote className="w-10 h-10 mb-2 opacity-25 text-orange-400" />
+                          <p className="text-xs font-semibold text-white/60">No hay notas registradas</p>
+                          <p className="text-[11px] text-white/40 mt-1 max-w-xs">
+                            Escribe una nueva nota en el panel contiguo. Al guardar, se registrará con la fecha del día actual.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-0">
+                          {parseNotesHistory(notas).map((item) => (
+                            <div
+                              key={item.id}
+                              className="bg-zinc-900/90 border border-white/10 rounded-xl p-3 hover:border-white/20 transition-colors shadow-sm">
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-orange-500/15 text-orange-400 border border-orange-500/30">
+                                  <Calendar className="w-3 h-3" />
+                                  {item.timestamp || "Fecha no registrada"}
+                                </span>
+                              </div>
+                              <p className="text-xs md:text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed">
+                                {item.contenido}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Editor de Nueva Nota */}
+                    <div className="w-full md:w-80 lg:w-96 flex flex-col shrink-0 bg-zinc-900/70 border border-white/10 rounded-xl p-3.5">
+                      <div className="flex items-center justify-between mb-2 shrink-0">
+                        <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
+                          <Plus className="w-3.5 h-3.5 text-orange-400" />
+                          Nueva Nota
+                        </span>
+                        <span className="text-[10px] font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">
+                          {formatTimestamp()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-white/50 mb-2 leading-tight">
+                        Escribe las observaciones de hoy. Se anexará automáticamente con la fecha al guardar.
+                      </p>
+                      <textarea
+                        value={nuevaNota}
+                        onChange={(e) => setNuevaNota(e.target.value)}
+                        placeholder="Escribe aquí las observaciones, condiciones o novedades de hoy..."
+                        rows={5}
+                        className="flex-1 w-full bg-zinc-950 border border-white/10 rounded-xl px-3 py-2.5 text-xs md:text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-orange-500/50 resize-none leading-relaxed"
+                      />
+                      <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-white/40">
+                        <span>Se guardará al pulsar:</span>
+                        <span className="font-semibold text-orange-400">"Guardar Cambios"</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

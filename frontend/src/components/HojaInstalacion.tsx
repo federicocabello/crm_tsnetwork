@@ -10,6 +10,11 @@ import {
   X,
   ListChecks,
   StickyNote,
+  Clock,
+  Calendar,
+  Edit3,
+  History,
+  Sparkles,
 } from "lucide-react";
 import FirmaModal from "./FirmaModal";
 
@@ -64,6 +69,56 @@ interface PlanPagoInstalacion {
   cuotas: CuotaPlanPago[];
 }
 
+interface NotaEntry {
+  id: number;
+  timestamp?: string;
+  contenido: string;
+}
+
+const formatTimestamp = () => {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = pad(now.getDate());
+  const month = pad(now.getMonth() + 1);
+  const year = now.getFullYear();
+  const hours = pad(now.getHours());
+  const minutes = pad(now.getMinutes());
+  return `[${day}/${month}/${year} ${hours}:${minutes}]`;
+};
+
+const appendNewNote = (existingNotes: string, newText: string): string => {
+  const trimmedNew = newText.trim();
+  if (!trimmedNew) return (existingNotes || "").trim();
+
+  const timestamp = formatTimestamp();
+  const formattedNewEntry = `${timestamp}\n${trimmedNew}`;
+
+  const trimmedExisting = (existingNotes || "").trim();
+  if (!trimmedExisting) {
+    return formattedNewEntry;
+  }
+  return `${trimmedExisting}\n\n---\n\n${formattedNewEntry}`;
+};
+
+const parseNotesHistory = (rawNotes: string): NotaEntry[] => {
+  if (!rawNotes || !rawNotes.trim()) return [];
+  const chunks = rawNotes.split(/\n\s*---\s*\n/).map((c) => c.trim()).filter(Boolean);
+  return chunks.map((chunk, idx) => {
+    const match = chunk.match(/^(\[\d{1,2}\/\d{1,2}\/\d{4}[^\]]*\])\s*\n?([\s\S]*)$/);
+    if (match) {
+      return {
+        id: idx,
+        timestamp: match[1],
+        contenido: match[2].trim(),
+      };
+    }
+    return {
+      id: idx,
+      contenido: chunk,
+    };
+  });
+};
+
 export default function HojaInstalacion({
   idCita,
   idHoja,
@@ -90,6 +145,8 @@ export default function HojaInstalacion({
   const [planPago, setPlanPago] = useState<PlanPagoInstalacion | null>(null);
   const [citaTipo, setCitaTipo] = useState<string>("");
   const [notas, setNotas] = useState<string>("");
+  const [nuevaNota, setNuevaNota] = useState<string>("");
+  const [modoEdicionCompleta, setModoEdicionCompleta] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"materiales" | "notas">("materiales");
 
   const bloqueada = false;
@@ -280,6 +337,7 @@ export default function HojaInstalacion({
   };
 
   const buildFormData = (firmaBlob?: Blob, fotoFile?: File) => {
+    const notasFinal = appendNewNote(notas, nuevaNota);
     const formData = new FormData();
     formData.append(
       "items",
@@ -293,7 +351,7 @@ export default function HojaInstalacion({
       ),
     );
 
-    formData.append("notas", notas);
+    formData.append("notas", notasFinal);
 
     if (firmaBlob) {
       formData.append("firma", new File([firmaBlob], "firma.png", { type: "image/png" }));
@@ -302,7 +360,7 @@ export default function HojaInstalacion({
       formData.append("firma_foto", fotoFile);
     }
 
-    return formData;
+    return { formData, notasFinal };
   };
 
   const parseError = async (res: Response) => {
@@ -321,12 +379,15 @@ export default function HojaInstalacion({
 
     setSaving(true);
     try {
+      const { formData, notasFinal } = buildFormData();
       const res = await fetch(`${API_URL}/api/cotizaciones/${idHoja}/firma-instalacion`, {
         method: "POST",
-        body: buildFormData(),
+        body: formData,
       });
 
       if (res.ok) {
+        setNotas(notasFinal);
+        setNuevaNota("");
         onSaved();
         alert("Cambios guardados correctamente");
       } else {
@@ -344,12 +405,15 @@ export default function HojaInstalacion({
     setShowFirmaModal(false);
     setSaving(true);
     try {
+      const { formData, notasFinal } = buildFormData(firmaBlob, fotoFile);
       const res = await fetch(`${API_URL}/api/cotizaciones/${idHoja}/firma-instalacion`, {
         method: "POST",
-        body: buildFormData(firmaBlob, fotoFile),
+        body: formData,
       });
 
       if (res.ok) {
+        setNotas(notasFinal);
+        setNuevaNota("");
         onSaved();
         onClose();
       } else {
@@ -443,6 +507,14 @@ export default function HojaInstalacion({
       ? `<section class="section avoid-break">
               <h2>Mapa / croquis de instalaci&oacute;n</h2>
               <div class="mapa"><img src="${escapePdfHtml(dibujoUrl)}" /></div>
+            </section>`
+      : "";
+
+    const currentNotas = appendNewNote(notas, nuevaNota);
+    const notasSection = (currentNotas && currentNotas.trim() !== "")
+      ? `<section class="section avoid-break">
+              <h2>Notas / Observaciones</h2>
+              <div style="background:#f9fafb; border:1px solid #d1d5db; padding:10px; border-radius:4px; white-space:pre-wrap; font-size:11px; color:#374151; line-height:1.4;">${escapePdfHtml(currentNotas)}</div>
             </section>`
       : "";
 
@@ -775,6 +847,8 @@ export default function HojaInstalacion({
 
             ${planPagoSection}
 
+            ${notasSection}
+
             ${mapaSection}
 
             <section class="warranty-box">
@@ -900,9 +974,10 @@ export default function HojaInstalacion({
               </div>
 
               {activeTab === "materiales" ? (
-                <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+                  {/* Panel Izquierdo: Formulario de Agregar Material */}
                   {!bloqueada && (
-                    <div className="p-4 border-b border-white/10 bg-zinc-950/40 flex flex-col gap-3 shrink-0">
+                    <div className="w-full md:w-[320px] lg:w-[360px] shrink-0 border-b md:border-b-0 md:border-r border-white/10 p-4 bg-zinc-950/40 flex flex-col gap-3 overflow-y-auto">
                       <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
                         Agregar material
                       </p>
@@ -935,7 +1010,7 @@ export default function HojaInstalacion({
                           onChange={(e) =>
                             setSelectedProducto(e.target.value ? Number(e.target.value) : "")
                           }
-                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-green-500/50">
+                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500/50">
                           <option value="">Selecciona un producto...</option>
                           {productosFiltrados.map((p) => (
                             <option key={p.id} value={p.id}>
@@ -945,7 +1020,7 @@ export default function HojaInstalacion({
                         </select>
                       </div>
                       <div className="flex gap-2">
-                        <div className="w-24 shrink-0">
+                        <div className="w-20 shrink-0">
                           <label className="block text-xs font-semibold text-white/60 mb-1">
                             Cant.
                           </label>
@@ -954,7 +1029,7 @@ export default function HojaInstalacion({
                             min="1"
                             value={cantidad}
                             onChange={(e) => setCantidad(Number(e.target.value))}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-green-500/50 text-center"
+                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-green-500/50 text-center"
                           />
                         </div>
                         <div className="flex-1">
@@ -967,119 +1042,220 @@ export default function HojaInstalacion({
                             maxLength={255}
                             onChange={(e) => setDetalle(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-                            placeholder="Color, largo, ubicacion, etc."
-                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-green-500/50"
+                            placeholder="Color, largo, ubicación, etc."
+                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500/50"
                           />
                         </div>
                       </div>
                       <button
                         onClick={handleAddItem}
                         disabled={!selectedProducto || cantidad <= 0}
-                        className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-colors">
+                        className="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors mt-1">
                         <Plus className="w-4 h-4" />
                         Agregar material
                       </button>
                     </div>
                   )}
 
-                  <div className="flex-1 flex flex-col min-h-0 p-4">
+                  {/* Panel Derecho: Lista de Materiales */}
+                  <div className="flex-1 flex flex-col min-h-0 p-4 bg-zinc-900/40 overflow-hidden">
+                    <div className="flex items-center justify-between mb-3 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-white/70 uppercase tracking-wider">
+                          Lista de materiales
+                        </p>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">
+                          {items.length} {items.length === 1 ? "ítem" : "ítems"}
+                        </span>
+                      </div>
+                      {cargadoDeInspeccion && (
+                        <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
+                          <FileText className="w-3 h-3" />
+                          Pre-cargado desde inspección
+                        </span>
+                      )}
+                    </div>
+
                     {items.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-10 text-white/30">
-                        <PackageSearch className="w-10 h-10 mb-2 opacity-40" />
-                        <p className="text-sm">No hay materiales cargados</p>
+                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-white/30 border border-dashed border-white/10 rounded-2xl bg-zinc-950/20">
+                        <PackageSearch className="w-12 h-12 mb-3 opacity-30 text-green-400" />
+                        <p className="text-sm font-semibold text-white/60">No hay materiales cargados</p>
+                        <p className="text-xs text-white/40 mt-1 max-w-xs">
+                          Selecciona un producto del panel izquierdo y presiona "Agregar material" para incluirlo en la hoja de instalación.
+                        </p>
                       </div>
                     ) : (
-                      <>
-                        <div className="flex items-center justify-between mb-2 shrink-0">
-                          <p className="text-xs font-bold text-white/40 uppercase tracking-wider">
-                            Lista de materiales ({items.length})
-                          </p>
-                          {cargadoDeInspeccion && (
-                            <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded-full px-2 py-0.5">
-                              <FileText className="w-3 h-3" />
-                              Pre-cargado desde inspeccion
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2">
-                          {items.map((item, index) => (
-                            <div
-                              key={`${item.producto_id}-${index}`}
-                              className="grid grid-cols-[88px_1fr_auto] gap-3 bg-zinc-800/60 border border-white/8 rounded-xl p-3 shrink-0">
-                              <div>
-                                <label className="block text-[10px] font-bold text-white/40 uppercase mb-1">
-                                  Cant.
-                                </label>
-                                {bloqueada ? (
-                                  <div className="bg-green-500/15 border border-green-500/30 rounded-lg px-2 py-2 text-center text-green-300 font-bold text-sm">
-                                    {item.cantidad}
-                                  </div>
-                                ) : (
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    value={item.cantidad}
-                                    onChange={(e) =>
-                                      handleUpdateItem(index, { cantidad: Number(e.target.value) })
-                                    }
-                                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-2 py-2 text-sm text-white text-center focus:outline-none focus:border-green-500/50"
-                                  />
-                                )}
-                              </div>
-
-                              <div className="min-w-0">
-                                <p className="text-white font-semibold text-sm leading-tight mb-2">
-                                  {item.producto_descrip}
-                                </p>
-                                {bloqueada ? (
-                                  item.detalle && (
-                                    <p className="text-white/50 text-xs italic">{item.detalle}</p>
-                                  )
-                                ) : (
-                                  <input
-                                    type="text"
-                                    value={item.detalle}
-                                    maxLength={255}
-                                    onChange={(e) =>
-                                      handleUpdateItem(index, { detalle: e.target.value })
-                                    }
-                                    placeholder="Detalle"
-                                    className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500/50"
-                                  />
-                                )}
-                              </div>
-
-                              {!bloqueada && (
-                                <button
-                                  onClick={() => handleRemoveItem(index)}
-                                  className="self-start shrink-0 p-2 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors"
-                                  title="Eliminar material">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 min-h-0">
+                        {items.map((item, index) => (
+                          <div
+                            key={`${item.producto_id}-${index}`}
+                            className="grid grid-cols-[72px_1fr_auto] gap-2.5 bg-zinc-800/70 border border-white/10 rounded-xl p-2.5 shrink-0 items-center hover:border-white/20 transition-colors">
+                            <div>
+                              <label className="block text-[9px] font-bold text-white/40 uppercase mb-1">
+                                Cant.
+                              </label>
+                              {bloqueada ? (
+                                <div className="bg-green-500/15 border border-green-500/30 rounded-lg px-2 py-1.5 text-center text-green-300 font-bold text-xs">
+                                  {item.cantidad}
+                                </div>
+                              ) : (
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={item.cantidad}
+                                  onChange={(e) =>
+                                    handleUpdateItem(index, { cantidad: Number(e.target.value) })
+                                  }
+                                  className="w-full bg-zinc-950 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-green-500/50 font-bold"
+                                />
                               )}
                             </div>
-                          ))}
-                        </div>
-                      </>
+
+                            <div className="min-w-0">
+                              <p className="text-white font-semibold text-xs leading-snug mb-1.5">
+                                {item.producto_descrip}
+                              </p>
+                              {bloqueada ? (
+                                item.detalle && (
+                                  <p className="text-white/50 text-[11px] italic">{item.detalle}</p>
+                                )
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={item.detalle}
+                                  maxLength={255}
+                                  onChange={(e) =>
+                                    handleUpdateItem(index, { detalle: e.target.value })
+                                  }
+                                  placeholder="Detalle (opcional)"
+                                  className="w-full bg-zinc-950 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none focus:border-green-500/50"
+                                />
+                              )}
+                            </div>
+
+                            {!bloqueada && (
+                              <button
+                                onClick={() => handleRemoveItem(index)}
+                                className="self-center p-2 hover:bg-red-500/20 text-white/30 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                                title="Eliminar material">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
               ) : (
                 /* Notas Tab */
-                <div className="flex-1 flex flex-col p-4 min-h-0">
-                  <p className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">
-                    Notas de instalación
-                  </p>
-                  <textarea
-                    value={notas}
-                    onChange={(e) => setNotas(e.target.value)}
-                    placeholder="Escribe aquí observaciones generales, condiciones del lugar, acuerdos, etc."
-                    rows={10}
-                    className="flex-1 w-full bg-zinc-950/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-green-500/50 resize-none leading-relaxed"
-                  />
-                  <p className="text-xs text-white/25 mt-2">
-                    Las notas se guardan junto con los materiales al presionar "Guardar Cambios".
-                  </p>
+                <div className="flex-1 flex flex-col p-4 md:p-5 min-h-0 bg-zinc-900/30 overflow-hidden">
+                  {/* Header con título y switch de modo */}
+                  <div className="flex items-center justify-between mb-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-green-400" />
+                        Historial y Registro de Notas
+                      </p>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">
+                        {parseNotesHistory(notas).length}{" "}
+                        {parseNotesHistory(notas).length === 1 ? "nota" : "notas"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setModoEdicionCompleta(!modoEdicionCompleta)}
+                      className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-lg border border-white/10 transition-colors">
+                      <Edit3 className="w-3.5 h-3.5 text-green-400" />
+                      {modoEdicionCompleta ? "Volver a vista organizada" : "Editar historial completo"}
+                    </button>
+                  </div>
+
+                  {modoEdicionCompleta ? (
+                    /* Modo edición libre / corrección de historial */
+                    <div className="flex-1 flex flex-col min-h-0 gap-2">
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-300/90 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 shrink-0 text-amber-400" />
+                        <span>
+                          Modo de edición directa. Puedes modificar o corregir el texto completo del historial. Cada nota se separa con <code>---</code>.
+                        </span>
+                      </div>
+                      <textarea
+                        value={notas}
+                        onChange={(e) => setNotas(e.target.value)}
+                        placeholder="Historial completo de notas..."
+                        className="flex-1 w-full bg-zinc-950 border border-white/10 rounded-xl px-4 py-3 text-xs md:text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-green-500/50 resize-none font-mono leading-relaxed"
+                      />
+                    </div>
+                  ) : (
+                    /* Modo regular: Historial arriba/scrollable + Formulario para nueva nota */
+                    <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
+                      {/* Historial de Notas previas */}
+                      <div className="flex-1 flex flex-col min-h-0 bg-zinc-950/40 border border-white/10 rounded-xl p-3 overflow-hidden">
+                        <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5 shrink-0">
+                          <span className="text-[11px] font-bold text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+                            <History className="w-3.5 h-3.5 text-zinc-400" />
+                            Notas anteriores
+                          </span>
+                        </div>
+
+                        {parseNotesHistory(notas).length === 0 ? (
+                          <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-white/40">
+                            <StickyNote className="w-10 h-10 mb-2 opacity-25 text-green-400" />
+                            <p className="text-xs font-semibold text-white/60">No hay notas registradas</p>
+                            <p className="text-[11px] text-white/40 mt-1 max-w-xs">
+                              Escribe una nueva nota en el panel contiguo. Al guardar, se registrará con la fecha del día actual.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 min-h-0">
+                            {parseNotesHistory(notas).map((item) => (
+                              <div
+                                key={item.id}
+                                className="bg-zinc-900/90 border border-white/10 rounded-xl p-3 hover:border-white/20 transition-colors shadow-sm">
+                                <div className="flex items-center gap-2 mb-1.5">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-green-500/15 text-green-400 border border-green-500/30">
+                                    <Calendar className="w-3 h-3" />
+                                    {item.timestamp || "Fecha no registrada"}
+                                  </span>
+                                </div>
+                                <p className="text-xs md:text-sm text-zinc-200 whitespace-pre-wrap leading-relaxed">
+                                  {item.contenido}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Editor de Nueva Nota */}
+                      <div className="w-full md:w-80 lg:w-96 flex flex-col shrink-0 bg-zinc-900/70 border border-white/10 rounded-xl p-3.5">
+                        <div className="flex items-center justify-between mb-2 shrink-0">
+                          <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider flex items-center gap-1.5">
+                            <Plus className="w-3.5 h-3.5 text-green-400" />
+                            Nueva Nota
+                          </span>
+                          <span className="text-[10px] font-mono text-green-400 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
+                            {formatTimestamp()}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-white/50 mb-2 leading-tight">
+                          Escribe las observaciones de hoy. Se anexará automáticamente con la fecha al guardar.
+                        </p>
+                        <textarea
+                          value={nuevaNota}
+                          onChange={(e) => setNuevaNota(e.target.value)}
+                          placeholder="Escribe aquí las observaciones, condiciones o novedades de hoy..."
+                          rows={5}
+                          className="flex-1 w-full bg-zinc-950 border border-white/10 rounded-xl px-3 py-2.5 text-xs md:text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-green-500/50 resize-none leading-relaxed"
+                        />
+                        <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-white/40">
+                          <span>Se guardará al pulsar:</span>
+                          <span className="font-semibold text-green-400">"Guardar Cambios"</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
