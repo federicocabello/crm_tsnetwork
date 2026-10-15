@@ -2897,6 +2897,7 @@ def obtener_pagos_cliente(id_cita):
                 SELECT pagos.id AS id_pago,
                        pagos.total,
                        COALESCE(pagos.enganche, 0) AS enganche,
+                       DATE_FORMAT(pagos.fecha, '%%Y-%%m-%%d') AS fecha_enganche,
                        pagos.enganche_metodo AS idmetodo_enganche,
                        pagos_metodos.metodo AS metodo_enganche
                 FROM pagos
@@ -2908,7 +2909,7 @@ def obtener_pagos_cliente(id_cita):
             )
         else:
             cursor.execute(
-                "SELECT id AS id_pago, total, COALESCE(enganche, 0) AS enganche FROM pagos WHERE cita = %s LIMIT 1",
+                "SELECT id AS id_pago, total, COALESCE(enganche, 0) AS enganche, DATE_FORMAT(fecha, '%%Y-%%m-%%d') AS fecha_enganche FROM pagos WHERE cita = %s LIMIT 1",
                 (id_cita,)
             )
         plan = cursor.fetchone()
@@ -2945,6 +2946,7 @@ def obtener_pagos_cliente(id_cita):
             "id_pago": id_pago,
             "total": total,
             "enganche": enganche,
+            "fecha_enganche": plan.get("fecha_enganche"),
             "idmetodo_enganche": plan.get("idmetodo_enganche"),
             "metodo_enganche": plan.get("metodo_enganche") or "",
         }), 200

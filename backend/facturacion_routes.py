@@ -513,7 +513,29 @@ def registrar_rutas(app, mysql):
         cursor = mysql.connection.cursor()
         try:
             asegurar_tablas(mysql)
-            cursor.execute("""
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS cantidad
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = %s
+                  AND COLUMN_NAME = %s
+                """,
+                ("pagos", "enganche_metodo"),
+            )
+            tiene_metodo_enganche = int((cursor.fetchone() or {}).get("cantidad") or 0) > 0
+            campo_metodo_enganche = (
+                "pm_enganche.metodo AS metodo_enganche,"
+                if tiene_metodo_enganche
+                else "NULL AS metodo_enganche,"
+            )
+            join_metodo_enganche = (
+                "LEFT JOIN pagos_metodos pm_enganche ON pm_enganche.id = p.enganche_metodo"
+                if tiene_metodo_enganche
+                else ""
+            )
+
+            cursor.execute(f"""
                 SELECT
                     p.id,
                     CONCAT('FAC-', LPAD(p.id, 6, '0')) AS numero_factura,
@@ -526,12 +548,14 @@ def registrar_rutas(app, mysql):
                     DATE_FORMAT(p.fecha, '%%Y-%%m-%%d') AS fecha_emision,
                     p.total,
                     COALESCE(p.enganche, 0) AS enganche,
+                    {campo_metodo_enganche}
                     CASE WHEN frg.id IS NULL THEN 'manual' ELSE 'recurrente' END AS origen,
                     cr.concepto,
                     DATE_FORMAT(frg.periodo, '%%Y-%%m') AS periodo
                 FROM pagos p
                 JOIN clientes c ON c.id = p.cliente
                 LEFT JOIN citas ci ON ci.id = p.cita
+                {join_metodo_enganche}
                 LEFT JOIN facturas_recurrentes_generadas frg ON frg.pago_id = p.id
                 LEFT JOIN cobros_recurrentes cr ON cr.id = frg.cobro_recurrente_id
                 WHERE p.id = %s
@@ -556,12 +580,16 @@ def registrar_rutas(app, mysql):
 
             pdf_bytes = _generar_pdf_factura(factura, cuotas)
             nombre_archivo = f"{factura['numero_factura']}.pdf"
-            return send_file(
+            respuesta = send_file(
                 io.BytesIO(pdf_bytes),
                 mimetype="application/pdf",
                 as_attachment=True,
                 download_name=nombre_archivo,
             )
+            respuesta.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            respuesta.headers["Pragma"] = "no-cache"
+            respuesta.headers["Expires"] = "0"
+            return respuesta
         except Exception as error:
             return jsonify({"error": str(error)}), 500
         finally:
@@ -1004,10 +1032,8 @@ def _generar_pdf_factura(factura, cuotas):
     enganche = float(factura.get("enganche") or 0)
     cuotas_pagadas_monto = sum(float(c.get("monto") or 0) for c in cuotas_activas if int(c.get("pagado") or 0) == 1 or c.get("pagado") is True)
     total_cuotas_activas = sum(float(c.get("monto") or 0) for c in cuotas_activas)
-    total_mostrado = (enganche + total_cuotas_activas) if cuotas else total_factura
-    total_pagado = cuotas_pagadas_monto
-    if enganche > 0 and len(cuotas_activas) == 0:
-        total_pagado += enganche
+    total_mostrado = (enganche + total_cuotas_activas) if (cuotas or enganche > 0) else total_factura
+    total_pagado = enganche + cuotas_pagadas_monto
     falta_pagar = max(total_mostrado - total_pagado, 0.0)
 
     card_total = [
@@ -1040,13 +1066,23 @@ def _generar_pdf_factura(factura, cuotas):
     # ── 4. TABLA DE CUOTAS / MOVIMIENTOS ──────────────────────────────────
     filas_tabla = [[
         Paragraph("<b>#</b>", estilo_th),
-        Paragraph("<b>VENCIMIENTO</b>", estilo_th),
+        Paragraph("<b>FECHA</b>", estilo_th),
         Paragraph("<b>MÉTODO</b>", estilo_th),
         Paragraph("<b>ESTADO</b>", estilo_th),
         Paragraph("<b>MONTO</b>", estilo_th_right),
     ]]
 
     hoy_iso = date.today().isoformat()
+
+    if enganche > 0:
+        metodo_enganche = html.escape(str(factura.get("metodo_enganche") or "—"))
+        filas_tabla.append([
+            Paragraph("E", estilo_td_center),
+            Paragraph(fecha_emision, estilo_td),
+            Paragraph(metodo_enganche, estilo_td),
+            Paragraph("Enganche pagado", estilo_td),
+            Paragraph(f"<b>{_dinero(enganche)}</b>", estilo_td_right),
+        ])
 
     if cuotas_activas:
         for idx, cuota in enumerate(cuotas_activas, 1):
@@ -1075,7 +1111,7 @@ def _generar_pdf_factura(factura, cuotas):
                 Paragraph(estado_txt, estilo_td),
                 Paragraph(f"<b>{_dinero(monto)}</b>", estilo_td_right),
             ])
-    else:
+    elif enganche <= 0:
         filas_tabla.append([
             Paragraph("1", estilo_td_center),
             Paragraph(fecha_emision, estilo_td),
