@@ -155,13 +155,13 @@ export default function FirmaModal({
     <>
       {showTerminosModal && (
         <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-3 backdrop-blur-sm sm:p-4"
           role="dialog"
           aria-modal="true"
           onClick={() => setShowTerminosModal(false)}
         >
           <div
-            className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-slate-800"
+            className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white text-slate-800 shadow-[var(--shadow-lg)] sm:max-h-[90dvh]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-slate-800 px-5 py-4 border-b border-slate-700 flex justify-between items-center shrink-0">
@@ -173,14 +173,14 @@ export default function FirmaModal({
                   <h3 className="text-base font-bold text-white">
                     Términos y Condiciones
                   </h3>
-                  <p className="text-xs text-white/50">
+                  <p className="text-xs text-[var(--text-3)]">
                     TS Network · Políticas, Garantía y Autorizaciones
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowTerminosModal(false)}
-                className="p-1.5 hover:bg-white/10 rounded-xl transition-colors text-white/60 hover:text-white"
+                className="p-1.5 hover:bg-[var(--surface-raised)] rounded-xl transition-colors text-[var(--text-3)] hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -317,7 +317,7 @@ export default function FirmaModal({
               </div>
             </div>
 
-            <div className="bg-slate-100 px-5 py-3 border-t border-slate-200 flex justify-end gap-2 shrink-0">
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-200 bg-slate-100 px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
               <button
                 type="button"
                 onClick={() => setShowTerminosModal(false)}
@@ -341,28 +341,28 @@ export default function FirmaModal({
         </div>
       )}
 
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-2 backdrop-blur-sm sm:p-4">
         <div
-          className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl w-full max-w-sm sm:max-w-md mx-2 overflow-hidden flex flex-col max-h-[95dvh]"
+          className="flex max-h-[calc(100dvh-1rem)] w-full max-w-sm flex-col overflow-hidden rounded-xl bg-white/95 shadow-[var(--shadow-lg)] backdrop-blur-md sm:max-h-[95dvh] sm:max-w-md"
           style={{ animation: "fadeScaleIn 0.25s ease-out" }}>
-          <div className="overflow-y-auto p-4 flex-1 overscroll-contain">
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 overscroll-contain sm:p-4">
             <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-5 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="bg-white/10 p-2 rounded-xl border border-white/20">
+                <div className="rounded-xl border border-white/15 bg-white/10 p-2">
                   <PenLine className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h2 className="text-white font-bold text-base leading-tight">
                     Firma del Cliente
                   </h2>
-                  <p className="text-white/60 text-xs mt-0.5">
+                  <p className="mt-0.5 text-xs text-white/70">
                     Firme para confirmar los trabajos a realizar
                   </p>
                 </div>
               </div>
               <button
                 onClick={onCancel}
-                className="p-1.5 hover:bg-white/10 rounded-xl transition-colors text-white/50 hover:text-white">
+                className="rounded-xl p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -378,7 +378,7 @@ export default function FirmaModal({
               )}
 
               {/* Confirmación de Términos y Condiciones */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3">
+              <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center">
                 <label className="flex items-center gap-2.5 cursor-pointer select-none text-xs text-slate-700">
                   <input
                     type="checkbox"
@@ -470,7 +470,7 @@ export default function FirmaModal({
                 {/* Overlay for drawing instructions */}
                 <div
                   className={`absolute inset-x-0 top-4 flex justify-center ${hasFirma ? "hidden" : ""}`}>
-                  <div className="bg-white/80 backdrop-blur-sm rounded-md px-2 py-1 flex items-center gap-2 shadow-md">
+                  <div className="rounded-md bg-white/90 px-2 py-1 shadow-sm backdrop-blur-sm flex items-center gap-2">
                     <PenLine className="w-5 h-5 text-gray-800" />
                     <span className="text-sm font-semibold text-gray-800">
                       Firme aquí
@@ -498,7 +498,7 @@ export default function FirmaModal({
               </div>
             </div>
 
-            <div className="flex gap-2 mt-1 p-4 bg-slate-50 border-t border-slate-200">
+            <div className="mt-1 grid grid-cols-2 gap-2 border-t border-slate-200 bg-slate-50 p-3 sm:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] sm:p-4">
               <button
                 onClick={clearFirma}
                 disabled={!hasFirma}
@@ -508,13 +508,13 @@ export default function FirmaModal({
               </button>
               <button
                 onClick={onCancel}
-                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">
+                className="w-full rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-200">
                 Cancelar
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={!hasFirma || !aceptaTerminos || (requirePhoto && !fotoFile)}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-500/30">
+                className="col-span-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 transition-all hover:from-emerald-400 hover:to-emerald-500 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-1">
                 <Check className="w-4 h-4" />
                 Confirmar y Guardar
               </button>

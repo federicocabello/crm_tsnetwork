@@ -28,7 +28,7 @@ import {
   AlertTriangle,
   Save,
 } from "lucide-react";
-import { darkenColor } from "../utils/colores";
+import { contrastTextColor, darkenColor } from "../utils/colores";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Loading from "../components/Loading";
@@ -144,6 +144,7 @@ export default function Cliente() {
   const [idPago, setIdPago] = useState<number | null>(null);
   const [totalPlan, setTotalPlan] = useState<number>(0);
   const [enganchePlan, setEnganchePlan] = useState<number>(0);
+  const [fechaEnganchePlan, setFechaEnganchePlan] = useState("");
   const [metodoEnganchePlan, setMetodoEnganchePlan] = useState("");
   const [idMetodoEnganchePlan, setIdMetodoEnganchePlan] = useState<number>(0);
 
@@ -333,6 +334,7 @@ export default function Cliente() {
       setIdPago(data.id_pago ?? null);
       setTotalPlan(data.total ?? 0);
       setEnganchePlan(Number(data.enganche ?? 0));
+      setFechaEnganchePlan(data.fecha_enganche ?? "");
       setMetodoEnganchePlan(data.metodo_enganche ?? "");
       setIdMetodoEnganchePlan(Number(data.idmetodo_enganche ?? 0));
 
@@ -508,6 +510,11 @@ export default function Cliente() {
     setMostrarPlanPagos(false);
     setCuotas([]);
     setIdPago(null);
+    setTotalPlan(0);
+    setEnganchePlan(0);
+    setFechaEnganchePlan("");
+    setMetodoEnganchePlan("");
+    setIdMetodoEnganchePlan(0);
   };
 
   const exportarPlanPdf = () => {
@@ -541,7 +548,15 @@ export default function Cliente() {
       const date = new Date(valor.includes("T") ? valor : `${valor}T12:00:00`);
       return Number.isNaN(date.getTime()) ? escapeHtml(valor) : date.toLocaleDateString("es-AR");
     };
-    const filas = cuotasValidas.map((cuota, indice) => `
+    const filaEnganche = Number(enganchePlan) > 0 ? `
+      <tr>
+        <td>E</td>
+        <td>${fecha(fechaEnganchePlan)}</td>
+        <td>${escapeHtml(metodoEnganchePlan || "-")}</td>
+        <td>Enganche pagado</td>
+        <td class="money">${moneda(Number(enganchePlan))}</td>
+      </tr>` : "";
+    const filasCuotas = cuotasValidas.map((cuota, indice) => `
       <tr>
         <td>${indice + 1}</td>
         <td>${fecha(cuota.vencimiento)}</td>
@@ -549,6 +564,7 @@ export default function Cliente() {
         <td>${Number(cuota.pagado) === 1 ? `Pagada${cuota.fechapago ? ` - ${fecha(cuota.fechapago)}` : ""}` : "Pendiente"}</td>
         <td class="money">${moneda(Number(cuota.monto || 0))}</td>
       </tr>`).join("");
+    const filas = `${filaEnganche}${filasCuotas}`;
     const logo = new URL("/logo_tsnetwork.png", window.location.origin).href;
 
     ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="UTF-8"><title>Plan de pagos</title>
@@ -563,7 +579,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
 <header><img class="logo" src="${logo}" alt="TS Network"><div><h1>Plan de pagos</h1><div class="meta">Plan N. ${String(idPago).padStart(6, "0")}</div><div class="meta">Emision: ${new Date().toLocaleDateString("es-AR")}</div></div></header>
 <section class="client"><h2>Cliente y cita</h2><div class="grid"><div><strong>Cliente:</strong> ${escapeHtml(cliente.nombre)}</div><div><strong>Telefono:</strong> ${escapeHtml(citaActual.telefono) || "-"}</div><div><strong>Email:</strong> ${escapeHtml(cliente.email) || "-"}</div><div><strong>Fecha:</strong> ${escapeHtml(citaActual.dia)} ${escapeHtml(citaActual.hora)}</div><div class="wide"><strong>Domicilio:</strong> ${escapeHtml(citaActual.domicilio) || "-"}</div></div></section>
 <section class="summary"><div><span>Total</span><strong>${moneda(total)}</strong></div><div class="paid"><span>Total pagado</span><strong>${moneda(pagado)}</strong></div><div class="pending"><span>Falta pagar</span><strong>${moneda(pendiente)}</strong></div></section>
-<table><thead><tr><th>#</th><th>Vencimiento</th><th>Metodo</th><th>Estado</th><th class="money">Monto</th></tr></thead><tbody>${filas || '<tr><td class="empty" colspan="5">El pago fue cubierto completamente con el enganche.</td></tr>'}</tbody></table>
+<table><thead><tr><th>#</th><th>Fecha</th><th>Metodo</th><th>Estado</th><th class="money">Monto</th></tr></thead><tbody>${filas || '<tr><td class="empty" colspan="5">No hay movimientos registrados.</td></tr>'}</tbody></table>
 <section style="margin-top:24px;padding:14px 16px;border:1px solid #fdba74;background:#fff7ed;border-radius:6px;font-size:11px;color:#431407;line-height:1.5;">
   <strong style="display:block;text-transform:uppercase;color:#c2410c;margin-bottom:6px;font-size:11px;font-weight:800;">Resumen de Términos y Condiciones</strong>
   <ul style="margin:0;padding-left:18px;">
@@ -586,7 +602,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
         <>
           {/* Header del Cliente */}
           <div className="alt-page-header">
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
               <button
                 type="button"
                 onClick={() => {
@@ -602,11 +618,11 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                 <span>Volver</span>
               </button>
 
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="alt-page-title m-0 flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h1 className="alt-page-title m-0 flex min-w-0 items-center gap-2">
                     <User className="h-5 w-5" style={{ color: "var(--alt-primary)" }} />
-                    <span>{cliente?.nombre}</span>
+                    <span className="truncate">{cliente?.nombre}</span>
                   </h1>
                   <button
                     type="button"
@@ -619,9 +635,9 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                   </button>
                 </div>
                 {cliente?.email ? (
-                  <div className="alt-page-subtitle flex items-center gap-1.5 mt-0.5">
+                  <div className="alt-page-subtitle mt-0.5 flex min-w-0 items-center gap-1.5">
                     <Mail className="h-3.5 w-3.5 opacity-70" />
-                    <span>{cliente.email}</span>
+                    <span className="truncate">{cliente.email}</span>
                   </div>
                 ) : (
                   <button
@@ -636,7 +652,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
               {/* Botón Desinstalación por falta de pago */}
               {(() => {
                 const tieneCuotasPendientes = Boolean(
@@ -649,7 +665,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                     type="button"
                     disabled={!tieneCuotasPendientes || procesandoDesinstalacion}
                     onClick={() => setModalDesinstalacion(true)}
-                    className={`alt-btn ${tieneCuotasPendientes ? "alt-btn-danger" : "alt-btn-secondary"} alt-btn-sm flex items-center gap-1.5`}
+                    className={`alt-btn ${tieneCuotasPendientes ? "alt-btn-danger" : "alt-btn-secondary"} alt-btn-sm flex w-full items-center justify-center gap-1.5 sm:w-auto`}
                     style={{ opacity: tieneCuotasPendientes ? 1 : 0.4 }}
                     title={
                       tieneCuotasPendientes
@@ -665,7 +681,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
 
               {/* Badge Deuda Total */}
               <div
-                className={`alt-badge ${deudaTotal > 0 ? "alt-badge-amber" : "alt-badge-green"}`}
+                className={`alt-badge justify-center ${deudaTotal > 0 ? "alt-badge-amber" : "alt-badge-green"}`}
                 style={{ padding: "6px 12px", fontSize: "13px", fontWeight: 700, borderRadius: "4px" }}
               >
                 {deudaTotal > 0 ? (
@@ -940,7 +956,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                               className="alt-badge"
                               style={{
                                 backgroundColor: cita.color || "#4b545c",
-                                color: "#ffffff",
+                                color: contrastTextColor(cita.color || "#4b545c"),
                                 borderColor: darkenColor(cita.color || "#4b545c", 0.3),
                               }}
                             >
@@ -1087,8 +1103,12 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                       No hay facturas generadas para este cliente todavía.
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="alt-table">
+                    <div
+                      className="max-w-full overflow-x-auto overscroll-x-contain rounded-b-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500/40"
+                      role="region"
+                      aria-label="Facturas del cliente"
+                      tabIndex={0}>
+                      <table className="alt-table min-w-[920px]">
                         <thead>
                           <tr>
                             <th>Factura #</th>
@@ -1155,7 +1175,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                                 </span>
                               </td>
                               <td className="text-center">
-                                <div className="flex items-center justify-center gap-1.5">
+                                <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                                   {fac.estado === "cancelada" ? (
                                     <span className="alt-badge alt-badge-gray">Cancelada</span>
                                   ) : (
@@ -1266,7 +1286,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                             className="alt-badge"
                             style={{
                               backgroundColor: cita.color || "#4b545c",
-                              color: "#ffffff",
+                              color: contrastTextColor(cita.color || "#4b545c"),
                               borderColor: darkenColor(cita.color || "#4b545c", 0.3),
                             }}
                           >
@@ -1451,7 +1471,7 @@ footer{margin-top:60px;padding-top:16px;border-top:1px solid #d4d4d8;color:#7171
                             </div>
                             <div>
                               <h4 className="text-sm font-bold text-white m-0">Esta cita no tiene Plan de Pagos</h4>
-                              <p className="text-xs text-white/50 mt-1 max-w-sm">
+                              <p className="text-xs text-[var(--text-3)] mt-1 max-w-sm">
                                 Puedes agregar un plan de cuotas y enganche para este servicio.
                               </p>
                             </div>

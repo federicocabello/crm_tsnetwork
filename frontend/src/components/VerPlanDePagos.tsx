@@ -342,7 +342,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
             onClick={() => setExpandido((p) => !p)}
             className="flex items-center gap-3 cursor-pointer select-none"
           >
-            <div className="w-8 h-8 rounded flex items-center justify-center bg-orange-500/20 text-orange-400 border border-orange-500/30">
+            <div className="flex h-8 w-8 items-center justify-center rounded border border-[var(--primary-border)] bg-[var(--primary-soft)] text-[var(--primary)]">
               <CreditCard className="h-4 w-4" />
             </div>
             <div>
@@ -370,7 +370,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                   style={{ width: `${cuotas.length > 0 ? (cuotasPagadas / cuotas.length) * 100 : 0}%` }}
                 />
               </div>
-              <span className="text-xs font-bold" style={{ color: "var(--color-primary)" }}>
+              <span className="text-xs font-bold" style={{ color: "var(--primary-text)" }}>
                 {cuotas.length > 0 ? Math.round((cuotasPagadas / cuotas.length) * 100) : 0}%
               </span>
             </div>
@@ -391,7 +391,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
         {expandido && (
           <div className="alt-card-body">
             {/* Resumen financiero: 4 Info Boxes AdminLTE */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 border-b" style={{ borderColor: "var(--alt-card-border)", background: "rgba(0,0,0,0.15)" }}>
+            <div className="grid grid-cols-1 gap-3 border-b p-4 sm:grid-cols-2 lg:grid-cols-4" style={{ borderColor: "var(--alt-card-border)", background: "var(--surface-subtle)" }}>
               <div className="alt-info-box">
                 <div className="alt-info-box-icon c-blue">
                   <DollarSign className="h-6 w-6" />
@@ -411,7 +411,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                 </div>
                 <div className="alt-info-box-content">
                   <span className="alt-info-box-label">Enganche</span>
-                  <span className="alt-info-box-value" style={{ color: "#4ade80" }}>
+                  <span className="alt-info-box-value" style={{ color: "var(--success)" }}>
                     <FormatearNumero numero={enganchePlan} />
                   </span>
                   <span className="alt-info-box-sub">Pago inicial</span>
@@ -424,7 +424,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                 </div>
                 <div className="alt-info-box-content">
                   <span className="alt-info-box-label">Pagado Cuotas</span>
-                  <span className="alt-info-box-value" style={{ color: "#fb923c" }}>
+                  <span className="alt-info-box-value" style={{ color: "var(--primary-text)" }}>
                     <FormatearNumero numero={montoPagado} />
                   </span>
                   <span className="alt-info-box-sub">{cuotasPagadas} cuotas liquidadas</span>
@@ -437,7 +437,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                 </div>
                 <div className="alt-info-box-content">
                   <span className="alt-info-box-label">Saldo Pendiente</span>
-                  <span className="alt-info-box-value" style={{ color: montoPendiente > 0 ? "#f87171" : "var(--alt-text-muted)" }}>
+                  <span className="alt-info-box-value" style={{ color: montoPendiente > 0 ? "var(--danger)" : "var(--alt-text-muted)" }}>
                     <FormatearNumero numero={montoPendiente} />
                   </span>
                   <span className="alt-info-box-sub">Por cobrar</span>
@@ -474,8 +474,12 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
             )}
 
             {/* Tabla de Cuotas AdminLTE */}
-            <div className="overflow-x-auto">
-              <table className="alt-table">
+            <div
+              className="table-wrap"
+              role="region"
+              aria-label="Detalle de cuotas"
+              tabIndex={0}>
+              <table className="alt-table min-w-[760px]">
                 <thead>
                   <tr>
                     <th style={{ width: "80px" }}>Cuota</th>
@@ -612,8 +616,8 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                               esCancelada
                                 ? "line-through opacity-50"
                                 : esPagada
-                                ? "text-green-400"
-                                : "text-orange-400"
+                                ? "text-[var(--success)]"
+                                : "text-[var(--primary)]"
                             }`}
                           >
                             <FormatearNumero numero={montoConInteres} />
@@ -688,7 +692,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
                                 target="_blank"
                                 rel="noreferrer"
                                 download
-                                className="alt-btn alt-btn-secondary alt-btn-sm flex items-center gap-1 text-green-400"
+                                className="alt-btn alt-btn-secondary alt-btn-sm flex items-center gap-1 text-[var(--success)]"
                                 title="Descargar comprobante"
                               >
                                 <Download className="h-3 w-3" />
@@ -772,7 +776,7 @@ export default function VerPlanDePagos({ idPago, idCita, total, enganche, idMeto
           <div className="alt-modal-overlay">
             <div className="alt-modal max-w-sm w-full">
               <div className="alt-modal-header">
-                <div className="alt-modal-title flex items-center gap-2 text-green-400">
+                <div className="alt-modal-title flex items-center gap-2 text-[var(--success)]">
                   <CheckCircle className="h-4 w-4" />
                   <span>Plan Actualizado</span>
                 </div>

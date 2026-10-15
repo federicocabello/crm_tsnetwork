@@ -410,12 +410,12 @@ useEffect(() => {
 
   return (
     <div className="fixed inset-0 z-70 flex items-center justify-center overflow-y-auto bg-black/80 p-2 backdrop-blur-sm sm:p-4">
-      <div className="my-auto flex h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl sm:h-[90vh] sm:rounded-3xl">
+      <div className="my-auto flex h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)] sm:h-[90vh] sm:rounded-xl">
         {/* Header */}
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 bg-zinc-900/80 px-4 py-3 sm:items-center sm:px-6 sm:py-4">
-          <div>
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:items-center sm:px-6 sm:py-4">
+          <div className="min-w-0 flex-1">
             <h1 className="text-xl font-bold text-white">Nueva cotización</h1>
-            <p className="text-sm text-white/50">
+            <p className="text-sm text-[var(--text-3)]">
               {bloqueada
                 ? "Esta cotizacion ya fue confirmada y no se puede modificar."
                 : "Selecciona productos y cantidades para generar el presupuesto."}
@@ -425,7 +425,7 @@ useEffect(() => {
 
           <button
             onClick={() => onClose(false)}
-            className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-white/70 transition hover:bg-white/10 hover:text-white"
+            className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-bold text-[var(--text-2)] transition hover:bg-[var(--surface-raised)] hover:text-white"
           >
             Cerrar
           </button>
@@ -447,18 +447,22 @@ useEffect(() => {
                 placeholder="Buscar producto por nombre..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-zinc-900 py-2 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/10"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] py-2 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-[var(--text-3)] focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/10"
               />
 
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]">
                 🔍
               </span>
             </div>
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-white/10">
-            <table className="w-full min-w-[900px] text-sm">
+          <div
+            className="max-w-full overflow-x-auto overscroll-x-contain rounded-xl border border-[var(--border)] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40"
+            role="region"
+            aria-label="Productos disponibles para la cotización"
+            tabIndex={0}>
+            <table className="w-full min-w-[840px] text-sm">
               <thead className="sticky top-0 z-10 bg-orange-600 text-left text-xs uppercase tracking-wide text-white">
                 <tr>
                   <th className="px-4 py-3">Producto</th>
@@ -470,12 +474,12 @@ useEffect(() => {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-white/10 bg-zinc-950">
+              <tbody className="divide-y divide-white/10 bg-[var(--surface)]">
                 {filteredData.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-4 py-10 text-center text-white/50"
+                      className="px-4 py-10 text-center text-[var(--text-3)]"
                     >
                       No se encontraron productos.
                     </td>
@@ -487,14 +491,14 @@ useEffect(() => {
                     return (
                       <tr
                         key={item.id}
-                        className={`transition hover:bg-white/0.03 ${
+                        className={`transition hover:bg-[var(--surface-subtle)] ${
                           !item.habilitado ? "bg-red-950/15" : ""
                         }`}
                       >
                         <td className="px-4 py-3 font-semibold text-white">
                           <div className="flex min-w-[240px] items-center justify-between gap-3">
                             <div>
-                              <span className={!item.habilitado ? "text-white/45 line-through" : ""}>
+                              <span className={!item.habilitado ? "text-[var(--text-3)] line-through" : ""}>
                                 {item.descrip}
                               </span>
                               {!item.habilitado && (
@@ -522,7 +526,7 @@ useEffect(() => {
                           </div>
                         </td>
 
-                        <td className="px-4 py-3 text-white/80">
+                        <td className="px-4 py-3 text-[var(--text-2)]">
                           ${Number(item.precio).toFixed(2)}
                         </td>
 
@@ -540,7 +544,7 @@ useEffect(() => {
 
                         <td className="px-4 py-3">
                           <input
-                            className="w-24 rounded-xl border border-white/10 bg-white px-3 py-2 text-center text-sm font-bold text-black outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
+                            className="w-24 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-center text-sm font-bold text-black outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                             type="number"
                             min={0}
                             disabled={bloqueada || guardando || !item.habilitado}
@@ -562,7 +566,7 @@ useEffect(() => {
                           />
                         </td>
 
-                        <td className="px-4 py-3 font-medium text-white/80">
+                        <td className="px-4 py-3 font-medium text-[var(--text-2)]">
                           ${row?.costo || "0.00"}
                         </td>
 
@@ -581,28 +585,28 @@ useEffect(() => {
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-white/10 bg-zinc-900/80 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="shrink-0 border-t border-[var(--border)] bg-[var(--surface)] px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-end gap-4">
-              <div><p className="text-xs uppercase tracking-wide text-white/40">Subtotal</p><p className="text-sm font-bold text-white/65">${subtotalGeneral}</p></div>
+              <div><p className="text-xs uppercase tracking-wide text-[var(--text-3)]">Subtotal</p><p className="text-sm font-bold text-[var(--text-2)]">${subtotalGeneral}</p></div>
               <label className="block">
-                <span className="mb-1 block text-xs uppercase tracking-wide text-white/40">Descuento</span>
-                <input type="number" min={0} step={1} disabled={bloqueada || guardando} value={descuento} onChange={(event) => setDescuento(Math.max(Number(event.target.value) || 0, 0))} className="w-28 rounded-lg border border-white/15 bg-white px-3 py-1.5 text-right text-sm font-bold text-black" />
+                <span className="mb-1 block text-xs uppercase tracking-wide text-[var(--text-3)]">Descuento</span>
+                <input type="number" min={0} step={1} disabled={bloqueada || guardando} value={descuento} onChange={(event) => setDescuento(Math.max(Number(event.target.value) || 0, 0))} className="w-28 rounded-lg border border-[var(--border)] bg-white px-3 py-1.5 text-right text-sm font-bold text-black" />
               </label>
-              <div><p className="text-xs uppercase tracking-wide text-white/40">Total general</p><p className="text-3xl font-black text-white">${totalGeneral}</p></div>
+              <div><p className="text-xs uppercase tracking-wide text-[var(--text-3)]">Total general</p><p className="text-3xl font-black text-white">${totalGeneral}</p></div>
             </div>
 
             <div className="flex flex-wrap justify-end gap-2">
               {modo === "editar" && idCotizacion && Object.values(rows).some((row) => Number(row.cantidad) > 0) && (
                 <>
-                  <button type="button" onClick={cargarHistorial} disabled={cargandoHistorial} className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-50"><History className="h-4 w-4" />{cargandoHistorial ? "Cargando..." : "Historial"}</button>
+                  <button type="button" onClick={cargarHistorial} disabled={cargandoHistorial} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-2 text-sm font-semibold text-[var(--text-2)] transition hover:bg-[var(--surface-raised)] hover:text-white disabled:opacity-50"><History className="h-4 w-4" />{cargandoHistorial ? "Cargando..." : "Historial"}</button>
                   <button type="button" onClick={() => exportarPdf(undefined, undefined, "cliente")} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === "actual" ? "Generando..." : "PDF Cliente"}</button>
                   <button type="button" onClick={() => exportarPdf(undefined, undefined, "empresa")} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-sky-400/40 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === "actual" ? "Generando..." : "PDF Empresa"}</button>
                 </>
               )}
               <button
                 onClick={() => onClose(false)}
-                className="rounded-xl border border-white/10 px-5 py-3 text-sm font-bold text-white/70 transition hover:bg-white/10 hover:text-white"
+                className="rounded-xl border border-[var(--border)] px-5 py-3 text-sm font-bold text-[var(--text-2)] transition hover:bg-[var(--surface-raised)] hover:text-white"
               >
                 Cancelar
               </button>
@@ -612,7 +616,7 @@ useEffect(() => {
                 disabled={bloqueada || guardando}
                 className={`rounded-xl px-6 py-3 text-sm font-black text-white shadow-lg transition ${
                   (bloqueada || guardando)
-                    ? "cursor-not-allowed bg-zinc-700 text-white/45 shadow-none"
+                    ? "cursor-not-allowed bg-[var(--surface-raised)] text-[var(--text-3)] shadow-none"
                     : "bg-orange-600 shadow-orange-600/20 hover:bg-orange-700"
                 }`}
               >
@@ -625,21 +629,21 @@ useEffect(() => {
 
       {mostrarHistorial && (
         <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/75 p-3" onClick={() => setMostrarHistorial(false)}>
-          <div className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-xl border border-white/15 bg-zinc-900 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-              <div><h2 className="font-black text-white">Historial de cotización</h2><p className="text-xs text-white/45">Cada versión es de solo lectura.</p></div>
-              <button type="button" onClick={() => setMostrarHistorial(false)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/15 bg-white/5 text-white/75 transition hover:border-white/30 hover:bg-white/10 hover:text-white" title="Cerrar historial"><X className="h-4 w-4" /></button>
+          <div className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)]" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
+              <div><h2 className="font-black text-white">Historial de cotización</h2><p className="text-xs text-[var(--text-3)]">Cada versión es de solo lectura.</p></div>
+              <button type="button" onClick={() => setMostrarHistorial(false)} className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-subtle)] text-[var(--text-2)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-raised)] hover:text-white" title="Cerrar historial"><X className="h-4 w-4" /></button>
             </div>
             <div className="max-h-[calc(85vh-4rem)] space-y-3 overflow-y-auto p-4">
-              {versiones.length === 0 ? <p className="text-sm text-white/50">Todavía no hay versiones registradas.</p> : versiones.map((version) => (
-                <details key={version.id} className="rounded-lg border border-white/10 bg-white/5 p-3">
+              {versiones.length === 0 ? <p className="text-sm text-[var(--text-3)]">Todavía no hay versiones registradas.</p> : versiones.map((version) => (
+                <details key={version.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3">
                   <summary className="cursor-pointer list-none">
-                    <div className="flex flex-wrap items-center justify-between gap-2"><div><strong className="text-orange-300">Versión {version.version}</strong><p className="text-xs text-white/50">{version.creado_en} · {version.creado_por}</p></div><div className="text-right text-sm"><p className="text-white/50">Descuento: ${Number(version.descuento).toFixed(2)}</p><strong className="text-white">Total: ${Number(version.total).toFixed(2)}</strong></div></div>
+                    <div className="flex flex-wrap items-center justify-between gap-2"><div><strong className="text-orange-300">Versión {version.version}</strong><p className="text-xs text-[var(--text-3)]">{version.creado_en} · {version.creado_por}</p></div><div className="text-right text-sm"><p className="text-[var(--text-3)]">Descuento: ${Number(version.descuento).toFixed(2)}</p><strong className="text-white">Total: ${Number(version.total).toFixed(2)}</strong></div></div>
                   </summary>
-                  <div className="mt-3 divide-y divide-white/10 border-t border-white/10 pt-2">{version.productos.map((producto, index) => <div key={`${version.id}-${producto.producto_id ?? index}`} className="flex justify-between gap-3 py-2 text-sm"><span className="text-white/80">{producto.nombre_producto}</span><span className="shrink-0 text-white/50">Cant. {producto.cantidad}</span></div>)}</div>
-                  <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                  <div className="mt-3 divide-y divide-white/10 border-t border-[var(--border)] pt-2">{version.productos.map((producto, index) => <div key={`${version.id}-${producto.producto_id ?? index}`} className="flex justify-between gap-3 py-2 text-sm"><span className="text-[var(--text-2)]">{producto.nombre_producto}</span><span className="shrink-0 text-[var(--text-3)]">Cant. {producto.cantidad}</span></div>)}</div>
+                  <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-[var(--border)] pt-3">
                     <button type="button" onClick={() => eliminarVersion(version)} disabled={eliminandoVersion !== null || generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"><Trash2 className="h-4 w-4" />{eliminandoVersion === version.id ? "Eliminando..." : "Eliminar versión"}</button>
-                    {!bloqueada && <button type="button" onClick={() => editarVersion(version)} disabled={generandoPdf !== null} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Editar esta versión</button>}
+                    {!bloqueada && <button type="button" onClick={() => editarVersion(version)} disabled={generandoPdf !== null} className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm font-semibold text-[var(--text-2)] transition hover:bg-[var(--surface-raised)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50">Editar esta versión</button>}
                     <button type="button" onClick={() => exportarPdf(version.id, version, "cliente")} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-orange-400/40 bg-orange-500/10 px-3 py-2 text-sm font-semibold text-orange-300 transition hover:bg-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === version.id ? "Generando..." : `PDF Cliente v${version.version}`}</button>
                     <button type="button" onClick={() => exportarPdf(version.id, version, "empresa")} disabled={generandoPdf !== null} className="inline-flex items-center gap-2 rounded-lg border border-sky-400/40 bg-sky-500/10 px-3 py-2 text-sm font-semibold text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-50"><FileDown className="h-4 w-4" />{generandoPdf === version.id ? "Generando..." : `PDF Empresa v${version.version}`}</button>
                   </div>

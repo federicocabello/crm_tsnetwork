@@ -245,7 +245,7 @@ export default function MisTareasTecnico() {
                       key={tarea.idcita}
                       onClick={() => navigate(`/inicio?dia=${tarea.dia}`, { state: { citaResaltada: String(tarea.idcita) } })}
                       style={{ borderLeftColor: tarea.color || '#ea580c', borderLeftWidth: '6px' }}
-                      className={`card-event w-full rounded-2xl border-2 border-[var(--card-border)] p-3.5 sm:p-4 text-left transition hover:-translate-y-0.5 cursor-pointer shadow-sm ${
+                      className={`card-event w-full rounded-xl border-2 border-[var(--card-border)] p-3.5 sm:p-4 text-left transition hover:-translate-y-0.5 cursor-pointer shadow-sm ${
                         seccion.alerta ? "bg-red-500/[0.04] border-red-500/40" : ""
                       }`}>
                       

@@ -6,7 +6,7 @@ import SortableSpeechCard from "../components/SortableSpeechCard";
 import FormularioCamarasDesdeCero from "../pages/FormularioCamarasDesdeCero";
 import FormularioCamarasTieneClienteNuevo from "../pages/FormularioCamarasTieneClienteNuevo";
 import FormularioCamarasTieneClienteExistente from "../pages/FormularioCamarasExistente";
-import { NotebookTabs, Cctv, Globe, Save, Pencil, X, SquarePlus, Trash2, FileVideoCamera, Video, Sparkles, MessageSquareCode, Layers } from 'lucide-react';
+import { NotebookTabs, Cctv, Globe, Save, Pencil, X, SquarePlus, Trash2, FileVideoCamera, Video, MessageSquareCode, Layers, Search, ChevronDown } from 'lucide-react';
 
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import {
@@ -32,6 +32,8 @@ export default function NuevoRegistro() {
   );
 
   const [isEditing, setIsEditing] = useState(false);
+  const [guiaSearch, setGuiaSearch] = useState("");
+  const [expandedSpeechId, setExpandedSpeechId] = useState<number | null>(null);
 
   useEffect(() => {
     filtrarSpeech("camaras");
@@ -54,8 +56,11 @@ export default function NuevoRegistro() {
       });
 
       if (res.ok) {
-        const data: any[] = await res.json();
-        setSpeechItems(data.sort((a, b) => a.orden - b.orden));
+        const data: Speech[] = await res.json();
+        const orderedData = data.sort((a, b) => a.orden - b.orden);
+        setSpeechItems(orderedData);
+        setExpandedSpeechId(orderedData[0]?.id ?? null);
+        setGuiaSearch("");
       } else {
         console.error("Error al filtrar speech. Código:", res.status);
       }
@@ -108,6 +113,7 @@ export default function NuevoRegistro() {
   const [saving, setSaving] = useState(false);
 
   const cancelarEditor = async (condicional: boolean) => {
+    if (!isEditing) setGuiaSearch("");
     setIsEditing((v) => !v);
     if (condicional) {
       filtrarSpeech(selectedOption!);
@@ -128,6 +134,7 @@ export default function NuevoRegistro() {
     };
 
     setSpeechItems((prev) => [...prev, nuevoSpeech]);
+    setExpandedSpeechId(nuevoSpeech.id);
   };
 
   function onDragEnd(event: DragEndEvent) {
@@ -147,6 +154,7 @@ export default function NuevoRegistro() {
     const idOriginalStr = String(id);
 
     setSpeechItems((prev) => prev.filter((item) => item.id !== id));
+    if (expandedSpeechId === id) setExpandedSpeechId(null);
 
     setDeletedSpeech((prev) =>
       prev.includes(idOriginalStr) ? prev : [...prev, idOriginalStr],
@@ -195,330 +203,438 @@ export default function NuevoRegistro() {
 
   const [vistaMobile, setVistaMobile] = useState<"formulario" | "speech">("formulario");
 
+  const servicioLabel = selectedOption === "camaras" ? "Cámaras" : "Internet";
+  const tipoRegistroLabel = selectedOption === "internet"
+    ? opcionInternet === "clientenuevo"
+      ? "Cliente nuevo"
+      : "Cliente existente"
+    : opcionCamaras === "desdecero"
+      ? "Instalación desde cero"
+      : opcionCamaras === "tieneclientenuevo"
+        ? "Cliente nuevo con cámaras"
+        : "Cliente existente con cámaras";
+
+  const normalizedGuiaSearch = guiaSearch
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+  const visibleSpeechItems =
+    isEditing || !normalizedGuiaSearch
+      ? speechItems
+      : speechItems.filter((item) =>
+          (item.titulo + " " + item.descripcion)
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .includes(normalizedGuiaSearch),
+        );
+
   return (
-    <div className="space-y-4 max-w-full overflow-x-hidden pb-16 lg:pb-0">
-      {/* ───────────────── TOP HERO HEADER CARD ───────────────── */}
-      <div className="cuadro rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-2 border-[var(--card-border)] shadow-md">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-600 text-white shadow-md shadow-orange-600/30">
-              <NotebookTabs className="w-5 h-5" />
-            </span>
-            <h1 className="text-xl font-black tracking-tight">Nuevo Registro de Cliente</h1>
+    <div className="mx-auto w-full max-w-[1500px] space-y-4 overflow-x-hidden pb-6">
+      <header className="page-header mb-0">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[var(--primary-border)] bg-[var(--primary-soft)] text-[var(--primary)]">
+            <NotebookTabs className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="page-title">Nuevo registro</h1>
+            <p className="page-subtitle">
+              Registra al cliente, define el servicio y agenda la visita desde un solo lugar.
+            </p>
           </div>
-          <p className="text-xs text-[var(--text-muted)] mt-1 font-medium">
-            Agenda nuevos servicios y consulta los guiones comerciales interactivos para llamadas.
-          </p>
         </div>
+      </header>
 
-        {/* SERVICE SEGMENT SELECTOR */}
-        <div className="flex items-center gap-2 bg-[var(--bg-surface-2)] p-1.5 rounded-2xl border border-[var(--bg-border)] shrink-0 self-start md:self-auto w-full sm:w-auto">
-          <button
-            onClick={() => handleSelection("camaras")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-              selectedOption === "camaras"
-                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-[1.02]"
-                : "text-[var(--text-secondary)] hover:text-blue-600 hover:bg-blue-500/10"
-            }`}>
-            <Cctv className="w-4 h-4" />
-            <span>Cámaras</span>
-          </button>
+      <section className="card space-y-4" aria-label="Tipo de registro">
+        <div className="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-end">
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs font-semibold text-[var(--text-1)]">Servicio</p>
+              <p className="text-[11px] text-[var(--text-3)]">Selecciona la línea de atención.</p>
+            </div>
+            <div className="tabs w-full" role="tablist" aria-label="Servicio">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selectedOption === "camaras"}
+                onClick={() => handleSelection("camaras")}
+                className={`tab flex-1 justify-center ${selectedOption === "camaras" ? "active" : ""}`}>
+                <Cctv className="h-4 w-4" />
+                <span>Cámaras</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selectedOption === "internet"}
+                onClick={() => handleSelection("internet")}
+                className={`tab flex-1 justify-center ${selectedOption === "internet" ? "active" : ""}`}>
+                <Globe className="h-4 w-4" />
+                <span>Internet</span>
+              </button>
+            </div>
+          </div>
 
-          <button
-            onClick={() => handleSelection("internet")}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-              selectedOption === "internet"
-                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 scale-[1.02]"
-                : "text-[var(--text-secondary)] hover:text-emerald-600 hover:bg-emerald-500/10"
-            }`}>
-            <Globe className="w-4 h-4" />
-            <span>Internet</span>
-          </button>
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs font-semibold text-[var(--text-1)]">Tipo de registro</p>
+              <p className="text-[11px] text-[var(--text-3)]">El formulario se adapta a la situación del cliente.</p>
+            </div>
+
+            {selectedOption === "camaras" ? (
+              <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Tipo de registro de cámaras">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={opcionCamaras === "desdecero"}
+                  onClick={() => setOpcionCamaras("desdecero")}
+                  className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                    opcionCamaras === "desdecero"
+                      ? "border-[var(--primary-border)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-subtle)]"
+                  }`}>
+                  <FileVideoCamera className="h-4 w-4 shrink-0" />
+                  <span>Instalación desde cero</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={opcionCamaras === "tieneclientenuevo"}
+                  onClick={() => setOpcionCamaras("tieneclientenuevo")}
+                  className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                    opcionCamaras === "tieneclientenuevo"
+                      ? "border-[var(--primary-border)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-subtle)]"
+                  }`}>
+                  <Video className="h-4 w-4 shrink-0" />
+                  <span>Cliente nuevo con cámaras</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={opcionCamaras === "tieneclienteexistente"}
+                  onClick={() => setOpcionCamaras("tieneclienteexistente")}
+                  className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                    opcionCamaras === "tieneclienteexistente"
+                      ? "border-[var(--primary-border)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-subtle)]"
+                  }`}>
+                  <Video className="h-4 w-4 shrink-0" />
+                  <span>Cliente existente con cámaras</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Tipo de registro de internet">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={opcionInternet === "clientenuevo"}
+                  onClick={() => setOpcionInternet("clientenuevo")}
+                  className={`flex min-h-10 items-center justify-center rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                    opcionInternet === "clientenuevo"
+                      ? "border-[var(--primary-border)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-subtle)]"
+                  }`}>
+                  Cliente nuevo
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={opcionInternet === "clienteexistente"}
+                  onClick={() => setOpcionInternet("clienteexistente")}
+                  className={`flex min-h-10 items-center justify-center rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                    opcionInternet === "clienteexistente"
+                      ? "border-[var(--primary-border)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                      : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-2)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-subtle)]"
+                  }`}>
+                  Cliente existente
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+      </section>
+
+      <div className="tabs w-full xl:hidden" role="tablist" aria-label="Vista de nuevo registro">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={vistaMobile === "formulario"}
+          onClick={() => setVistaMobile("formulario")}
+          className={`tab flex-1 justify-center ${vistaMobile === "formulario" ? "active" : ""}`}>
+          <Layers className="h-4 w-4" />
+          <span>Formulario</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={vistaMobile === "speech"}
+          onClick={() => setVistaMobile("speech")}
+          className={`tab flex-1 justify-center ${vistaMobile === "speech" ? "active" : ""}`}>
+          <MessageSquareCode className="h-4 w-4" />
+          <span>Guía ({speechItems.length})</span>
+        </button>
       </div>
 
-      {/* MOBILE TOGGLE SWITCHER (Only visible on mobile screens < lg when a service is selected) */}
-      {selectedOption && (
-        <div className="flex lg:hidden bg-[var(--bg-surface-2)] p-1 rounded-2xl border-2 border-[var(--card-border)] w-full shadow-sm">
-          <button
-            onClick={() => setVistaMobile("formulario")}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              vistaMobile === "formulario"
-                ? "bg-orange-600 text-white shadow-md shadow-orange-600/20"
-                : "text-[var(--text-muted)] hover:text-orange-500"
-            }`}>
-            <Layers className="w-4 h-4" />
-            <span>Formulario</span>
-          </button>
-          <button
-            onClick={() => setVistaMobile("speech")}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              vistaMobile === "speech"
-                ? "bg-orange-600 text-white shadow-md shadow-orange-600/20"
-                : "text-[var(--text-muted)] hover:text-orange-500"
-            }`}>
-            <MessageSquareCode className="w-4 h-4" />
-            <span>Guiones Comercial ({speechItems.length})</span>
-          </button>
-        </div>
-      )}
-
       {/* ───────────────── MAIN TWO-COLUMN RESPONSIVE LAYOUT ───────────────── */}
-      <div className="flex flex-col lg:flex-row gap-4 w-full min-w-0">
-        
-        {/* LEFT COLUMN: FORM CONTAINER */}
-        <div className={`cuadro w-full lg:w-[420px] xl:w-[460px] shrink-0 border-2 border-[var(--card-border)] overflow-y-auto max-h-[calc(100vh-170px)] pr-1.5 scrollbar-thin ${
-          selectedOption && vistaMobile !== "formulario" ? "hidden lg:block" : "block"
-        }`}>
-          <div className="pb-3 mb-3 border-b border-[var(--bg-border)] flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-orange-500 flex items-center gap-1.5">
-              <Layers className="w-4 h-4" />
-              <span>Opciones del Servicio</span>
-            </span>
-            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-[var(--bg-surface-2)] text-[var(--text-muted)] border border-[var(--bg-border)]">
-              {selectedOption ? selectedOption.toUpperCase() : "SELECCIONA SERVICIO"}
-            </span>
-          </div>
-
-          {!selectedOption && (
-            <div className="py-8 text-center px-4 space-y-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-500 mx-auto">
-                <Sparkles className="w-6 h-6" />
+      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_22.5rem] xl:items-stretch">
+        <div className={`${vistaMobile === "formulario" ? "block" : "hidden"} min-w-0 xl:block`}>
+          <section className="card space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-4">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-raised)] text-[var(--text-2)]">
+                  {selectedOption === "camaras" ? <Cctv className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-base font-semibold text-[var(--text-1)]">Datos del nuevo registro</h2>
+                  <p className="mt-0.5 text-xs text-[var(--text-3)]">
+                    Completa la información del cliente, el servicio y la visita.
+                  </p>
+                </div>
               </div>
-              <h3 className="text-sm font-extrabold">Selecciona Cámaras o Internet</h3>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                Haz clic en uno de los botones superiores para desplegar los formularios de agendamiento y cotización.
-              </p>
-            </div>
-          )}
-
-          {selectedOption === "camaras" && (
-            <div className="flex flex-col gap-2 my-2">
-              <div className="grid grid-cols-2 gap-2 bg-[var(--bg-surface-2)] p-1 rounded-xl border border-[var(--bg-border)]">
-                <button
-                  className={`p-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
-                    opcionCamaras === "desdecero"
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "text-[var(--text-secondary)] hover:text-blue-600"
-                  }`}
-                  onClick={() => setOpcionCamaras("desdecero")}>
-                  <FileVideoCamera className="w-4 h-4 shrink-0" />
-                  <span>Desde cero</span>
-                </button>
-                <button
-                  className={`p-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition ${
-                    opcionCamaras === "tiene" ||
-                    opcionCamaras === "tieneclientenuevo" ||
-                    opcionCamaras === "tieneclienteexistente"
-                      ? "bg-emerald-600 text-white shadow-md"
-                      : "text-[var(--text-secondary)] hover:text-emerald-600"
-                  }`}
-                  onClick={() => setOpcionCamaras("tiene")}>
-                  <Video className="w-4 h-4 shrink-0" />
-                  <span>Ya tiene cámaras</span>
-                </button>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="badge badge-primary">{servicioLabel}</span>
+                <span className="badge">{tipoRegistroLabel}</span>
               </div>
             </div>
-          )}
 
-          {(opcionCamaras === "tiene" || opcionCamaras === "tieneclientenuevo" || opcionCamaras === "tieneclienteexistente") && (
-            <div className="grid grid-cols-2 gap-2 my-2 bg-[var(--bg-surface-2)] p-1 rounded-xl border border-[var(--bg-border)]">
-              <button className={`p-2 rounded-lg text-xs font-bold transition ${
-                    opcionCamaras === "tieneclientenuevo"
-                      ? "bg-emerald-600 text-white shadow-md"
-                      : "text-[var(--text-secondary)] hover:text-emerald-600"
-                  }`} onClick={() => setOpcionCamaras("tieneclientenuevo")}>Cliente nuevo</button>
-              
-              <button className={`p-2 rounded-lg text-xs font-bold transition ${
-                    opcionCamaras === "tieneclienteexistente"
-                      ? "bg-emerald-600 text-white shadow-md"
-                      : "text-[var(--text-secondary)] hover:text-emerald-600"
-                  }`} onClick={() => setOpcionCamaras("tieneclienteexistente")}>Cliente existente</button>
-            </div>
-          )}
+            {selectedOption === "camaras" && opcionCamaras === "desdecero" && (
+              <FormularioCamarasDesdeCero key="camaras-desde-cero" tipoRegistro="camaras" />
+            )}
 
-          {opcionCamaras === "desdecero" && selectedOption === "camaras" && (
-            <FormularioCamarasDesdeCero key="camaras-desde-cero" tipoRegistro="camaras" />
-          )}
+            {selectedOption === "camaras" && opcionCamaras === "tieneclientenuevo" && (
+              <FormularioCamarasTieneClienteNuevo />
+            )}
 
-          {selectedOption === "internet" && (
-            <div className="grid grid-cols-2 gap-2 my-2 bg-[var(--bg-surface-2)] p-1 rounded-xl border border-[var(--bg-border)]">
-              <button className={`p-2 rounded-lg text-xs font-bold transition ${
-                    opcionInternet === "clientenuevo"
-                      ? "bg-emerald-600 text-white shadow-md"
-                      : "text-[var(--text-secondary)] hover:text-emerald-600"
-                  }`} onClick={() => setOpcionInternet("clientenuevo")}>Cliente nuevo</button>
-              
-              <button className={`p-2 rounded-lg text-xs font-bold transition ${
-                    opcionInternet === "clienteexistente"
-                      ? "bg-emerald-600 text-white shadow-md"
-                      : "text-[var(--text-secondary)] hover:text-emerald-600"
-                  }`} onClick={() => setOpcionInternet("clienteexistente")}>Cliente existente</button>
-            </div>
-          )}
+            {selectedOption === "camaras" && opcionCamaras === "tieneclienteexistente" && (
+              <FormularioCamarasTieneClienteExistente tipoRegistro="camaras" />
+            )}
 
-          {selectedOption === "internet" && opcionInternet === "clientenuevo" && (
-            <FormularioCamarasDesdeCero key="internet-nuevo" tipoRegistro="internet" />
-          )}
+            {selectedOption === "internet" && opcionInternet === "clientenuevo" && (
+              <FormularioCamarasDesdeCero key="internet-nuevo" tipoRegistro="internet" />
+            )}
 
-          {selectedOption === "internet" && opcionInternet === "clienteexistente" && (
-            <FormularioCamarasTieneClienteExistente key="internet-existente" tipoRegistro="internet" />
-          )}
-
-          {(opcionCamaras === "tieneclientenuevo") && (
-            <FormularioCamarasTieneClienteNuevo />
-          )}
-
-          {(opcionCamaras === "tieneclienteexistente") && (
-            <FormularioCamarasTieneClienteExistente tipoRegistro="camaras" />
-          )}
+            {selectedOption === "internet" && opcionInternet === "clienteexistente" && (
+              <FormularioCamarasTieneClienteExistente key="internet-existente" tipoRegistro="internet" />
+            )}
+          </section>
         </div>
 
         {/* RIGHT COLUMN: SPEECH CARDS INTERACTIVE GRID */}
-        <div className={`flex-1 min-w-0 overflow-y-auto max-h-[calc(100vh-170px)] pr-1.5 scrollbar-thin ${
-          selectedOption && vistaMobile !== "speech" ? "hidden lg:block" : "block"
-        }`}>
-          {!selectedOption ? (
-            <div className="cuadro border-2 border-dashed border-[var(--bg-border)] rounded-2xl p-10 text-center flex flex-col items-center justify-center space-y-3 min-h-[380px]">
-              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-orange-500/10 text-orange-500 shadow-inner">
-                <MessageSquareCode className="w-8 h-8" />
-              </div>
-              <h2 className="text-lg font-black tracking-tight">Guiones Comerciales y Speech de Venta</h2>
-              <p className="text-xs text-[var(--text-muted)] max-w-md leading-relaxed">
-                Selecciona <strong>Cámaras</strong> o <strong>Internet</strong> en la parte superior para desplegar los argumentos de venta, preguntas frecuentes y speech estructurados durante llamadas telefónicas.
-              </p>
-            </div>
-          ) : loading ? (
-            <div className="cuadro flex items-center justify-center py-20 min-h-[350px]">
-              <Loading />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-orange-500 text-white text-xs font-black">
-                    <MessageSquareCode className="w-3.5 h-3.5" />
-                  </span>
-                  <h2 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                    Speech Comercial ({selectedOption.toUpperCase()}) — {speechItems.length} Cards
-                  </h2>
+        <aside className={`${vistaMobile === "speech" ? "block" : "hidden"} min-w-0 xl:sticky xl:top-20 xl:block`}>
+          <section className="card flex min-h-0 flex-col gap-4 xl:h-full">
+            <div className="shrink-0 space-y-3 border-b border-[var(--border)] pb-4">
+              <div className="flex items-start gap-2.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--primary-border)] bg-[var(--primary-soft)] text-[var(--primary)]">
+                  <MessageSquareCode className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <h2 className="text-sm font-semibold text-[var(--text-1)]">Guía comercial</h2>
+                    <span className="badge">
+                      {normalizedGuiaSearch
+                        ? visibleSpeechItems.length + "/" + speechItems.length
+                        : speechItems.length}
+                    </span>
+                    {isEditing && <span className="badge badge-primary">Editando</span>}
+                  </div>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-3)]">
+                    Argumentos y preguntas de apoyo para {servicioLabel.toLowerCase()}.
+                  </p>
                 </div>
-                {isEditing && (
-                  <span className="text-xs font-bold text-orange-500 bg-orange-500/10 px-2.5 py-1 rounded-full border border-orange-500/30 animate-pulse">
-                    Modo Edición Activo
-                  </span>
-                )}
               </div>
 
-              <DndContext
-                collisionDetection={closestCenter}
-                onDragEnd={onDragEnd}>
-                <SortableContext
-                  items={speechItems.map((s) => s.id)}
-                  strategy={verticalListSortingStrategy}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    {speechItems.map((item) => (
-                      <SortableSpeechCard
-                        key={item.id}
-                        item={item}
-                        isEditing={isEditing}>
-                        
-                        {/* TITULO DE LA CARD */}
-                        <div className="mb-1">
-                          {isEditing ? (
+              {!isEditing && speechItems.length > 4 && (
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-3)]" />
+                  <input
+                    type="search"
+                    value={guiaSearch}
+                    onChange={(event) => setGuiaSearch(event.target.value)}
+                    placeholder="Buscar guiones..."
+                    aria-label="Buscar en la guia comercial"
+                    className="input h-10 w-full pl-9 pr-9 text-xs"
+                  />
+                  {guiaSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setGuiaSearch("")}
+                      aria-label="Limpiar busqueda"
+                      className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-[var(--text-3)] transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {canEdit && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {isEditing ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => cancelarEditor(true)}
+                        className="btn-secondary flex-1 px-3 py-2 text-xs"
+                        title="Descartar cambios de los guiones">
+                        <X className="h-4 w-4" />
+                        <span>Cancelar</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={guardarCambios}
+                        disabled={saving}
+                        className="btn-primary flex-1 px-3 py-2 text-xs"
+                        title="Guardar cambios de los guiones">
+                        <Save className="h-4 w-4" />
+                        <span>{saving ? "Guardando..." : "Guardar"}</span>
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => cancelarEditor(false)}
+                      className="btn-secondary w-full px-3 py-2 text-xs"
+                      title="Editar guía comercial">
+                      <Pencil className="h-4 w-4" />
+                      <span>Editar guía</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div
+              className="min-h-0 max-h-[60dvh] overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable] xl:max-h-none xl:flex-1"
+              role="region"
+              aria-label="Guiones de la guia comercial"
+              tabIndex={0}>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loading />
+                </div>
+              ) : speechItems.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[var(--surface-subtle)] px-4 py-8 text-center">
+                  <MessageSquareCode className="mx-auto h-6 w-6 text-[var(--text-3)]" />
+                  <p className="mt-2 text-sm font-semibold text-[var(--text-1)]">Sin guiones disponibles</p>
+                  <p className="mt-1 text-xs text-[var(--text-3)]">Agrega el primer guion para este servicio.</p>
+                </div>
+              ) : visibleSpeechItems.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-[var(--border-strong)] bg-[var(--surface-subtle)] px-4 py-8 text-center">
+                  <Search className="mx-auto h-6 w-6 text-[var(--text-3)]" />
+                  <p className="mt-2 text-sm font-semibold text-[var(--text-1)]">No hay coincidencias</p>
+                  <p className="mt-1 text-xs text-[var(--text-3)]">Prueba con otra palabra.</p>
+                </div>
+              ) : (
+                <DndContext collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+                  <SortableContext
+                    items={visibleSpeechItems.map((s) => s.id)}
+                    strategy={verticalListSortingStrategy}>
+                    <div className="grid grid-cols-1 gap-2.5 [&_.card-event]:max-h-none! [&_.card-event]:overflow-visible! [&_.card-event>div:last-child]:overflow-visible! [&_.card-event>div:last-child]:pr-0!">
+                    {visibleSpeechItems.map((item) => (
+                      <SortableSpeechCard key={item.id} item={item} isEditing={isEditing}>
+                        {isEditing ? (
+                          <>
                             <input
-                              className="w-full font-black text-sm text-[var(--text-primary)] bg-[var(--bg-input)] border border-[var(--bg-border)] rounded-lg px-2.5 py-1.5 outline-none focus:border-orange-500 transition"
+                              className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-2.5 py-2 text-sm font-semibold text-[var(--text-1)]"
                               value={item.titulo}
                               onChange={(e) => handleChangeTitulo(e, item.id)}
                             />
-                          ) : (
-                            <h3 className="font-extrabold text-sm text-[var(--text-primary)] tracking-tight">
-                              {item.titulo}
-                            </h3>
-                          )}
-                        </div>
-
-                        {/* DESCRIPCION DE LA CARD CON OVERFLOW Y MAX-HEIGHT */}
-                        {!isEditing ? (
-                          <div
-                            className="text-xs text-[var(--text-secondary)] leading-relaxed opacity-95 whitespace-pre-wrap max-h-52 overflow-y-auto pr-1 scrollbar-thin"
-                            dangerouslySetInnerHTML={{
-                              __html: formatBoldStars(item.descripcion),
-                            }}
-                          />
+                            <textarea
+                              ref={(el) => {
+                                textareasRef.current[item.id] = el;
+                                if (el) requestAnimationFrame(() => autoResize(el));
+                              }}
+                              className="w-full resize-none rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] p-2.5 font-sans text-xs text-[var(--text-1)]"
+                              value={item.descripcion}
+                              onChange={(e) => {
+                                handleChangeDescripcion(e, item.id);
+                                autoResize(e.currentTarget);
+                              }}
+                              rows={3}
+                            />
+                          </>
                         ) : (
-                          <textarea
-                            ref={(el) => {
-                              textareasRef.current[item.id] = el;
-                              if (el) requestAnimationFrame(() => autoResize(el));
-                            }}
-                            className="w-full text-xs text-[var(--text-primary)] bg-[var(--bg-input)] border border-[var(--bg-border)] rounded-lg p-2.5 outline-none focus:border-orange-500 transition font-sans resize-none max-h-52 overflow-y-auto scrollbar-thin"
-                            value={item.descripcion}
-                            onChange={(e) => {
-                              handleChangeDescripcion(e, item.id);
-                              autoResize(e.currentTarget);
-                            }}
-                            rows={3}
-                          />
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedSpeechId((current) =>
+                                  current === item.id ? null : item.id,
+                                )
+                              }
+                              aria-expanded={
+                                expandedSpeechId === item.id ||
+                                Boolean(normalizedGuiaSearch)
+                              }
+                              aria-controls={"guia-" + item.id}
+                              className="flex w-full items-center gap-3 rounded-lg px-1 py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]">
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-semibold tracking-tight text-[var(--text-1)]">
+                                  {item.titulo}
+                                </span>
+                                <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-wide text-[var(--text-3)]">
+                                  Guion {item.orden}
+                                </span>
+                              </span>
+                              <ChevronDown
+                                className={
+                                  "h-4 w-4 shrink-0 text-[var(--text-3)] transition-transform " +
+                                  (expandedSpeechId === item.id ||
+                                  Boolean(normalizedGuiaSearch)
+                                    ? "rotate-180"
+                                    : "")
+                                }
+                              />
+                            </button>
+
+                            {(expandedSpeechId === item.id ||
+                              Boolean(normalizedGuiaSearch)) && (
+                              <div
+                                id={"guia-" + item.id}
+                                className="border-t border-[var(--border)] pt-3">
+                                <div
+                                  className="whitespace-pre-wrap text-xs leading-relaxed text-[var(--text-2)]"
+                                  dangerouslySetInnerHTML={{
+                                    __html: formatBoldStars(item.descripcion),
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </>
                         )}
 
-                        {/* ACCION BORRAR (EN EDICION) */}
                         {isEditing && (
-                          <div className="pt-2 mt-auto flex justify-end border-t border-[var(--bg-border)]">
+                          <div className="mt-2 flex justify-end border-t border-[var(--border)] pt-2">
                             <button
                               type="button"
                               onClick={() => removeItem(item.id)}
-                              className="text-xs text-red-500 hover:text-white bg-red-500/10 hover:bg-red-600 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 font-bold">
-                              <Trash2 className="w-3.5 h-3.5" />
+                              className="btn-danger px-2.5 py-1.5 text-xs">
+                              <Trash2 className="h-3.5 w-3.5" />
                               <span>Eliminar</span>
                             </button>
                           </div>
                         )}
                       </SortableSpeechCard>
                     ))}
-
-                    {/* BOTON AGREGAR CARD (SOLO EN MODO EDICION) */}
-                    {canEdit && isEditing && (
-                      <div
-                        className="cuadro border-2 border-dashed border-orange-500/60 hover:border-orange-500 bg-orange-500/10 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01] min-h-[140px]"
-                        onClick={() => agregarSpeech()}>
-                        <SquarePlus className="w-7 h-7 text-orange-500" />
-                        <span className="text-sm font-black text-orange-500">Agregar Nuevo Speech</span>
-                      </div>
-                    )}
-                  </div>
-                </SortableContext>
-              </DndContext>
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
             </div>
-          )}
-        </div>
+
+            {canEdit && isEditing && (
+              <button
+                type="button"
+                onClick={agregarSpeech}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[var(--primary-border)] bg-[var(--primary-soft)] px-4 py-3 text-xs font-semibold text-[var(--primary)] transition-colors hover:border-[var(--primary)]">
+                <SquarePlus className="h-4 w-4" />
+                <span>Agregar guion</span>
+              </button>
+            )}
+          </section>
+        </aside>
       </div>
 
-      {/* ───────────────── FLOATING ACTION BAR (EDIT/SAVE) ───────────────── */}
-      {canEdit && selectedOption && (
-        <div className="sticky bottom-0 left-0 right-0 sm:fixed sm:bottom-6 sm:right-6 sm:left-auto z-50 flex items-center justify-end gap-2.5 bg-[var(--card-bg)]/95 backdrop-blur-md border-t sm:border-2 border-[var(--card-border)] p-3 sm:p-2 sm:rounded-2xl shadow-2xl">
-          <button
-            onClick={() => cancelarEditor(isEditing)}
-            className={`btn-secondary py-2.5 px-4 rounded-xl font-black text-xs transition shadow-md ${
-              isEditing ? "bg-orange-600 text-white border-orange-600" : ""
-            }`}
-            title={isEditing ? "Salir del modo editor" : "Activar modo editor"}>
-            {isEditing ? <X className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
-            <span>{isEditing ? "Cancelar" : "Editar Guiones"}</span>
-          </button>
-
-          {isEditing && (
-            <button
-              onClick={guardarCambios}
-              disabled={saving}
-              className="btn-primary py-2.5 px-4 rounded-xl font-black text-xs shadow-lg bg-emerald-600 hover:bg-emerald-700 text-white"
-              title="Guardar cambios">
-              <Save className="w-4 h-4" />
-              <span>{saving ? "Guardando..." : "Guardar Cambios"}</span>
-            </button>
-          )}
-        </div>
-      )}
     </div>
   );
 }

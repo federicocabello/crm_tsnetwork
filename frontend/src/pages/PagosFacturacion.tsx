@@ -125,8 +125,6 @@ const hoy = new Date();
 const mesInicial = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
 
 // Por defecto: últimas facturas (los últimos 3 meses hasta hoy)
-const hace3meses = new Date(hoy.getFullYear(), hoy.getMonth() - 2, 1);
-const desdeInicial = `${hace3meses.getFullYear()}-${String(hace3meses.getMonth() + 1).padStart(2, "0")}-01`;
 const hastaInicial = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
 const fechaInicial = hastaInicial;
 
@@ -180,8 +178,6 @@ export default function PagosFacturacion() {
   // Navegación
   const [pestana, setPestana] = useState<Pestana>("facturas");
   const [mes] = useState(mesInicial);
-  const [desde] = useState(desdeInicial);
-  const [hasta] = useState(hastaInicial);
 
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [movimientos, setMovimientos] = useState<RespuestaMovimientos>({
@@ -281,9 +277,7 @@ export default function PagosFacturacion() {
     }
   }, [
     clienteFiltroId,
-    desde,
     estado,
-    hasta,
     mes,
     metodo,
     origen,
@@ -440,15 +434,15 @@ export default function PagosFacturacion() {
   const montoDeuda = deudaTotal;
 
   return (
-    <div className="flex flex-col w-full" style={{ background: "var(--alt-page-bg)", minHeight: "100%" }}>
+    <div className="flex min-w-0 w-full flex-col overflow-x-hidden" style={{ background: "var(--alt-page-bg)", minHeight: "100%" }}>
 
       {/* ── PAGE HEADER */}
       <div className="alt-page-header">
         <div>
           <h1 className="alt-page-title">
-            <ReceiptText style={{ width: 18, height: 18, color: "#f97316" }} />
+            <ReceiptText style={{ width: 18, height: 18, color: "var(--primary-text)" }} />
             Facturación y Cobranza
-            {cargandoLista && <LoaderCircle style={{ width: 14, height: 14, color: "#f97316", animation: "spin 1s linear infinite" }} />}
+            {cargandoLista && <LoaderCircle style={{ width: 14, height: 14, color: "var(--primary-text)", animation: "spin 1s linear infinite" }} />}
           </h1>
           <div className="alt-breadcrumb" style={{ marginTop: 2 }}>
             <a href="/inicio">Inicio</a>
@@ -458,7 +452,7 @@ export default function PagosFacturacion() {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <button onClick={generarPendientes} disabled={cargandoLista} className="alt-btn alt-btn-secondary">
-            <RefreshCw style={{ width: 13, height: 13, color: "#f97316" }} className={cargandoLista ? "animate-spin" : ""} />
+            <RefreshCw style={{ width: 13, height: 13, color: "var(--primary-text)" }} className={cargandoLista ? "animate-spin" : ""} />
             <span>Generar Pendientes</span>
           </button>
           <button onClick={() => setModalRecurrente(true)} className="alt-btn alt-btn-primary">
@@ -608,7 +602,7 @@ export default function PagosFacturacion() {
 
         {/* BANNER CLIENTE FILTRADO */}
         {clienteFiltroId && pestana === "facturas" && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 16px", background: "rgba(249,115,22,0.08)", borderBottom: "1px solid rgba(249,115,22,0.18)", fontSize: "0.75rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 16px", background: "var(--primary-soft)", borderBottom: "1px solid var(--primary-border)", fontSize: "0.75rem" }}>
             <span style={{ color: "var(--alt-text-muted)" }}>
               Filtrando:{" "}
               <Link to={`/clientes/${clienteFiltroId}`} style={{ color: "var(--alt-text)", fontWeight: 700 }}>
@@ -695,8 +689,12 @@ function TablaMovimientos({
   return (
     <div style={{ opacity: cargando ? 0.5 : 1, transition: "opacity 0.2s" }}>
       {/* VISTA TABLA (DESKTOP: md+) */}
-      <div className="hidden md:block" style={{ overflowX: "auto" }}>
-        <table className="alt-table" style={{ minWidth: 780 }}>
+      <div
+        className="hidden max-w-full overflow-x-auto overscroll-x-contain focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500/40 md:block"
+        role="region"
+        aria-label={pestana === "pagos" ? "Pagos registrados" : "Facturas emitidas"}
+        tabIndex={0}>
+        <table className="alt-table min-w-[780px]">
           <thead>
             <tr>
               <th>N.º Factura</th>
@@ -728,7 +726,7 @@ function TablaMovimientos({
                   </td>
                   <td>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800, color: "rgba(255,255,255,0.55)", flexShrink: 0 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--surface-raised)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800, color: "var(--text-3)", flexShrink: 0 }}>
                         {iniciales(item.cliente_nombre)}
                       </div>
                       <div>
@@ -748,14 +746,14 @@ function TablaMovimientos({
                   </td>
                   <td className="td-muted">{fecha(item.fecha_emision)}</td>
                   <td>
-                    <span style={{ fontWeight: 700, fontSize: "0.78rem", color: pestana === "pagos" ? "#4ade80" : itemEstado === "vencida" ? "#f87171" : "var(--alt-text)" }}>
+                    <span style={{ fontWeight: 700, fontSize: "0.78rem", color: pestana === "pagos" ? "var(--success)" : itemEstado === "vencida" ? "var(--danger)" : "var(--alt-text)" }}>
                       {pestana === "pagos" ? fecha(item.fecha_pago || item.fechapago) : fecha(item.vencimiento)}
                     </span>
                   </td>
                   <td className="td-right">{dinero(item.monto)}</td>
                   <td className="td-right">
                     {Number(item.saldo) > 0
-                      ? <span style={{ color: "#fbbf24", fontWeight: 700 }}>{dinero(item.saldo)}</span>
+                      ? <span style={{ color: "var(--warning)", fontWeight: 700 }}>{dinero(item.saldo)}</span>
                       : <span style={{ color: "var(--alt-text-muted)" }}>—</span>}
                   </td>
                   <td><EstadoBadge estado={itemEstado} /></td>
@@ -767,7 +765,7 @@ function TablaMovimientos({
                         </button>
                       )}
                       <button onClick={() => facturaId && descargarPdf(facturaId, numeroFac)} className="alt-btn alt-btn-secondary alt-btn-sm alt-btn-icon" title="PDF">
-                        <FileDown style={{ width: 13, height: 13, color: "#f97316" }} />
+                        <FileDown style={{ width: 13, height: 13, color: "var(--primary-text)" }} />
                       </button>
                       <button onClick={() => facturaId && abrirDetalle(facturaId)} className="alt-btn alt-btn-secondary alt-btn-sm">
                         Detalles
@@ -792,8 +790,8 @@ function TablaMovimientos({
               key={item.movimiento_id || item.id}
               className="rounded-xl p-3.5 space-y-3 shadow-sm"
               style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: "var(--surface-subtle)",
+                border: "1px solid var(--border)",
               }}>
               {/* Top: Factura Nro + Badges */}
               <div className="flex items-center justify-between gap-2">
@@ -812,7 +810,7 @@ function TablaMovimientos({
 
               {/* Cliente */}
               <div className="flex items-center gap-2.5">
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: 800, color: "rgba(255,255,255,0.6)", flexShrink: 0 }}>
+                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--surface-raised)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.7rem", fontWeight: 800, color: "var(--text-2)", flexShrink: 0 }}>
                   {iniciales(item.cliente_nombre)}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -831,33 +829,33 @@ function TablaMovimientos({
               {/* Data Grid */}
               <div
                 className="grid grid-cols-2 gap-2 text-xs pt-2.5"
-                style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                style={{ borderTop: "1px solid var(--border)" }}>
                 <div>
-                  <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                  <span className="text-[10px] text-[var(--text-3)] uppercase font-bold block mb-0.5">
                     {pestana === "pagos" ? "Fecha Pago" : "Vencimiento"}
                   </span>
-                  <span style={{ fontWeight: 700, fontSize: "0.78rem", color: pestana === "pagos" ? "#4ade80" : itemEstado === "vencida" ? "#f87171" : "var(--alt-text)" }}>
+                  <span style={{ fontWeight: 700, fontSize: "0.78rem", color: pestana === "pagos" ? "var(--success)" : itemEstado === "vencida" ? "var(--danger)" : "var(--alt-text)" }}>
                     {pestana === "pagos" ? fecha(item.fecha_pago || item.fechapago) : fecha(item.vencimiento)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                  <span className="text-[10px] text-[var(--text-3)] uppercase font-bold block mb-0.5">
                     Emisión
                   </span>
-                  <span className="text-white/70 font-semibold">{fecha(item.fecha_emision)}</span>
+                  <span className="text-[var(--text-2)] font-semibold">{fecha(item.fecha_emision)}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                  <span className="text-[10px] text-[var(--text-3)] uppercase font-bold block mb-0.5">
                     Total
                   </span>
                   <span className="font-bold text-white font-mono">{dinero(item.monto)}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                  <span className="text-[10px] text-[var(--text-3)] uppercase font-bold block mb-0.5">
                     Saldo
                   </span>
                   {Number(item.saldo) > 0 ? (
-                    <span style={{ color: "#fbbf24", fontWeight: 700 }} className="font-mono">
+                    <span style={{ color: "var(--warning)", fontWeight: 700 }} className="font-mono">
                       {dinero(item.saldo)}
                     </span>
                   ) : (
@@ -868,8 +866,8 @@ function TablaMovimientos({
 
               {/* Actions Footer */}
               <div
-                className="flex items-center justify-end gap-2 pt-2.5"
-                style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                className="flex flex-wrap items-center justify-end gap-2 pt-2.5"
+                style={{ borderTop: "1px solid var(--border)" }}>
                 {itemEstado !== "pagada" && itemEstado !== "cancelada" && (
                   <button onClick={() => abrirPagoRapido(item)} className="alt-btn alt-btn-success alt-btn-sm flex-1 justify-center">
                     <CircleDollarSign style={{ width: 13, height: 13 }} /> Cobrar
@@ -879,7 +877,7 @@ function TablaMovimientos({
                   onClick={() => facturaId && descargarPdf(facturaId, numeroFac)}
                   className="alt-btn alt-btn-secondary alt-btn-sm alt-btn-icon"
                   title="PDF">
-                  <FileDown style={{ width: 14, height: 14, color: "#f97316" }} />
+                  <FileDown style={{ width: 14, height: 14, color: "var(--primary-text)" }} />
                 </button>
                 <button
                   onClick={() => facturaId && abrirDetalle(facturaId)}
@@ -952,7 +950,7 @@ function TablaMovimientos({
           </div>
 
           {respuesta.paginas > 1 && (
-            <div style={{ display: "flex", gap: 4 }}>
+            <div className="flex max-w-full gap-1 overflow-x-auto pb-1">
               <button
                 className="alt-page-btn"
                 disabled={respuesta.pagina <= 1}
@@ -1031,8 +1029,12 @@ function TabRecurrentes({
       </div>
 
       {/* VISTA TABLA (DESKTOP: md+) */}
-      <div className="hidden md:block" style={{ overflowX: "auto" }}>
-        <table className="alt-table" style={{ minWidth: 760 }}>
+      <div
+        className="hidden max-w-full overflow-x-auto overscroll-x-contain focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500/40 md:block"
+        role="region"
+        aria-label="Cobros recurrentes"
+        tabIndex={0}>
+        <table className="alt-table min-w-[760px]">
           <thead>
             <tr>
               <th>Cliente</th>
@@ -1050,7 +1052,7 @@ function TabRecurrentes({
               <tr key={item.id} style={{ opacity: Number(item.activa) ? 1 : 0.5 }}>
                 <td>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(167,139,250,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800, color: "#c4b5fd", flexShrink: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--purple-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800, color: "var(--purple)", flexShrink: 0 }}>
                       {iniciales(item.cliente_nombre)}
                     </div>
                     <Link to={`/clientes/${item.cliente_id}`} style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--alt-text)", textDecoration: "none" }}
@@ -1076,7 +1078,7 @@ function TabRecurrentes({
                   <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
                     <button disabled={!item.ultima_factura_id} onClick={() => item.ultima_factura_id && descargarPdf(item.ultima_factura_id, item.ultimo_numero_factura || `FAC-${String(item.ultima_factura_id).padStart(6,"0")}`)}
                       className="alt-btn alt-btn-secondary alt-btn-sm alt-btn-icon" title="PDF">
-                      <FileDown style={{ width: 13, height: 13, color: "#f97316" }} />
+                      <FileDown style={{ width: 13, height: 13, color: "var(--primary-text)" }} />
                     </button>
                     <button disabled={!item.ultima_factura_id} onClick={() => item.ultima_factura_id && abrirDetalle(item.ultima_factura_id)}
                       className="alt-btn alt-btn-secondary alt-btn-sm">
@@ -1107,13 +1109,13 @@ function TabRecurrentes({
             className="rounded-xl p-3.5 space-y-3 shadow-sm"
             style={{
               opacity: Number(item.activa) ? 1 : 0.6,
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--surface-subtle)",
+              border: "1px solid var(--border)",
             }}>
             {/* Top: Cliente + Status */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(167,139,250,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800, color: "#c4b5fd", flexShrink: 0 }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--purple-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 800, color: "var(--purple)", flexShrink: 0 }}>
                   {iniciales(item.cliente_nombre)}
                 </div>
                 <Link to={`/clientes/${item.cliente_id}`} style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--alt-text)", textDecoration: "none" }}
@@ -1127,50 +1129,50 @@ function TabRecurrentes({
             </div>
 
             {/* Concepto */}
-            <div className="text-xs text-white/80 font-medium">
+            <div className="text-xs text-[var(--text-2)] font-medium">
               {item.concepto}
             </div>
 
             {/* Data Grid */}
             <div
               className="grid grid-cols-2 gap-2 text-xs pt-2"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              style={{ borderTop: "1px solid var(--border)" }}>
               <div>
-                <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                <span className="text-[10px] text-[var(--text-3)] uppercase font-bold block mb-0.5">
                   Monto/mes
                 </span>
                 <span className="font-mono font-bold text-white">{dinero(item.monto)}</span>
               </div>
               <div>
-                <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                <span className="text-[10px] text-[var(--text-3)] uppercase font-bold block mb-0.5">
                   Día vencimiento
                 </span>
-                <span className="text-white/70 font-semibold">Día {item.dia_vencimiento}</span>
+                <span className="text-[var(--text-2)] font-semibold">Día {item.dia_vencimiento}</span>
               </div>
               <div>
-                <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                <span className="text-[10px] text-[var(--text-3)] uppercase font-bold block mb-0.5">
                   Próx. generación
                 </span>
-                <span className="text-white/70 font-semibold">{fecha(item.proxima_generacion)}</span>
+                <span className="text-[var(--text-2)] font-semibold">{fecha(item.proxima_generacion)}</span>
               </div>
               <div>
-                <span className="text-[10px] text-white/40 uppercase font-bold block mb-0.5">
+                <span className="text-[10px] text-[var(--text-3)] uppercase font-bold block mb-0.5">
                   Facturas generadas
                 </span>
-                <span className="text-white/70 font-semibold">{item.facturas_generadas}</span>
+                <span className="text-[var(--text-2)] font-semibold">{item.facturas_generadas}</span>
               </div>
             </div>
 
             {/* Actions Footer */}
             <div
-              className="flex items-center justify-end gap-2 pt-2.5"
-              style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              className="flex flex-wrap items-center justify-end gap-2 pt-2.5"
+              style={{ borderTop: "1px solid var(--border)" }}>
               <button
                 disabled={!item.ultima_factura_id}
                 onClick={() => item.ultima_factura_id && descargarPdf(item.ultima_factura_id, item.ultimo_numero_factura || `FAC-${String(item.ultima_factura_id).padStart(6,"0")}`)}
                 className="alt-btn alt-btn-secondary alt-btn-sm alt-btn-icon"
                 title="PDF">
-                <FileDown style={{ width: 13, height: 13, color: "#f97316" }} />
+                <FileDown style={{ width: 13, height: 13, color: "var(--primary-text)" }} />
               </button>
               <button
                 disabled={!item.ultima_factura_id}
@@ -1283,7 +1285,7 @@ function DrawerDetalle({
   const descargar = () => {
     if (!detalle) return;
     const a = document.createElement("a");
-    a.href = `${base}/api/facturacion/facturas/${detalle.id}/pdf`;
+    a.href = `${base}/api/facturacion/facturas/${detalle.id}/pdf?t=${Date.now()}`;
     a.download = `${detalle.numero_factura}.pdf`;
     a.target = "_blank";
     document.body.appendChild(a);
@@ -1298,56 +1300,56 @@ function DrawerDetalle({
       onMouseDown={cerrar}>
       <div
         onMouseDown={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl max-h-[92vh] flex flex-col rounded-2xl overflow-hidden shadow-2xl my-auto"
+        className="relative my-auto flex max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-xl shadow-[var(--shadow-lg)] sm:max-h-[92dvh]"
         style={{
-          background: "#0d0d14",
-          border: "1px solid rgba(255,255,255,0.12)",
+          background: "var(--surface)",
+          border: "1px solid var(--border-strong)",
         }}>
         {/* Header */}
         <div
-          className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 shrink-0"
+          className="flex shrink-0 flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-5"
           style={{
-            background: "#14141f",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            background: "var(--surface-subtle)",
+            borderBottom: "1px solid var(--border)",
           }}>
-          <div className="flex items-center gap-3">
+          <div className="flex w-full min-w-0 items-center gap-3 sm:w-auto">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
               style={{
-                background: "rgba(249,115,22,0.15)",
-                border: "1px solid rgba(249,115,22,0.3)",
-                color: "#fb923c",
+                background: "var(--primary-soft)",
+                border: "1px solid var(--primary-border)",
+                color: "var(--primary-text)",
               }}>
               <ReceiptText className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div
                 className="text-[10px] font-bold uppercase tracking-widest"
-                style={{ color: "#f97316" }}>
+                style={{ color: "var(--primary-text)" }}>
                 Detalle de Factura
               </div>
-              <h2 className="text-lg sm:text-2xl font-black text-white font-mono leading-tight">
+              <h2 className="truncate text-lg font-black leading-tight text-white sm:text-2xl">
                 {detalle?.numero_factura || "Cargando..."}
               </h2>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-start">
             {detalle && (
               <button
                 onClick={descargar}
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-lg text-xs font-bold cursor-pointer hover:bg-orange-500/20 transition-colors"
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors hover:bg-orange-500/20 sm:flex-none sm:py-2"
                 style={{
-                  background: "rgba(249,115,22,0.1)",
-                  border: "1px solid rgba(249,115,22,0.25)",
-                  color: "#fb923c",
+                  background: "var(--primary-soft)",
+                  border: "1px solid var(--primary-border)",
+                  color: "var(--primary-text)",
                 }}>
                 <FileDown className="h-3.5 w-3.5" /> Descargar PDF
               </button>
             )}
             <button
               onClick={cerrar}
-              className="p-1.5 rounded-lg hover:bg-white/10 hover:text-white transition-colors cursor-pointer"
-              style={{ color: "rgba(255,255,255,0.5)" }}>
+              className="p-1.5 rounded-lg hover:bg-[var(--surface-raised)] hover:text-white transition-colors cursor-pointer"
+              style={{ color: "var(--text-3)" }}>
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -1365,16 +1367,16 @@ function DrawerDetalle({
                 <div
                   className="rounded-xl p-4 sm:p-5 space-y-4"
                   style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    background: "var(--surface-subtle)",
+                    border: "1px solid var(--border)",
                   }}>
                   <div className="flex items-center gap-3.5">
                     <div
                       className="h-12 w-12 rounded-xl flex items-center justify-center font-black text-base shrink-0"
                       style={{
-                        background: "rgba(249,115,22,0.15)",
-                        color: "#fb923c",
-                        border: "1px solid rgba(249,115,22,0.25)",
+                        background: "var(--primary-soft)",
+                        color: "var(--primary-text)",
+                        border: "1px solid var(--primary-border)",
                       }}>
                       {iniciales(detalle.cliente_nombre)}
                     </div>
@@ -1382,12 +1384,12 @@ function DrawerDetalle({
                       <Link
                         to={`/clientes/${detalle.cliente_id}`}
                         className="font-black uppercase text-sm sm:text-base hover:underline block truncate"
-                        style={{ color: "#fff" }}>
+                        style={{ color: "var(--text-1)" }}>
                         {detalle.cliente_nombre}
                       </Link>
                       <div
                         className="text-xs mt-0.5 truncate"
-                        style={{ color: "rgba(255,255,255,0.45)" }}>
+                        style={{ color: "var(--text-3)" }}>
                         {detalle.telefono ? `Tel: ${detalle.telefono}` : "Sin teléfono"}
                       </div>
                     </div>
@@ -1395,11 +1397,11 @@ function DrawerDetalle({
 
                   <div
                     className="grid grid-cols-2 gap-3 text-xs pt-3.5"
-                    style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                    style={{ borderTop: "1px solid var(--border)" }}>
                     <div>
                       <div
                         className="text-[10px] uppercase font-bold mb-1"
-                        style={{ color: "rgba(255,255,255,0.35)" }}>
+                        style={{ color: "var(--text-3)" }}>
                         Fecha Emisión
                       </div>
                       <div className="text-white font-bold">
@@ -1409,7 +1411,7 @@ function DrawerDetalle({
                     <div>
                       <div
                         className="text-[10px] uppercase font-bold mb-1"
-                        style={{ color: "rgba(255,255,255,0.35)" }}>
+                        style={{ color: "var(--text-3)" }}>
                         Tipo / Origen
                       </div>
                       <span
@@ -1418,11 +1420,11 @@ function DrawerDetalle({
                           detalle.origen === "recurrente"
                             ? {
                                 background: "rgba(167,139,250,0.15)",
-                                color: "#c4b5fd",
+                                color: "var(--purple)",
                               }
                             : {
-                                background: "rgba(255,255,255,0.06)",
-                                color: "rgba(255,255,255,0.6)",
+                                background: "var(--surface-raised)",
+                                color: "var(--text-2)",
                               }
                         }>
                         {detalle.origen === "recurrente" ? "Recurrente" : "Manual"}
@@ -1431,7 +1433,7 @@ function DrawerDetalle({
                     <div className="col-span-2">
                       <div
                         className="text-[10px] uppercase font-bold mb-1"
-                        style={{ color: "rgba(255,255,255,0.35)" }}>
+                        style={{ color: "var(--text-3)" }}>
                         Concepto
                       </div>
                       <div className="text-white font-medium">
@@ -1444,22 +1446,22 @@ function DrawerDetalle({
                   <div
                     className="rounded-xl p-3.5 flex items-center justify-between"
                     style={{
-                      background: "rgba(249,115,22,0.08)",
-                      border: "1px solid rgba(249,115,22,0.2)",
+                      background: "var(--primary-soft)",
+                      border: "1px solid var(--primary-border)",
                     }}>
                     <div>
                       <div
                         className="text-[10px] font-bold uppercase tracking-wider"
-                        style={{ color: "rgba(251,146,60,0.8)" }}>
+                        style={{ color: "var(--primary-text)" }}>
                         Monto Total
                       </div>
-                      <div className="text-xs text-white/50">
+                      <div className="text-xs text-[var(--text-3)]">
                         {detalle.cuotas.length} cuota(s) programadas
                       </div>
                     </div>
                     <div
                       className="font-black text-xl sm:text-2xl font-mono"
-                      style={{ color: "#fb923c" }}>
+                      style={{ color: "var(--primary-text)" }}>
                       {dinero(detalle.total)}
                     </div>
                   </div>
@@ -1469,41 +1471,41 @@ function DrawerDetalle({
                 <div
                   className="rounded-xl p-4 sm:p-5 space-y-3.5"
                   style={{
-                    background: "rgba(255,255,255,0.03)",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    background: "var(--surface-subtle)",
+                    border: "1px solid var(--border)",
                   }}>
                   <div
                     className="text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: "rgba(255,255,255,0.45)" }}>
+                    style={{ color: "var(--text-3)" }}>
                     Acciones de Factura
                   </div>
 
                   <div className="flex items-center gap-2.5">
                     <label
                       className="text-xs font-bold shrink-0"
-                      style={{ color: "rgba(255,255,255,0.6)" }}>
+                      style={{ color: "var(--text-2)" }}>
                       Método de pago:
                     </label>
                     <div className="relative flex-1">
                       <select
                         value={metodoId}
                         onChange={(e) => setMetodoId(e.target.value)}
-                        className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg text-xs outline-none cursor-pointer transition-all hover:bg-white/[0.08] focus:border-orange-500/60"
+                        className="w-full appearance-none pl-3 pr-8 py-2 rounded-lg text-xs outline-none cursor-pointer transition-all hover:bg-[var(--surface-raised)] focus:border-orange-500/60"
                         style={{
-                          background: "rgba(255,255,255,0.06)",
-                          border: "1px solid rgba(255,255,255,0.12)",
-                          color: "#fff",
+                          background: "var(--surface-raised)",
+                          border: "1px solid var(--border-strong)",
+                          color: "var(--text-1)",
                         }}>
                         {metodos.map((m) => (
                           <option
                             key={m.id}
                             value={m.id}
-                            style={{ background: "#18181b", color: "#fafafa" }}>
+                            style={{ background: "var(--surface)", color: "var(--text-1)" }}>
                             {m.metodo}
                           </option>
                         ))}
                       </select>
-                      <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40" />
+                      <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
                     </div>
                   </div>
 
@@ -1511,9 +1513,9 @@ function DrawerDetalle({
                     <div
                       className="flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold"
                       style={{
-                        background: "rgba(113,113,122,0.14)",
-                        border: "1px solid rgba(113,113,122,0.25)",
-                        color: "#a1a1aa",
+                        background: "var(--surface-raised)",
+                        border: "1px solid var(--border)",
+                        color: "var(--text-3)",
                       }}>
                       <AlertCircle className="h-4 w-4" /> Factura Cancelada por Falta de Pago
                     </div>
@@ -1522,7 +1524,7 @@ function DrawerDetalle({
                       disabled={guardando}
                       onClick={() => toggleFactura(true)}
                       className="flex w-full items-center justify-center gap-2 py-3 rounded-xl text-xs font-black cursor-pointer disabled:opacity-50 active:scale-[0.98] hover:brightness-110 shadow-lg transition-all"
-                      style={{ background: "#059669", color: "#fff" }}>
+                      style={{ background: "var(--success-strong)", color: "#fff" }}>
                       {guardando ? (
                         <LoaderCircle className="h-4 w-4 animate-spin" />
                       ) : (
@@ -1535,20 +1537,20 @@ function DrawerDetalle({
                       <div
                         className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold"
                         style={{
-                          background: "rgba(16,185,129,0.1)",
-                          border: "1px solid rgba(16,185,129,0.2)",
-                          color: "#34d399",
+                          background: "var(--success-soft)",
+                          border: "1px solid color-mix(in srgb, var(--success) 24%, transparent)",
+                          color: "var(--success)",
                         }}>
                         <CheckCircle2 className="h-4 w-4" /> Factura Completamente Cobrada
                       </div>
                       <button
                         disabled={guardando}
                         onClick={() => toggleFactura(false)}
-                        className="flex w-full items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold cursor-pointer disabled:opacity-50 hover:bg-white/10 transition-colors"
+                        className="flex w-full items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold cursor-pointer disabled:opacity-50 hover:bg-[var(--surface-raised)] transition-colors"
                         style={{
-                          background: "rgba(255,255,255,0.04)",
-                          border: "1px solid rgba(255,255,255,0.07)",
-                          color: "rgba(255,255,255,0.55)",
+                          background: "var(--surface-subtle)",
+                          border: "1px solid var(--border)",
+                          color: "var(--text-3)",
                         }}>
                         <RotateCcw className="h-3.5 w-3.5" /> Revertir a Pendiente
                       </button>
@@ -1559,10 +1561,10 @@ function DrawerDetalle({
                 {/* Enlace Perfil */}
                 <Link
                   to={`/clientes/${detalle.cliente_id}`}
-                  className="flex w-full items-center justify-center py-2.5 sm:py-3 rounded-xl text-xs font-bold text-white hover:bg-white/10 active:scale-[0.98] transition-colors"
+                  className="flex w-full items-center justify-center py-2.5 sm:py-3 rounded-xl text-xs font-bold text-white hover:bg-[var(--surface-raised)] active:scale-[0.98] transition-colors"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    background: "var(--surface-subtle)",
+                    border: "1px solid var(--border)",
                   }}>
                   Ver Perfil Completo del Cliente →
                 </Link>
@@ -1573,18 +1575,18 @@ function DrawerDetalle({
                 <div
                   className="rounded-xl p-4 sm:p-5 flex-1 flex flex-col space-y-3"
                   style={{
-                    background: "rgba(255,255,255,0.02)",
-                    border: "1px solid rgba(255,255,255,0.07)",
+                    background: "var(--surface-subtle)",
+                    border: "1px solid var(--border)",
                   }}>
-                  <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                  <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
                     <div
-                      className="text-xs font-bold uppercase tracking-wider text-white/70 flex items-center gap-2">
+                      className="text-xs font-bold uppercase tracking-wider text-[var(--text-2)] flex items-center gap-2">
                       <span>Desglose de Cuotas</span>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/15 text-orange-400 border border-orange-500/30">
                         {detalle.cuotas.length}
                       </span>
                     </div>
-                    <span className="text-[11px] text-white/40">
+                    <span className="text-[11px] text-[var(--text-3)]">
                       Puedes cobrar o revertir cuotas individualmente
                     </span>
                   </div>
@@ -1600,24 +1602,24 @@ function DrawerDetalle({
                       return (
                         <div
                           key={c.id}
-                          className="rounded-xl p-3.5 space-y-2 transition-colors hover:border-white/20"
+                          className="rounded-xl p-3.5 space-y-2 transition-colors hover:border-[var(--border)]"
                           style={{
                             background:
                               Number(c.pagado) === 2
                                 ? "rgba(113,113,122,0.05)"
                                 : Number(c.pagado) === 1
                                   ? "rgba(16,185,129,0.04)"
-                                  : "rgba(255,255,255,0.03)",
+                                  : "var(--surface-subtle)",
                             border:
                               Number(c.pagado) === 2
                                 ? "1px solid rgba(113,113,122,0.15)"
                                 : Number(c.pagado) === 1
                                   ? "1px solid rgba(16,185,129,0.18)"
-                                  : "1px solid rgba(255,255,255,0.08)",
+                                  : "1px solid var(--border)",
                           }}>
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-mono font-bold text-white/40">
+                              <span className="text-xs font-mono font-bold text-[var(--text-3)]">
                                 #{idx + 1}
                               </span>
                               <EstadoBadge estado={cuotaEstado} />
@@ -1626,7 +1628,7 @@ function DrawerDetalle({
                               <span
                                 className={`font-black text-sm sm:text-base font-mono ${
                                   Number(c.pagado) === 2
-                                    ? "text-zinc-500 line-through"
+                                    ? "text-[var(--text-3)] line-through"
                                     : Number(c.pagado) === 1
                                       ? "text-emerald-400"
                                       : "text-white"
@@ -1637,9 +1639,9 @@ function DrawerDetalle({
                                 <span
                                   className="px-2 py-0.5 rounded text-[10px] font-bold"
                                   style={{
-                                    background: "rgba(113,113,122,0.15)",
-                                    color: "#a1a1aa",
-                                    border: "1px solid rgba(113,113,122,0.25)",
+                                    background: "var(--surface-raised)",
+                                    color: "var(--text-3)",
+                                    border: "1px solid var(--border)",
                                   }}>
                                   Cancelada
                                 </span>
@@ -1653,14 +1655,14 @@ function DrawerDetalle({
                                   style={
                                     Number(c.pagado)
                                       ? {
-                                          background: "rgba(16,185,129,0.15)",
-                                          color: "#34d399",
-                                          border: "1px solid rgba(16,185,129,0.3)",
+                                          background: "var(--success-soft)",
+                                          color: "var(--success)",
+                                          border: "1px solid color-mix(in srgb, var(--success) 24%, transparent)",
                                         }
                                       : {
-                                          background: "rgba(249,115,22,0.15)",
-                                          color: "#fb923c",
-                                          border: "1px solid rgba(249,115,22,0.3)",
+                                          background: "var(--primary-soft)",
+                                          color: "var(--primary-text)",
+                                          border: "1px solid var(--primary-border)",
                                         }
                                   }>
                                   {Number(c.pagado) ? "Revertir" : "Cobrar"}
@@ -1671,31 +1673,31 @@ function DrawerDetalle({
 
                           <div
                             className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1.5"
-                            style={{ color: "rgba(255,255,255,0.45)" }}>
+                            style={{ color: "var(--text-3)" }}>
                             <div>
                               Vence:{" "}
-                              <strong style={{ color: "rgba(255,255,255,0.75)" }}>
+                              <strong style={{ color: "var(--text-1)" }}>
                                 {fecha(c.vencimiento)}
                               </strong>
                             </div>
                             <div>
                               Cobrado:{" "}
-                              <strong style={{ color: "rgba(255,255,255,0.75)" }}>
+                              <strong style={{ color: "var(--text-1)" }}>
                                 {fecha(c.fecha_pago)}
                               </strong>
                             </div>
                             <div className="col-span-2 sm:col-span-1">
                               Método:{" "}
-                              <strong style={{ color: "rgba(255,255,255,0.75)" }}>
+                              <strong style={{ color: "var(--text-1)" }}>
                                 {c.metodo_nombre || "—"}
                               </strong>
                             </div>
                           </div>
                           {c.nota && (
                             <div
-                              className="mt-1 text-xs text-white/50 pt-1.5"
+                              className="mt-1 text-xs text-[var(--text-3)] pt-1.5"
                               style={{
-                                borderTop: "1px solid rgba(255,255,255,0.05)",
+                                borderTop: "1px solid var(--border)",
                               }}>
                               Nota: {c.nota}
                             </div>
@@ -1713,9 +1715,9 @@ function DrawerDetalle({
           <div className="h-72 flex flex-col items-center justify-center gap-3">
             <LoaderCircle
               className="h-8 w-8 animate-spin"
-              style={{ color: "#f97316" }}
+              style={{ color: "var(--primary-text)" }}
             />
-            <span className="text-xs text-white/40 font-bold uppercase tracking-wider">
+            <span className="text-xs text-[var(--text-3)] font-bold uppercase tracking-wider">
               Cargando información de factura...
             </span>
           </div>
@@ -1776,16 +1778,16 @@ function ModalPago({
       <form
         onSubmit={confirmar}
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6 space-y-4 my-auto"
+        className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-md space-y-4 overflow-y-auto rounded-xl p-4 sm:max-h-[90dvh] sm:p-6"
         style={{
-          background: "#0f0f17",
-          border: "1px solid rgba(255,255,255,0.1)",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
         }}>
         <div className="flex items-start justify-between">
           <div>
             <div
               className="text-[10px] font-bold uppercase tracking-widest mb-1"
-              style={{ color: "#f97316" }}>
+              style={{ color: "var(--primary-text)" }}>
               Registrar cobro
             </div>
             <h3 className="text-base sm:text-lg font-black text-white">
@@ -1796,7 +1798,7 @@ function ModalPago({
             type="button"
             onClick={cerrar}
             className="p-1 cursor-pointer hover:text-white"
-            style={{ color: "rgba(255,255,255,0.38)" }}>
+            style={{ color: "var(--text-3)" }}>
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -1804,20 +1806,20 @@ function ModalPago({
         <div
           className="rounded-xl p-3.5 sm:p-4"
           style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.07)",
+            background: "var(--surface-subtle)",
+            border: "1px solid var(--border)",
           }}>
           <div
             className="text-xs mb-1 truncate"
-            style={{ color: "rgba(255,255,255,0.45)" }}>
+            style={{ color: "var(--text-3)" }}>
             Cliente:{" "}
             <strong className="text-white uppercase">
               {movimiento.cliente_nombre}
             </strong>
           </div>
-          <div className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>
+          <div className="text-xs" style={{ color: "var(--text-3)" }}>
             A cobrar:{" "}
-            <strong className="text-lg sm:text-xl font-black" style={{ color: "#34d399" }}>
+            <strong className="text-lg sm:text-xl font-black" style={{ color: "var(--success)" }}>
               {dinero(movimiento.saldo || movimiento.monto)}
             </strong>
           </div>
@@ -1832,22 +1834,22 @@ function ModalPago({
                   <select
                     value={metodoId}
                     onChange={(e) => setMetodoId(Number(e.target.value))}
-                    className="w-full appearance-none pl-3.5 pr-8 py-2.5 rounded-lg text-xs outline-none cursor-pointer transition-all hover:bg-white/[0.08] focus:border-orange-500/60"
+                    className="w-full appearance-none pl-3.5 pr-8 py-2.5 rounded-lg text-xs outline-none cursor-pointer transition-all hover:bg-[var(--surface-raised)] focus:border-orange-500/60"
                     style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      color: "#fff",
+                      background: "var(--surface-raised)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-1)",
                     }}>
                     {metodos.map((m) => (
                       <option
                         key={m.id}
                         value={m.id}
-                        style={{ background: "#18181b", color: "#fafafa" }}>
+                        style={{ background: "var(--surface)", color: "var(--text-1)" }}>
                         {m.metodo}
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40" />
+                  <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
                 </div>
               ),
             },
@@ -1860,8 +1862,8 @@ function ModalPago({
                   onChange={(e) => setFechaPago(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg text-xs text-white outline-none cursor-pointer"
                   style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.09)",
+                    background: "var(--surface-raised)",
+                    border: "1px solid var(--border)",
                   }}
                 />
               ),
@@ -1876,8 +1878,8 @@ function ModalPago({
                   onChange={(e) => setNota(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg text-xs text-white outline-none placeholder:opacity-30"
                   style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.09)",
+                    background: "var(--surface-raised)",
+                    border: "1px solid var(--border)",
                   }}
                 />
               ),
@@ -1886,7 +1888,7 @@ function ModalPago({
             <div key={label}>
               <label
                 className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-                style={{ color: "rgba(255,255,255,0.38)" }}>
+                style={{ color: "var(--text-3)" }}>
                 {label}
               </label>
               {control}
@@ -1895,16 +1897,16 @@ function ModalPago({
         </div>
 
         <div
-          className="flex gap-2 pt-2"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          className="flex flex-col-reverse gap-2 pt-2 sm:flex-row"
+          style={{ borderTop: "1px solid var(--border)" }}>
           <button
             type="button"
             onClick={cerrar}
-            className="flex-1 py-2.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-white/10"
+            className="flex-1 py-2.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-[var(--surface-raised)]"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "rgba(255,255,255,0.55)",
+              background: "var(--surface-subtle)",
+              border: "1px solid var(--border)",
+              color: "var(--text-3)",
             }}>
             Cancelar
           </button>
@@ -1912,7 +1914,7 @@ function ModalPago({
             type="submit"
             disabled={guardando}
             className="flex-1 py-2.5 rounded-lg text-xs font-black cursor-pointer disabled:opacity-50 active:scale-95 hover:brightness-110"
-            style={{ background: "#059669", color: "#fff" }}>
+            style={{ background: "var(--success-strong)", color: "#fff" }}>
             {guardando ? "Guardando..." : "Confirmar Pago"}
           </button>
         </div>
@@ -2027,8 +2029,8 @@ function ModalRecurrente({
   };
 
   const inputStyle = {
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.09)",
+    background: "var(--surface-raised)",
+    border: "1px solid var(--border)",
   };
 
   return (
@@ -2039,16 +2041,16 @@ function ModalRecurrente({
       <form
         onSubmit={enviar}
         onMouseDown={(e) => e.stopPropagation()}
-        className="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl p-4 sm:p-6 space-y-4 my-auto"
+        className="my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-xl space-y-4 overflow-y-auto rounded-xl p-4 sm:max-h-[90dvh] sm:p-6"
         style={{
-          background: "#0f0f17",
-          border: "1px solid rgba(255,255,255,0.1)",
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
         }}>
         <div className="flex items-start justify-between">
           <div>
             <div
               className="text-[10px] font-bold uppercase tracking-widest mb-1"
-              style={{ color: "#f97316" }}>
+              style={{ color: "var(--primary-text)" }}>
               Configurar suscripción
             </div>
             <h2 className="text-base sm:text-lg font-black text-white">
@@ -2059,7 +2061,7 @@ function ModalRecurrente({
             type="button"
             onClick={cerrar}
             className="p-1 cursor-pointer hover:text-white"
-            style={{ color: "rgba(255,255,255,0.38)" }}>
+            style={{ color: "var(--text-3)" }}>
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -2068,9 +2070,9 @@ function ModalRecurrente({
           <div
             className="rounded-lg px-4 py-3 text-xs font-medium"
             style={{
-              background: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.2)",
-              color: "#f87171",
+              background: "var(--danger-soft)",
+              border: "1px solid color-mix(in srgb, var(--danger) 24%, transparent)",
+              color: "var(--danger)",
             }}>
             {error}
           </div>
@@ -2080,15 +2082,15 @@ function ModalRecurrente({
         <div className="relative">
           <label
             className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-            style={{ color: "rgba(255,255,255,0.38)" }}>
+            style={{ color: "var(--text-3)" }}>
             Cliente *
           </label>
           {cliente ? (
             <div
               className="flex items-center justify-between px-3.5 py-2.5 rounded-lg"
               style={{
-                background: "rgba(249,115,22,0.1)",
-                border: "1px solid rgba(249,115,22,0.25)",
+                background: "var(--primary-soft)",
+                border: "1px solid var(--primary-border)",
               }}>
               <span className="font-bold text-white uppercase text-xs truncate mr-2">
                 {cliente.nombre}
@@ -2102,7 +2104,7 @@ function ModalRecurrente({
                   setCitaId("");
                 }}
                 className="cursor-pointer hover:text-white shrink-0"
-                style={{ color: "rgba(255,255,255,0.45)" }}>
+                style={{ color: "var(--text-3)" }}>
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -2118,10 +2120,10 @@ function ModalRecurrente({
               />
               {resultados.length > 0 && (
                 <div
-                  className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-xl shadow-2xl"
+                  className="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-xl shadow-[var(--shadow-lg)]"
                   style={{
-                    background: "#12121c",
-                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
                   }}>
                   {resultados.map((item) => (
                     <button
@@ -2133,11 +2135,11 @@ function ModalRecurrente({
                       }}
                       className="flex w-full items-center justify-between px-4 py-3 text-xs text-left cursor-pointer"
                       style={{
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
+                        borderBottom: "1px solid var(--border)",
                       }}
                       onMouseEnter={(e) =>
                         (e.currentTarget.style.background =
-                          "rgba(249,115,22,0.1)")
+                          "var(--primary-soft)")
                       }
                       onMouseLeave={(e) =>
                         (e.currentTarget.style.background = "transparent")
@@ -2145,7 +2147,7 @@ function ModalRecurrente({
                       <strong className="uppercase text-white truncate mr-2">
                         {item.nombre}
                       </strong>
-                      <span className="shrink-0" style={{ color: "rgba(255,255,255,0.38)" }}>
+                      <span className="shrink-0" style={{ color: "var(--text-3)" }}>
                         {item.telefono}
                       </span>
                     </button>
@@ -2161,25 +2163,25 @@ function ModalRecurrente({
           <div>
             <label
               className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-              style={{ color: "rgba(255,255,255,0.38)" }}>
+              style={{ color: "var(--text-3)" }}>
               Cita Asociada
             </label>
             <div className="relative">
               <select
                 value={citaId}
                 onChange={(e) => setCitaId(e.target.value)}
-                className="w-full appearance-none pl-3.5 pr-8 py-2.5 rounded-lg text-xs text-white outline-none cursor-pointer transition-all hover:bg-white/[0.08]"
+                className="w-full appearance-none pl-3.5 pr-8 py-2.5 rounded-lg text-xs text-white outline-none cursor-pointer transition-all hover:bg-[var(--surface-raised)]"
                 style={inputStyle}>
                 {citas.map((c) => (
                   <option
                     key={c.id}
                     value={c.id}
-                    style={{ background: "#18181b", color: "#fafafa" }}>
+                    style={{ background: "var(--surface)", color: "var(--text-1)" }}>
                     {c.tipo} — {c.dia} {c.domicilio ? `(${c.domicilio})` : ""}
                   </option>
                 ))}
               </select>
-              <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40" />
+              <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
             </div>
           </div>
         )}
@@ -2189,7 +2191,7 @@ function ModalRecurrente({
           <div className="sm:col-span-2">
             <label
               className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-              style={{ color: "rgba(255,255,255,0.38)" }}>
+              style={{ color: "var(--text-3)" }}>
               Concepto *
             </label>
             <input
@@ -2205,7 +2207,7 @@ function ModalRecurrente({
           <div>
             <label
               className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-              style={{ color: "rgba(255,255,255,0.38)" }}>
+              style={{ color: "var(--text-3)" }}>
               Monto Mensual *
             </label>
             <input
@@ -2225,7 +2227,7 @@ function ModalRecurrente({
           <div>
             <label
               className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-              style={{ color: "rgba(255,255,255,0.38)" }}>
+              style={{ color: "var(--text-3)" }}>
               Día de Vencimiento *
             </label>
             <input
@@ -2247,7 +2249,7 @@ function ModalRecurrente({
           <div>
             <label
               className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-              style={{ color: "rgba(255,255,255,0.38)" }}>
+              style={{ color: "var(--text-3)" }}>
               Fecha de Inicio *
             </label>
             <input
@@ -2264,7 +2266,7 @@ function ModalRecurrente({
           <div>
             <label
               className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-              style={{ color: "rgba(255,255,255,0.38)" }}>
+              style={{ color: "var(--text-3)" }}>
               Forma de Pago
             </label>
             <div className="relative">
@@ -2273,38 +2275,38 @@ function ModalRecurrente({
                 onChange={(e) =>
                   setFormulario({ ...formulario, metodo_id: e.target.value })
                 }
-                className="w-full appearance-none pl-3.5 pr-8 py-2.5 rounded-lg text-xs text-white outline-none cursor-pointer transition-all hover:bg-white/[0.08]"
+                className="w-full appearance-none pl-3.5 pr-8 py-2.5 rounded-lg text-xs text-white outline-none cursor-pointer transition-all hover:bg-[var(--surface-raised)]"
                 style={inputStyle}>
                 <option
                   value=""
-                  style={{ background: "#18181b", color: "#fafafa" }}>
+                  style={{ background: "var(--surface)", color: "var(--text-1)" }}>
                   Predeterminado
                 </option>
                 {metodos.map((m) => (
                   <option
                     key={m.id}
                     value={m.id}
-                    style={{ background: "#18181b", color: "#fafafa" }}>
+                    style={{ background: "var(--surface)", color: "var(--text-1)" }}>
                     {m.metodo}
                   </option>
                 ))}
               </select>
-              <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40" />
+              <ChevronDown className="h-3.5 w-3.5 pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-3)]" />
             </div>
           </div>
         </div>
 
         <div
-          className="flex gap-2 pt-2"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          className="flex flex-col-reverse gap-2 pt-2 sm:flex-row"
+          style={{ borderTop: "1px solid var(--border)" }}>
           <button
             type="button"
             onClick={cerrar}
-            className="flex-1 py-2.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-white/10"
+            className="flex-1 py-2.5 rounded-lg text-xs font-bold cursor-pointer hover:bg-[var(--surface-raised)]"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              color: "rgba(255,255,255,0.55)",
+              background: "var(--surface-subtle)",
+              border: "1px solid var(--border)",
+              color: "var(--text-3)",
             }}>
             Cancelar
           </button>
@@ -2312,7 +2314,7 @@ function ModalRecurrente({
             type="submit"
             disabled={guardando}
             className="flex-1 py-2.5 rounded-lg text-xs font-black cursor-pointer disabled:opacity-50 active:scale-95 hover:brightness-110"
-            style={{ background: "#f97316", color: "#fff" }}>
+            style={{ background: "var(--primary-strong)", color: "#fff" }}>
             {guardando ? "Creando..." : "Crear Cobro Recurrente"}
           </button>
         </div>

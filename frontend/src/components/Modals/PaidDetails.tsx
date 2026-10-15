@@ -46,30 +46,34 @@ export default function PaidDetails({
     data?.cuotas_pagadas_del_mes?.filter((cuota) => Number(cuota.pagado) > 0) ?? [];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-      <div className="bg-zinc-800 rounded-xl w-11/12 max-w-4xl p-6 h-[80vh] flex flex-col">
-        <div className="flex justify-between items-center mb-4 shrink-0">
-          <h3 className="text-xl font-bold text-white">Detalle de Pagadas</h3>
-          <button onClick={onClose} className="text-white hover:text-gray-300">
-            x
+    <div className="modal-overlay">
+      <div className="modal max-h-[calc(100dvh-2rem)] w-full max-w-4xl sm:h-[80dvh]">
+        <div className="modal-header">
+          <div>
+            <h3 className="mb-0 text-lg font-bold text-[var(--text-1)]">Detalle de pagos</h3>
+            <p className="mb-0 mt-0.5 text-xs text-[var(--text-3)]">Movimientos cobrados durante el mes</p>
+          </div>
+          <button type="button" onClick={onClose} className="btn-icon" aria-label="Cerrar detalle">
+            <span aria-hidden="true">x</span>
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 pr-2">
+        <div className="modal-body">
           {paidDownPayments.length > 0 && (
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
-                <h4 className="text-sm font-bold uppercase tracking-wider text-blue-400">
+                <div className="h-3 w-3 rounded-full bg-[var(--info)]"></div>
+                <h4 className="text-sm font-bold uppercase tracking-wider text-[var(--info)]">
                   Enganches del Mes
                 </h4>
-                <span className="ml-auto text-blue-400 font-bold text-sm">
+                <span className="ml-auto text-sm font-bold text-[var(--info)]">
                   {formatCurrency(data?.enganche_mes?.total)}
                 </span>
               </div>
-              <table className="w-full text-sm table-auto">
+              <div className="table-wrap">
+              <table className="table table-mobile-cards min-w-full sm:min-w-[620px]">
                 <thead className="border-b border-blue-400/20">
-                  <tr className="text-left text-white/50">
+                  <tr className="text-left text-[var(--text-3)]">
                     <th className="p-2">Cliente</th>
                     <th className="p-2">Enganche</th>
                     <th className="p-2">Método</th>
@@ -80,52 +84,54 @@ export default function PaidDetails({
                   {paidDownPayments.map((enganche) => (
                     <tr
                       key={enganche.pago_id}
-                      className="border-b border-white/10 hover:bg-white/5">
-                      <td className="p-2 text-white/80 font-medium">
+                      className="border-b border-[var(--border)] hover:bg-[var(--surface-subtle)]">
+                      <td data-label="Cliente" className="p-2 text-[var(--text-2)] font-medium">
                         {enganche.cliente_nombre}
                       </td>
-                      <td className="p-2 text-blue-400 font-bold">
+                      <td data-label="Enganche" className="p-2 font-bold text-[var(--info)]">
                         {formatCurrency(enganche.enganche)}
                       </td>
-                      <td className="p-2">
+                      <td data-label="M?todo" className="p-2">
                         {enganche.metodo_nombre ? (
                           <span
                             className="px-2 py-0.5 rounded-full text-[10px] font-bold"
                             style={{
                               backgroundColor:
                                 (enganche.metodo_color || "#3b82f6") + "30",
-                              color: enganche.metodo_color || "#3b82f6",
+                              color: "var(--text-1)",
                               border: `1px solid ${enganche.metodo_color || "#3b82f6"}50`,
                             }}>
                             {enganche.metodo_nombre}
                           </span>
                         ) : (
-                          <span className="text-white/30 text-xs">—</span>
+                          <span className="text-[var(--text-3)] text-xs">—</span>
                         )}
                       </td>
-                      <td className="p-2 text-white/60 text-xs">
+                      <td data-label="Fecha" className="p-2 text-[var(--text-3)] text-xs">
                         {formatDate(enganche.fecha_enganche)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
 
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-3 h-3 rounded-full bg-green-400"></div>
-              <h4 className="text-sm font-bold uppercase tracking-wider text-green-400">
+              <div className="h-3 w-3 rounded-full bg-[var(--success)]"></div>
+              <h4 className="text-sm font-bold uppercase tracking-wider text-[var(--success)]">
                 Cuotas Pagadas
               </h4>
-              <span className="ml-auto text-green-400 font-bold text-sm">
+              <span className="ml-auto text-sm font-bold text-[var(--success)]">
                 {formatCurrency(data?.pagadas_mes?.total_cuotas ?? data?.pagadas_mes?.total)}
               </span>
             </div>
-            <table className="w-full text-sm table-auto">
-              <thead className="border-b border-white/20">
-                <tr className="text-left text-white/70">
+            <div className="table-wrap">
+            <table className="table table-mobile-cards min-w-full sm:min-w-[560px]">
+              <thead className="border-b border-[var(--border)]">
+                <tr className="text-left text-[var(--text-2)]">
                   <th className="p-2">Cliente</th>
                   <th className="p-2">Monto</th>
                   <th className="p-2">Interés</th>
@@ -136,25 +142,26 @@ export default function PaidDetails({
                 {paidInstallments.map((cuota) => (
                   <tr
                     key={cuota.id}
-                    className="border-b border-white/10 hover:bg-white/5">
-                    <td className="p-2 text-white/80">
+                    className="border-b border-[var(--border)] hover:bg-[var(--surface-subtle)]">
+                    <td data-label="Cliente" className="p-2 text-[var(--text-2)]">
                       {cuota.cliente_nombre}
                     </td>
-                    <td className="p-2 text-white/80">
+                    <td data-label="Monto" className="p-2 text-[var(--text-2)]">
                       {formatCurrency(cuota.monto)}
                     </td>
-                    <td className="p-2 text-white/80">
+                    <td data-label="Inter?s" className="p-2 text-[var(--text-2)]">
                       {Number(cuota.interes || 0).toLocaleString("es-AR")} %
                     </td>
-                    <td className="p-2 text-white/80">
+                    <td data-label="Fecha" className="p-2 text-[var(--text-2)]">
                       {formatDate(cuota.fechapago)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
             {paidInstallments.length === 0 && (
-              <p className="text-center text-white/50 mt-4">
+              <p className="text-center text-[var(--text-3)] mt-4">
                 No hay cuotas pagadas registradas.
               </p>
             )}

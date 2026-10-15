@@ -60,12 +60,15 @@ interface CuotaPlanPago {
   interes: number;
   pagado: boolean | number;
   vencimiento: string;
+  metodo?: string;
 }
 
 interface PlanPagoInstalacion {
   id_pago: number | null;
   total: number;
   enganche: number;
+  fecha_enganche?: string;
+  metodo_enganche?: string;
   cuotas: CuotaPlanPago[];
 }
 
@@ -236,6 +239,7 @@ export default function HojaInstalacion({
                 interes: Number(cuota.interes || 0),
                 pagado: cuota.pagado,
                 vencimiento: cuota.vencimiento || "",
+                metodo: cuota.metodo || "",
               }))
             : [];
 
@@ -243,6 +247,8 @@ export default function HojaInstalacion({
             id_pago: dataPlanPago.id_pago ?? null,
             total: Number(dataPlanPago.total || 0),
             enganche: Number(dataPlanPago.enganche || 0),
+            fecha_enganche: dataPlanPago.fecha_enganche || "",
+            metodo_enganche: dataPlanPago.metodo_enganche || "",
             cuotas,
           });
         } else {
@@ -539,19 +545,31 @@ export default function HojaInstalacion({
     );
     const totalPlanPago =
       Number(planPago?.total || 0) || Number(planPago?.enganche || 0) + totalCuotasPlanPago;
-    const planPagoRows = cuotasPlanPago
+    const enganchePlanPago = Number(planPago?.enganche || 0);
+    const enganchePlanPagoRow = enganchePlanPago > 0
+      ? `<tr>` +
+          `<td class="idx">E</td>` +
+          `<td>${escapePdfHtml(formatDatePdf(planPago?.fecha_enganche || ""))}</td>` +
+          `<td>${escapePdfHtml(planPago?.metodo_enganche || "-")}</td>` +
+          `<td class="money">${escapePdfHtml(formatCurrencyPdf(enganchePlanPago))}</td>` +
+          `<td class="status">Enganche pagado</td>` +
+        `</tr>`
+      : "";
+    const cuotasPlanPagoRows = cuotasPlanPago
       .map(
         (cuota, index) =>
           `<tr>` +
           `<td class="idx">${escapePdfHtml(index + 1)}</td>` +
           `<td>${escapePdfHtml(formatDatePdf(cuota.vencimiento))}</td>` +
+          `<td>${escapePdfHtml(cuota.metodo || "-")}</td>` +
           `<td class="money">${escapePdfHtml(formatCurrencyPdf(cuota.monto))}</td>` +
           `<td class="status">${Number(cuota.pagado) === 1 ? "Pagada" : "Pendiente"}</td>` +
           `</tr>`,
       )
       .join("");
+    const planPagoRows = `${enganchePlanPagoRow}${cuotasPlanPagoRows}`;
     const planPagoSection =
-      cuotasPlanPago.length > 0
+      cuotasPlanPago.length > 0 || enganchePlanPago > 0
         ? `
             <section class="section payment-plan">
               <h2>Plan de Pagos</h2>
@@ -564,7 +582,8 @@ export default function HojaInstalacion({
                 <thead>
                   <tr>
                     <th class="idx">#</th>
-                    <th>Vencimiento</th>
+                    <th>Fecha</th>
+                    <th>M&eacute;todo</th>
                     <th class="money">Monto</th>
                     <th class="status">Estado</th>
                   </tr>
@@ -907,8 +926,8 @@ export default function HojaInstalacion({
           requirePhoto={false}
         />
       )}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="bg-zinc-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl shadow-2xl overflow-hidden flex flex-col h-[95dvh]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 backdrop-blur-sm sm:p-4">
+        <div className="flex h-[100dvh] w-full flex-col overflow-hidden border border-white/10 bg-zinc-900 shadow-2xl sm:h-[95dvh] sm:max-w-4xl sm:rounded-2xl">
           <div className="bg-zinc-800 px-4 py-3 border-b border-white/10 flex justify-between items-center shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="bg-green-500/20 p-1.5 rounded-lg border border-green-500/30 shrink-0">
@@ -1324,7 +1343,7 @@ export default function HojaInstalacion({
             </div>
           )}
 
-          <div className="bg-zinc-800 px-4 py-3 border-t border-white/10 flex gap-2 shrink-0">
+          <div className="flex shrink-0 flex-col gap-2 border-t border-white/10 bg-zinc-800 px-4 py-3 sm:flex-row">
             <button
               onClick={onClose}
               className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors">

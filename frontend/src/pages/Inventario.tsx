@@ -179,16 +179,16 @@ export default function Inventario() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg border border-white/10 bg-zinc-900 p-1">
+          <div className="flex max-w-full overflow-x-auto overscroll-x-contain rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1">
             {(["todos", "internet", "camaras", "ambos"] as FiltroCategoria[]).map(
               (categoria) => (
                 <button
                   key={categoria}
                   onClick={() => setCategoryFilter(categoria)}
-                  className={`rounded-md px-3 py-1 text-xs font-semibold capitalize transition-colors ${
+                  className={`shrink-0 rounded-md px-3 py-1 text-xs font-semibold capitalize transition-colors ${
                     categoryFilter === categoria
                       ? "bg-orange-500 text-white"
-                      : "text-white/60 hover:text-white"
+                      : "text-[var(--text-3)] hover:text-white"
                   }`}>
                   {categoria === "camaras" ? "Cámaras" : categoria}
                 </button>
@@ -200,20 +200,20 @@ export default function Inventario() {
             className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
               stockFilter === "bajo"
                 ? "border-red-500/60 bg-red-500/20 text-red-300"
-                : "border-white/10 bg-zinc-900 text-white/60 hover:border-red-500/40 hover:text-red-300"
+                : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-3)] hover:border-red-500/40 hover:text-red-300"
             }`}
             aria-pressed={stockFilter === "bajo"}>
             <TriangleAlert className="h-4 w-4" />
             Stock bajo
           </button>
-          <div className="flex w-full items-center gap-2 bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-orange-500/50 transition-colors sm:w-auto">
-            <Search className="w-4 h-4 text-white/50" />
+          <div className="flex w-full items-center gap-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-1.5 focus-within:border-orange-500/50 transition-colors sm:w-auto">
+            <Search className="w-4 h-4 text-[var(--text-3)]" />
             <input
               type="text"
               placeholder="Buscar por descripción o ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-white/30 sm:w-64"
+              className="w-full bg-transparent border-none outline-none text-sm text-white placeholder:text-[var(--text-3)] sm:w-64"
             />
           </div>
 
@@ -221,9 +221,13 @@ export default function Inventario() {
       </div>
 
       <div className="flex-1 min-h-0 cuadro overflow-hidden flex flex-col">
-        <div className="overflow-x-auto overflow-y-auto">
-          <table className="w-full text-left text-sm text-white/80">
-            <thead className="bg-zinc-900/50 text-xs uppercase text-white/80 font-black sticky top-0 backdrop-blur-md z-10">
+        <div
+          className="min-h-0 max-w-full flex-1 overflow-auto overscroll-contain focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange-500/40"
+          role="region"
+          aria-label="Productos del inventario"
+          tabIndex={0}>
+          <table className="w-full min-w-[760px] text-left text-sm text-[var(--text-2)]">
+            <thead className="bg-[var(--surface)] text-xs uppercase text-[var(--text-2)] font-black sticky top-0 backdrop-blur-md z-10">
               <tr>
                 <th className="px-4 py-3 w-1/2">Descripción</th>
                 <th className="px-4 py-3">Categoría</th>
@@ -235,12 +239,12 @@ export default function Inventario() {
             <tbody>
               {/* Row for adding new product */}
               {addingProduct && (
-                <tr className="border-b border-white/10 bg-white/5">
+                <tr className="border-b border-[var(--border)] bg-[var(--surface-subtle)]">
                   <td className="px-4 py-3">
                     <input
                       type="text"
                       placeholder="Descripción del producto"
-                      className="w-full bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-orange-500"
+                      className="w-full bg-[var(--surface-raised)] border border-[var(--border)] rounded px-2 py-1 text-sm outline-none focus:border-orange-500"
                       value={newProduct.descrip}
                       onChange={(e) =>
                         setNewProduct({
@@ -260,7 +264,7 @@ export default function Inventario() {
                           categoria: e.target.value as Producto["categoria"],
                         })
                       }
-                      className="bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-orange-500">
+                      className="bg-[var(--surface-raised)] border border-[var(--border)] rounded px-2 py-1 text-sm outline-none focus:border-orange-500">
                       <option value="internet">Internet</option>
                       <option value="camaras">Cámaras</option>
                       <option value="ambos">Ambos</option>
@@ -269,7 +273,7 @@ export default function Inventario() {
                   <td className="px-4 py-3 text-right">
                     <input
                       type="number"
-                      className="w-24 bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-orange-500 text-right"
+                      className="w-24 bg-[var(--surface-raised)] border border-[var(--border)] rounded px-2 py-1 text-sm outline-none focus:border-orange-500 text-right"
                       value={newProduct.precio}
                       onChange={(e) =>
                         setNewProduct({
@@ -282,7 +286,7 @@ export default function Inventario() {
                   <td className="px-4 py-3 text-right">
                     <input
                       type="number"
-                      className="w-20 bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-orange-500 text-right"
+                      className="w-20 bg-[var(--surface-raised)] border border-[var(--border)] rounded px-2 py-1 text-sm outline-none focus:border-orange-500 text-right"
                       value={newProduct.stock}
                       onChange={(e) =>
                         setNewProduct({
@@ -310,7 +314,7 @@ export default function Inventario() {
                             categoria: "ambos",
                           });
                         }}
-                        className="text-zinc-400 hover:text-zinc-300 p-1"
+                        className="text-[var(--text-3)] hover:text-[var(--text-2)] p-1"
                         title="Cancelar">
                         <X className="w-4 h-4" />
                       </button>
@@ -325,14 +329,14 @@ export default function Inventario() {
                   className={`border-b transition-colors ${
                     Number(p.stock) <= 3
                       ? "border-red-500/20 bg-red-500/10 hover:bg-red-500/15"
-                      : "border-white/5 hover:bg-white/5"
+                      : "border-[var(--border)] hover:bg-[var(--surface-subtle)]"
                   }`}>
                   {/* <td className="px-4 py-3">{p.id}</td> */}
                   <td className="px-4 py-3">
                     {editingId === p.id ? (
                       <input
                         type="text"
-                        className="w-full bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-orange-500"
+                        className="w-full bg-[var(--surface-raised)] border border-[var(--border)] rounded px-2 py-1 text-sm outline-none focus:border-orange-500"
                         value={editForm.descrip || ""}
                         onChange={(e) =>
                           setEditForm({ ...editForm, descrip: e.target.value })
@@ -352,7 +356,7 @@ export default function Inventario() {
                             categoria: e.target.value as Producto["categoria"],
                           })
                         }
-                        className="bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-orange-500">
+                        className="bg-[var(--surface-raised)] border border-[var(--border)] rounded px-2 py-1 text-sm outline-none focus:border-orange-500">
                         <option value="internet">Internet</option>
                         <option value="camaras">Cámaras</option>
                         <option value="ambos">Ambos</option>
@@ -371,7 +375,7 @@ export default function Inventario() {
                     {editingId === p.id ? (
                       <input
                         type="number"
-                        className="w-24 bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-orange-500 text-right"
+                        className="w-24 bg-[var(--surface-raised)] border border-[var(--border)] rounded px-2 py-1 text-sm outline-none focus:border-orange-500 text-right"
                         value={editForm.precio ?? 0}
                         onChange={(e) =>
                           setEditForm({
@@ -388,7 +392,7 @@ export default function Inventario() {
                     {editingId === p.id ? (
                       <input
                         type="number"
-                        className="w-20 bg-zinc-800 border border-white/10 rounded px-2 py-1 text-sm outline-none focus:border-orange-500 text-right"
+                        className="w-20 bg-[var(--surface-raised)] border border-[var(--border)] rounded px-2 py-1 text-sm outline-none focus:border-orange-500 text-right"
                         value={editForm.stock ?? 0}
                         onChange={(e) =>
                           setEditForm({
@@ -415,7 +419,7 @@ export default function Inventario() {
                         </button>
                         <button
                           onClick={handleCancelEdit}
-                          className="text-zinc-400 hover:text-zinc-300 p-1"
+                          className="text-[var(--text-3)] hover:text-[var(--text-2)] p-1"
                           title="Cancelar">
                           <X className="w-4 h-4" />
                         </button>
@@ -441,7 +445,7 @@ export default function Inventario() {
               ))}
               {filteredProductos.length === 0 && !addingProduct && (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-white/50">
+                  <td colSpan={5} className="text-center py-8 text-[var(--text-3)]">
                     {searchQuery
                       ? "No se encontraron productos que coincidan con la búsqueda."
                       : "No hay productos registrados."}
@@ -454,25 +458,25 @@ export default function Inventario() {
       </div>
       {mostrarAlertaStock && user?.rol !== "tecnico" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-lg border border-red-500/35 bg-zinc-900 shadow-2xl shadow-red-950/50">
+          <div className="w-full max-w-md overflow-hidden rounded-lg border border-red-500/35 bg-[var(--surface)] shadow-[var(--shadow-lg)] shadow-red-950/50">
             <div className="flex items-start gap-3 border-b border-red-500/20 bg-red-500/10 p-5">
               <TriangleAlert className="mt-0.5 h-7 w-7 shrink-0 text-red-400" />
               <div>
                 <h2 className="text-lg font-black text-red-300">Stock bajo</h2>
-                <p className="mt-1 text-sm text-white/60">Hay productos con 3 unidades o menos disponibles.</p>
+                <p className="mt-1 text-sm text-[var(--text-3)]">Hay productos con 3 unidades o menos disponibles.</p>
               </div>
             </div>
             <div className="max-h-64 overflow-y-auto p-4">
               <ul className="space-y-2">
                 {productos.filter((p) => Number(p.stock) <= 3).map((p) => (
-                  <li key={p.id} className="flex items-center justify-between gap-3 border-b border-white/5 px-2 py-2 text-sm last:border-0">
-                    <span className="min-w-0 truncate text-white/80">{p.descrip}</span>
+                  <li key={p.id} className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-2 py-2 text-sm last:border-0">
+                    <span className="min-w-0 truncate text-[var(--text-2)]">{p.descrip}</span>
                     <span className="shrink-0 font-black text-red-300">{p.stock} unid.</span>
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="flex justify-end border-t border-white/10 p-4">
+            <div className="flex justify-end border-t border-[var(--border)] p-4">
               <button onClick={() => setMostrarAlertaStock(false)} className="rounded-md bg-red-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-red-500">
                 Entendido
               </button>

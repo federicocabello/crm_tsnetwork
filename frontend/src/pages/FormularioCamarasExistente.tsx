@@ -293,7 +293,7 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
   return (
     <div>
       <div ref={contenedorRef}>
-        <label className="mb-1 block text-xs text-white/60">Buscar cliente</label>
+        <label className="mb-1 block text-xs text-[var(--text-3)]">Buscar cliente</label>
         <input
           type="text"
           value={busqueda}
@@ -305,22 +305,22 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
             if (!clienteSeleccionado && resultados.length > 0) setMostrarMenu(true);
           }}
           placeholder="Escribe nombre o teléfono..."
-          className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40"
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40"
         />
 
         {mostrarMenu && resultados.length > 0 && (
-          <div className="absolute z-20 mt-1 max-h-60 w-1/4 overflow-y-auto rounded-xl border border-white/10 bg-zinc-900 shadow-lg">
+          <div className="absolute z-20 mt-1 max-h-60 w-1/4 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-lg">
             {resultados.map((cliente) => (
               <button
                 type="button"
                 key={cliente.id}
                 onClick={() => seleccionarCliente(cliente)}
-                className="flex w-full flex-col px-3 py-2 text-left hover:bg-zinc-800"
+                className="flex w-full flex-col px-3 py-2 text-left hover:bg-[var(--surface-raised)]"
               >
                 <span className="text-sm font-semibold text-white">{cliente.nombre}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-white/60 flex items-center gap-1"><Phone className="w-3 h-3" />{cliente.telefono}</span>
-                  {cliente.domicilio && (<span className="text-xs text-white/60 flex items-center gap-1"><Home className="w-3 h-3" />{cliente.domicilio}</span>)}
+                  <span className="text-xs text-[var(--text-3)] flex items-center gap-1"><Phone className="w-3 h-3" />{cliente.telefono}</span>
+                  {cliente.domicilio && (<span className="text-xs text-[var(--text-3)] flex items-center gap-1"><Home className="w-3 h-3" />{cliente.domicilio}</span>)}
                 </div>
               </button>
             ))}
@@ -328,7 +328,7 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
         )}
 
         {loading && (
-          <div className="mt-1 text-xs text-white/50">Buscando...</div>
+          <div className="mt-1 text-xs text-[var(--text-3)]">Buscando...</div>
         )}
 
         {clienteSeleccionado && (
@@ -338,24 +338,24 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Teléfono</label>
+              <label className="text-xs text-[var(--text-3)]">Teléfono</label>
               <input
                 type="tel"
                 name="telefono"
                 placeholder="(+1) 000-0000"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40"
                 value={clienteSeleccionado.telefono}
                 onChange={handleInputChangeCliente}
               />
             </div>
 
             <div className="flex flex-col gap-1 mt-2">
-              <label className="text-xs text-white/60">Dirección</label>
+              <label className="text-xs text-[var(--text-3)]">Dirección</label>
               <input
                 type="text"
                 name="domicilio"
                 placeholder="Dirección"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
                 value={clienteSeleccionado.domicilio}
                 onChange={handleInputChangeCliente}
               />
@@ -368,12 +368,12 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
             name="notas"
             placeholder="Notas..."
             rows={5}
-            className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
+            className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40"
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
             />
             {!esInternet && opcionTipoInstalacion == "instalacion" && (
-            <div className="text-xs italic transition-all mt-1 text-white/60">ACLARACIÓN: preguntar si utiliza alguna aplicación y <strong className="text-red-500">solicitar credenciales.</strong> Apuntarlo en "Notas".</div>
+            <div className="text-xs italic transition-all mt-1 text-[var(--text-3)]">ACLARACIÓN: preguntar si utiliza alguna aplicación y <strong className="text-red-500">solicitar credenciales.</strong> Apuntarlo en "Notas".</div>
             )}
         </div>
 
@@ -381,11 +381,11 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
 
                     {esInternet && (
                       <div className="flex flex-col gap-1 mt-3">
-                        <label className="text-xs text-white/60">Estado de cita</label>
+                        <label className="text-xs text-[var(--text-3)]">Estado de cita</label>
                         <select
                           value={estadoInternet}
                           onChange={(e) => setEstadoInternet(e.target.value)}
-                          className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40">
+                          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40">
                           <option value="">Seleccionar estado</option>
                           {citasEstados.map((estado) => (
                             <option key={estado.id} value={estado.id}>
@@ -426,12 +426,12 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
                     <div className="flex flex-col gap-3">
                       <div className="flex gap-2">
                         <div>
-                          <label className="text-xs text-white/60">Modelo de cámara y NVR</label>
+                          <label className="text-xs text-[var(--text-3)]">Modelo de cámara y NVR</label>
                           <input
                             type="text"
                             name="modelocamara"
                             placeholder="Modelos"
-                            className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
+                            className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
                             value={respuestas.modelonvr}
                             onChange={(e) => setRespuestas((prev) => ({ ...prev, modelonvr: e.target.value }))}
                           />
@@ -458,7 +458,7 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
         
                         <div>
                             <div className="flex flex-col gap-1">
-                                <label className="text-xs text-white/60">Ático</label>
+                                <label className="text-xs text-[var(--text-3)]">Ático</label>
                                 <div className="flex gap-1">
                                 <div
                                     onClick={() => setRespuestas((prev) => ({ ...prev, atico: "espacioso" }))}
@@ -483,7 +483,7 @@ export default function FormularioCamarasExistente({ tipoRegistro = "camaras" }:
                         </div>
         
                         <div className="flex flex-col gap-1">
-                            <label className="text-xs text-white/60">Cableado</label>
+                            <label className="text-xs text-[var(--text-3)]">Cableado</label>
                             <div className="flex gap-1">
                             <div
                                 onClick={() => setRespuestas((prev) => ({ ...prev, cableado: "red" }))}

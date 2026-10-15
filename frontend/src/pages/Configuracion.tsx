@@ -1,12 +1,113 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import type { Usuarios } from "../types/auth";
-import { PencilIcon, PlusCircleIcon, ArrowRightLeftIcon, ContactRoundIcon, CalendarDays, CreditCard, UsersRound, FolderOpen, ClipboardCheck, XCircle, UserCheck, ChevronLeft } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ClipboardCheck,
+  ContactRoundIcon,
+  CreditCard,
+  FolderOpen,
+  KeyRound,
+  PencilIcon,
+  PlusCircleIcon,
+  Power,
+  UserCheck,
+  UsersRound,
+  XCircle,
+} from "lucide-react";
 import { ROLES } from "../types/auth";
 import Loading from "../components/Loading";
 import ConfiguracionCitas from "./ConfiguracionCitas";
 import ConfiguracionPagos from "./ConfiguracionPagos";
 import UsuarioArchivos from "../components/UsuarioArchivos";
 import type { EstadoCita } from "../types/configuracion";
+
+type VentanaConfiguracion = "usuarios" | "reclutamiento" | "citas" | "pagos";
+
+type RespuestaPostulacion = {
+  pregunta: string;
+  respuesta: string;
+};
+
+type Postulacion = {
+  id: number;
+  nombre: string;
+  email: string;
+  telefono: string;
+  direccion: string;
+  experiencia?: string | null;
+  respuestas?: RespuestaPostulacion[];
+  estado: "pendiente" | "aprobado" | "rechazado";
+  comentarios?: string | null;
+  fecha_postulacion: string;
+  fecha_evaluacion?: string | null;
+  tecnico_usuario_id?: number | null;
+};
+
+const gruposConfiguracion = [
+  {
+    label: "Administración",
+    items: [
+      {
+        id: "usuarios" as const,
+        label: "Usuarios y acceso",
+        description: "Roles, credenciales y archivos",
+        icon: UsersRound,
+      },
+      {
+        id: "reclutamiento" as const,
+        label: "Postulaciones",
+        description: "Evaluación de candidatos técnicos",
+        icon: ClipboardCheck,
+      },
+    ],
+  },
+  {
+    label: "Catálogos",
+    items: [
+      {
+        id: "citas" as const,
+        label: "Estados de citas",
+        description: "Nombres y colores de agenda",
+        icon: CalendarDays,
+      },
+      {
+        id: "pagos" as const,
+        label: "Métodos de pago",
+        description: "Opciones disponibles para cobros",
+        icon: CreditCard,
+      },
+    ],
+  },
+];
+
+const rolesDescripcion = [
+  {
+    nombre: "Invitado",
+    descripcion: "Consulta información básica de agenda, registros y clientes.",
+  },
+  {
+    nombre: "Usuario",
+    descripcion: "Gestiona agenda, registros, clientes y tareas operativas.",
+  },
+  {
+    nombre: "Moderador",
+    descripcion: "Añade acceso a pagos y operaciones que requieren supervisión.",
+  },
+  {
+    nombre: "Administrador",
+    descripcion: "Administra usuarios, inventario, pagos y configuración general.",
+  },
+  {
+    nombre: "Superadmin",
+    descripcion: "Tiene control completo del CRM y de sus configuraciones avanzadas.",
+  },
+  {
+    nombre: "Técnico",
+    descripcion: "Accede a registros, tareas asignadas y a su perfil técnico.",
+  },
+];
 
 export default function Users() {
   const API_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -17,12 +118,12 @@ export default function Users() {
   const [usuarioSeleccionado, setUsuarioSeleccionado] = useState<{ id: number, fullname: string } | null>(null);
 
   // Reclutamiento States
-  const [postulaciones, setPostulaciones] = useState<any[]>([]);
+  const [postulaciones, setPostulaciones] = useState<Postulacion[]>([]);
   const [cargandoPostulaciones, setCargandoPostulaciones] = useState<boolean>(false);
-  const [postulacionSeleccionada, setPostulacionSeleccionada] = useState<any | null>(null);
+  const [postulacionSeleccionada, setPostulacionSeleccionada] = useState<Postulacion | null>(null);
   const [modalContratarAbierto, setModalContratarAbierto] = useState<boolean>(false);
   const [nuevoUsername, setNuevoUsername] = useState<string>("");
-  const [nuevoPassword, setNuevoPassword] = useState<string>("ts7985");
+  const [nuevoPassword, setNuevoPassword] = useState<string>("");
   const [comentariosEvaluacion, setComentariosEvaluacion] = useState<string>("");
 
   const fetchPostulaciones = async () => {
@@ -76,6 +177,7 @@ export default function Users() {
         setPostulacionSeleccionada(null);
         setComentariosEvaluacion("");
         setNuevoUsername("");
+        setNuevoPassword("");
         fetchPostulaciones();
         fetchUsers();
       } else {
@@ -151,7 +253,7 @@ export default function Users() {
         pregunta = "Contraseña nueva";
         break;
       case 2:
-        pregunta = "Nombre de usuario nuevo";
+        pregunta = "Nombre completo nuevo";
         break;
       case 3:
         nuevo = dato;
@@ -170,7 +272,7 @@ export default function Users() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/configuracion/gestion-usuario`, {
+      const res = await fetch(`${API_URL}/api/configuracion/gestion-de-usuarios`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ident, nuevo, accion }),
@@ -188,14 +290,7 @@ export default function Users() {
     }
   };
 
-  const [ventanaActiva, setVentanaActiva] = useState("usuarios");
-
-  const tabs = [
-    { id: "usuarios", label: "Usuarios", icon: UsersRound },
-    { id: "citas", label: "Citas", icon: CalendarDays },
-    { id: "pagos", label: "Pagos", icon: CreditCard },
-    { id: "reclutamiento", label: "Reclutamiento", icon: ClipboardCheck },
-  ];
+  const [ventanaActiva, setVentanaActiva] = useState<VentanaConfiguracion>("usuarios");
 
   useEffect(() => {
     if (ventanaActiva === "reclutamiento") {
@@ -204,94 +299,223 @@ export default function Users() {
   }, [ventanaActiva]);
 
   return (
-    <div className="space-y-4 max-w-full overflow-hidden">
-      {/* Tabs Bar Horizontal Scrollable */}
-      <div className="flex overflow-x-auto pb-2 gap-2 scrollbar-none border-b border-[var(--bg-border)]">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const activo = ventanaActiva === tab.id;
+    <div className="mx-auto w-full max-w-[1500px] min-w-0">
+      <nav
+        className="mb-4 overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-sm)] lg:hidden"
+        aria-label="Secciones de configuración"
+      >
+        <div className="flex min-w-max gap-5">
+          {gruposConfiguracion.map((grupo) => (
+            <div key={grupo.label}>
+              <p className="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-3)]">
+                {grupo.label}
+              </p>
+              <div className="tabs">
+                {grupo.items.map((item) => {
+                  const Icon = item.icon;
+                  const activo = ventanaActiva === item.id;
+                  return (
+                    <button
+                      type="button"
+                      key={item.id}
+                      className={`tab ${activo ? "active" : ""}`}
+                      onClick={() => setVentanaActiva(item.id)}
+                      aria-current={activo ? "page" : undefined}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </nav>
 
-          return (
-            <button
-              key={tab.id}
-              className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-extrabold transition cursor-pointer ${activo
-                ? "bg-orange-600 text-white shadow-lg shadow-orange-600/20"
-                : "bg-[var(--bg-surface-2)] text-[var(--text-secondary)] border border-[var(--bg-border)] hover:bg-[var(--color-primary-l)] hover:text-orange-500"
-                }`}
-              onClick={() => setVentanaActiva(tab.id)}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="sticky top-20 hidden lg:block">
+          <div className="card p-3">
+            <div className="border-b border-[var(--border)] px-2 pb-3">
+              <p className="text-sm font-bold text-[var(--text-1)]">Ajustes del sistema</p>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--text-3)]">
+                Administra el acceso y los catálogos del CRM.
+              </p>
+            </div>
 
-      {ventanaActiva == "usuarios" && (
-        <div className="flex flex-col lg:flex-row gap-4 w-full min-w-0">
-          <div className="w-full lg:w-3/5 xl:w-2/3 cuadro min-w-0">
-            <div className="flex flex-wrap gap-2 justify-between items-center pb-3 border-b border-[var(--bg-border)]">
-              <h1 className="text-lg font-black tracking-tight">Gestión de Usuarios</h1>
+            <nav className="mt-3 space-y-4" aria-label="Secciones de configuración">
+              {gruposConfiguracion.map((grupo) => (
+                <div key={grupo.label}>
+                  <p className="mb-1.5 px-2 text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--text-3)]">
+                    {grupo.label}
+                  </p>
+                  <div className="space-y-1">
+                    {grupo.items.map((item) => {
+                      const Icon = item.icon;
+                      const activo = ventanaActiva === item.id;
+                      return (
+                        <button
+                          type="button"
+                          key={item.id}
+                          onClick={() => setVentanaActiva(item.id)}
+                          aria-current={activo ? "page" : undefined}
+                          className={`flex w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${activo
+                            ? "border-[var(--primary-border)] bg-[var(--primary-soft)] text-[var(--primary)]"
+                            : "border-transparent text-[var(--text-2)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]"
+                          }`}
+                        >
+                          <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                          <span className="min-w-0">
+                            <span className="block text-xs font-bold">{item.label}</span>
+                            <span className={`mt-0.5 block text-[10px] leading-relaxed ${activo ? "text-[var(--primary)]/80" : "text-[var(--text-3)]"}`}>
+                              {item.description}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </nav>
+          </div>
+        </aside>
+
+        <main className="min-w-0">
+      {ventanaActiva === "usuarios" && (
+        <div className="min-w-0 space-y-4">
+          <section className="card min-w-0 overflow-hidden p-0">
+            <header className="flex flex-col gap-3 border-b border-[var(--border)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <UsersRound className="h-5 w-5 text-[var(--primary)]" />
+                  <h2 className="text-base font-bold text-[var(--text-1)]">Usuarios y acceso</h2>
+                  <span className="badge">{users.length}</span>
+                </div>
+                <p className="mt-1 text-xs text-[var(--text-3)]">
+                  Administra identidades, permisos y acceso al CRM.
+                </p>
+              </div>
               <button
+                type="button"
                 onClick={handleAddUser}
                 className="btn-primary"
               >
                 <PlusCircleIcon className="h-4 w-4" />
-                Agregar Usuario
+                Agregar usuario
               </button>
-            </div>
+            </header>
 
-            {loading ? (
-              <div className="w-full flex items-center justify-center py-12">
+            <div className="p-4 sm:p-5">
+              {loading ? (
+              <div className="flex w-full items-center justify-center py-14">
                 <Loading />
               </div>
+            ) : users.length === 0 ? (
+              <div className="surface-muted py-12 text-center text-sm text-[var(--text-3)]">
+                No hay usuarios registrados.
+              </div>
             ) : (
-              <div className="w-full overflow-x-auto mt-4 rounded-xl border border-[var(--bg-border)] shadow-sm">
-                <table className="text-sm w-full min-w-[550px]">
-                  <thead className="bg-[var(--bg-surface-2)] text-[var(--text-primary)] font-extrabold border-b border-[var(--bg-border)]">
+              <div className="table-wrap">
+                <table className="table table-mobile-cards min-w-full sm:min-w-[780px]">
+                  <thead>
                     <tr>
-                      <th className="py-3 px-4 text-left">Nombre</th>
-                      <th className="py-3 px-4 text-left">Usuario</th>
-                      <th className="py-3 px-4 text-left">Contraseña</th>
-                      <th className="py-3 px-4 text-left">Rol</th>
-                      <th className="py-3 px-4 text-left">Acciones</th>
+                      <th>Nombre</th>
+                      <th>Usuario</th>
+                      <th>Rol</th>
+                      <th>Estado</th>
+                      <th className="text-right">Acciones</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[var(--bg-border)]">
+                  <tbody>
                     {users.map((user) => (
-                      <tr key={user.id} className="hover:bg-[var(--color-primary-l)] transition">
-                        <td className="py-3 px-4 font-bold">
-                          {user.rol == "tecnico" && (
-                            <ContactRoundIcon className="h-4 w-4 inline mr-1 text-orange-500" />
-                          )}
-                          {user.fullname} <PencilIcon className="h-3.5 w-3.5 inline ml-1.5 text-blue-500 hover:text-blue-600 transition cursor-pointer" onClick={() => handleGestionUsuario(Number(user.id), user.fullname, 2, true)} />
+                      <tr key={user.id}>
+                        <td data-label="Nombre">
+                          <div className="flex min-w-[190px] items-center gap-3">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--primary-soft)] text-xs font-bold text-[var(--primary)]">
+                              {user.fullname.trim().charAt(0) || "U"}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="truncate font-semibold text-[var(--text-1)]">{user.fullname}</span>
+                                {user.rol === "tecnico" && (
+                                  <ContactRoundIcon className="h-3.5 w-3.5 shrink-0 text-[var(--primary)]" />
+                                )}
+                                <button
+                                  type="button"
+                                  className="inline-flex rounded p-1 text-[var(--text-3)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]"
+                                  title="Editar nombre"
+                                  aria-label={`Editar nombre de ${user.fullname}`}
+                                  onClick={() => handleGestionUsuario(Number(user.id), user.fullname, 2, true)}
+                                >
+                                  <PencilIcon className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs">
-                          {user.user} <PencilIcon className="h-3.5 w-3.5 inline ml-1.5 text-blue-500 hover:text-blue-600 transition cursor-pointer" onClick={() => handleGestionUsuario(Number(user.id), user.user, 0, true)} />
+                        <td data-label="Usuario">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs text-[var(--text-2)]">{user.user}</span>
+                            <button
+                              type="button"
+                              className="inline-flex rounded p-1 text-[var(--text-3)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]"
+                              title="Editar usuario"
+                              aria-label={`Editar usuario de ${user.fullname}`}
+                              onClick={() => handleGestionUsuario(Number(user.id), user.user, 0, true)}
+                            >
+                              <PencilIcon className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </td>
-                        <td className="py-3 px-4 font-mono text-xs">
-                          {user.password} <PencilIcon className="h-3.5 w-3.5 inline ml-1.5 text-blue-500 hover:text-blue-600 transition cursor-pointer" onClick={() => handleGestionUsuario(Number(user.id), user.password, 1, true)} />
-                        </td>
-                        <td className="py-3 px-4">
-                          <select className="capitalize bg-[var(--bg-input)] border border-[var(--bg-border)] text-[var(--text-primary)] p-1.5 rounded-lg cursor-pointer text-xs font-semibold w-full" onChange={(e) => handleGestionUsuario(Number(user.id), e.target.value, 3, false)}>
-                            <option value={user.rol} selected>{user.rol}</option>
-                            {ROLES.filter(role => role !== user.rol).map((role) => (
+                        <td data-label="Rol">
+                          <select
+                            className="min-w-[140px] cursor-pointer px-2 py-1.5 text-xs font-semibold capitalize"
+                            value={user.rol}
+                            onChange={(e) => handleGestionUsuario(Number(user.id), e.target.value, 3, false)}
+                            aria-label={`Rol de ${user.fullname}`}
+                          >
+                            {ROLES.map((role) => (
                               <option key={role} value={role}>{role}</option>
                             ))}
                           </select>
                         </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`px-2.5 py-1 rounded-full text-xs font-black text-white ${user.habilitado ? "bg-emerald-600" : "bg-red-600"}`}
+                        <td data-label="Estado">
+                          <span className={`badge ${user.habilitado ? "badge-success" : "badge-danger"}`}>
+                            {user.habilitado ? "Habilitado" : "Deshabilitado"}
+                          </span>
+                        </td>
+                        <td data-label="Acciones">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              className="btn-secondary min-h-8 px-2.5 text-xs"
+                              title="Cambiar contraseña"
+                              onClick={() => handleGestionUsuario(Number(user.id), "", 1, true)}
                             >
-                              {user.habilitado ? "Habilitado" : "Deshabilitado"}
-                            </span>
-                            <button title="Habilitar/deshabilitar" className="btn-icon p-1.5">
-                              <ArrowRightLeftIcon className="h-4 w-4 cursor-pointer" onClick={() => handleGestionUsuario(Number(user.id), String(!user.habilitado), 4, false)} />
+                              <KeyRound className="h-3.5 w-3.5" />
+                              Clave
                             </button>
-                            <button title="Archivos" className="btn-icon p-1.5 text-orange-500">
-                              <FolderOpen className="h-4 w-4 cursor-pointer" onClick={() => { setUsuarioSeleccionado({ id: Number(user.id), fullname: user.fullname }); setUsuarioArchivosAbierto(true); }} />
+                            <button
+                              type="button"
+                              title={user.habilitado ? "Deshabilitar usuario" : "Habilitar usuario"}
+                              aria-label={user.habilitado ? "Deshabilitar usuario" : "Habilitar usuario"}
+                              className="btn-icon"
+                              onClick={() => handleGestionUsuario(Number(user.id), String(!user.habilitado), 4, false)}
+                            >
+                              <Power className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Archivos del usuario"
+                              aria-label={`Archivos de ${user.fullname}`}
+                              className="btn-icon text-[var(--primary)]"
+                              onClick={() => {
+                                setUsuarioSeleccionado({ id: Number(user.id), fullname: user.fullname });
+                                setUsuarioArchivosAbierto(true);
+                              }}
+                            >
+                              <FolderOpen className="h-4 w-4" />
                             </button>
                           </div>
                         </td>
@@ -302,36 +526,31 @@ export default function Users() {
               </div>
             )}
           </div>
+          </section>
 
-          <div className="w-full lg:w-2/5 xl:w-1/3 cuadro shrink-0">
-            <h2 className="text-base font-extrabold mb-3 pb-2 border-b border-[var(--bg-border)]">Descripción de Roles</h2>
-            <div className="text-xs space-y-3 leading-relaxed opacity-90">
+          <details className="card group p-0">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3.5 sm:px-5">
               <div>
-                <p className="font-extrabold text-orange-500">1. Invitado:</p>
-                <p>Este rol tiene un <span className="font-bold">acceso restringido</span> al sistema. Los usuarios pueden <span className="font-bold">leer solo datos básicos</span> como agenda, casos y clientes.</p>
+                <p className="text-sm font-bold text-[var(--text-1)]">Guía de roles</p>
+                <p className="mt-0.5 text-xs text-[var(--text-3)]">
+                  Consulta el nivel de acceso antes de asignar permisos.
+                </p>
               </div>
-              <div>
-                <p className="font-extrabold text-orange-500">2. Usuario:</p>
-                <p>Pueden <strong>agendar llamadas, editar casos, clientes y leads</strong>, pero sin acceso a pagos, reportes ni configuración.</p>
-              </div>
-              <div>
-                <p className="font-extrabold text-orange-500">3. Moderador:</p>
-                <p>Permite <strong>ver y modificar pagos</strong>, cambiar notas, fechas y montos. Para eliminar pagos requiere permiso de un administrador.</p>
-              </div>
-              <div>
-                <p className="font-extrabold text-orange-500">4. Administrador:</p>
-                <p>Control sobre eliminación y modificación de registros con notificaciones de aprobación.</p>
-              </div>
-              <div>
-                <p className="font-extrabold text-orange-500">5. Superadmin:</p>
-                <p>Control total sobre todos los aspectos del CRM, incluyendo configuraciones avanzadas y finanzas.</p>
-              </div>
+              <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-3)] transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="grid gap-3 border-t border-[var(--border)] p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
+              {rolesDescripcion.map((rol) => (
+                <div key={rol.nombre} className="surface-muted">
+                  <p className="text-xs font-bold text-[var(--text-1)]">{rol.nombre}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--text-3)]">{rol.descripcion}</p>
+                </div>
+              ))}
             </div>
-          </div>
+          </details>
         </div>
       )}
 
-      {ventanaActiva == "citas" && (
+      {ventanaActiva === "citas" && (
         loading ? (
           <Loading />
         ) : (
@@ -339,67 +558,101 @@ export default function Users() {
         )
       )}
 
-      {ventanaActiva == "pagos" && (
+      {ventanaActiva === "pagos" && (
         <ConfiguracionPagos />
       )}
 
-      {ventanaActiva == "reclutamiento" && (
-        <div className="w-full cuadro overflow-x-auto min-w-0">
+      {ventanaActiva === "reclutamiento" && (
+        <div className="card min-w-0 overflow-hidden p-0">
           {!postulacionSeleccionada ? (
-            <div>
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
-                <h1 className="text-lg font-extrabold">Listado de Postulaciones Técnicas</h1>
-                <span className="text-xs text-[var(--text-muted)]">Revisa y evalúa las pruebas de los candidatos.</span>
-              </div>
+            <section>
+              <header className="border-b border-[var(--border)] px-4 py-4 sm:px-5">
+                <div className="flex items-center gap-2">
+                  <ClipboardCheck className="h-5 w-5 text-[var(--primary)]" />
+                  <h2 className="text-base font-bold text-[var(--text-1)]">Postulaciones técnicas</h2>
+                  <span className="badge">{postulaciones.length}</span>
+                </div>
+                <p className="mt-1 text-xs text-[var(--text-3)]">
+                  Revisa la experiencia y evaluación técnica de cada candidato.
+                </p>
+              </header>
 
-              {cargandoPostulaciones ? (
+              <div className="p-4 sm:p-5">
+                <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                  <div className="surface-muted">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-3)]">Pendientes</p>
+                    <p className="mt-1 text-xl font-bold text-[var(--warning)]">
+                      {postulaciones.filter((post) => post.estado === "pendiente").length}
+                    </p>
+                  </div>
+                  <div className="surface-muted">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-3)]">Contratados</p>
+                    <p className="mt-1 text-xl font-bold text-[var(--success)]">
+                      {postulaciones.filter((post) => post.estado === "aprobado").length}
+                    </p>
+                  </div>
+                  <div className="surface-muted">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-3)]">Rechazados</p>
+                    <p className="mt-1 text-xl font-bold text-[var(--danger)]">
+                      {postulaciones.filter((post) => post.estado === "rechazado").length}
+                    </p>
+                  </div>
+                </div>
+
+                {cargandoPostulaciones ? (
                 <div className="w-full flex items-center justify-center py-10">
                   <Loading />
                 </div>
               ) : postulaciones.length === 0 ? (
-                <div className="rounded-xl border border-[var(--bg-border)] bg-[var(--bg-surface-2)] p-8 text-center text-[var(--text-muted)]">
+                <div className="surface-muted p-10 text-center text-sm text-[var(--text-3)]">
                   No hay postulaciones registradas en el sistema.
                 </div>
               ) : (
-                <div className="w-full overflow-x-auto rounded-xl border border-[var(--bg-border)]">
-                  <table className="text-sm w-full min-w-[640px]">
-                    <thead className="bg-[var(--bg-surface-2)] text-[var(--text-primary)] font-bold border-b border-[var(--bg-border)]">
+                <div className="table-wrap">
+                  <table className="table table-mobile-cards min-w-full sm:min-w-[720px]">
+                    <thead>
                       <tr>
-                        <th className="py-3 px-4 text-left">Nombre</th>
-                        <th className="py-3 px-4 text-left">Email</th>
-                        <th className="py-3 px-4 text-left">Teléfono</th>
-                        <th className="py-3 px-4 text-left">Fecha Postulación</th>
-                        <th className="py-3 px-4 text-left">Estado</th>
-                        <th className="py-3 px-4 text-center">Acciones</th>
+                        <th>Candidato</th>
+                        <th>Contacto</th>
+                        <th>Fecha</th>
+                        <th>Estado</th>
+                        <th className="text-right">Acciones</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[var(--bg-border)]">
+                    <tbody>
                       {postulaciones.map((post) => (
-                        <tr key={post.id} className="hover:bg-[var(--color-primary-l)] transition">
-                          <td className="py-3 px-4 font-semibold">{post.nombre}</td>
-                          <td className="py-3 px-4 text-xs font-mono">{post.email}</td>
-                          <td className="py-3 px-4 text-xs font-mono">{post.telefono}</td>
-                          <td className="py-3 px-4 text-xs font-mono">{post.fecha_postulacion}</td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                        <tr key={post.id}>
+                          <td data-label="Candidato" className="font-semibold text-[var(--text-1)]">{post.nombre}</td>
+                          <td data-label="Contacto">
+                            <div className="min-w-0">
+                              <p className="break-all text-xs text-[var(--text-2)]">{post.email}</p>
+                              <p className="mt-0.5 text-xs text-[var(--text-3)]">{post.telefono}</p>
+                            </div>
+                          </td>
+                          <td data-label="Fecha" className="whitespace-nowrap text-xs">{post.fecha_postulacion}</td>
+                          <td data-label="Estado">
+                            <span className={`badge ${
                               post.estado === "aprobado"
-                                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30"
+                                ? "badge-success"
                                 : post.estado === "rechazado"
-                                ? "bg-red-500/20 text-red-600 dark:text-red-300 border border-red-500/30"
-                                : "bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30"
+                                ? "badge-danger"
+                                : "badge-warning"
                             }`}>
                               {post.estado === "aprobado" ? "Contratado" : post.estado === "rechazado" ? "Rechazado" : "Pendiente"}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td data-label="Acciones" className="text-right">
                             <button
+                              type="button"
                               onClick={() => {
                                 setPostulacionSeleccionada(post);
                                 setNuevoUsername(post.nombre.toLowerCase().replace(/\s+/g, "").substring(0, 12));
+                                setNuevoPassword("");
+                                setComentariosEvaluacion(post.comentarios || "");
                               }}
-                              className="btn-primary py-1 px-3 text-xs"
+                              className="btn-secondary min-h-8 px-3 text-xs"
                             >
-                              Ver Examen
+                              Revisar
                             </button>
                           </td>
                         </tr>
@@ -409,92 +662,121 @@ export default function Users() {
                 </div>
               )}
             </div>
+            </section>
           ) : (
-            <div className="space-y-6">
-              <div className="flex items-center gap-2">
+            <section>
+              <header className="flex flex-col gap-3 border-b border-[var(--border)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <div className="flex min-w-0 items-center gap-3">
                 <button
+                  type="button"
                   onClick={() => setPostulacionSeleccionada(null)}
-                  className="btn-icon p-1.5 cursor-pointer"
+                  className="btn-icon shrink-0"
+                  aria-label="Volver a postulaciones"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
-                <div>
-                  <h1 className="text-lg font-bold">Evaluación de Postulante: {postulacionSeleccionada.nombre}</h1>
-                  <p className="text-xs text-[var(--text-muted)]">Postulado el: {postulacionSeleccionada.fecha_postulacion}</p>
+                  <div className="min-w-0">
+                    <h2 className="truncate text-base font-bold text-[var(--text-1)]">{postulacionSeleccionada.nombre}</h2>
+                    <p className="mt-0.5 text-xs text-[var(--text-3)]">Postulado el {postulacionSeleccionada.fecha_postulacion}</p>
+                  </div>
                 </div>
-              </div>
+                <span className={`badge ${
+                  postulacionSeleccionada.estado === "aprobado"
+                    ? "badge-success"
+                    : postulacionSeleccionada.estado === "rechazado"
+                    ? "badge-danger"
+                    : "badge-warning"
+                }`}>
+                  {postulacionSeleccionada.estado === "aprobado"
+                    ? "Contratado"
+                    : postulacionSeleccionada.estado === "rechazado"
+                    ? "Rechazado"
+                    : "Pendiente"}
+                </span>
+              </header>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-[var(--bg-surface-2)] p-4 rounded-xl border border-[var(--bg-border)]">
-                <div>
-                  <p className="text-xs text-[var(--text-muted)]">Email</p>
-                  <p className="text-sm font-semibold">{postulacionSeleccionada.email}</p>
+              <div className="space-y-6 p-4 sm:p-5">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="surface-muted">
+                    <p className="text-xs text-[var(--text-3)]">Correo electrónico</p>
+                    <p className="mt-1 break-all text-sm font-semibold text-[var(--text-1)]">{postulacionSeleccionada.email}</p>
+                  </div>
+                  <div className="surface-muted">
+                    <p className="text-xs text-[var(--text-3)]">Teléfono</p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--text-1)]">{postulacionSeleccionada.telefono}</p>
+                  </div>
+                  <div className="surface-muted md:col-span-2">
+                    <p className="text-xs text-[var(--text-3)]">Dirección</p>
+                    <p className="mt-1 text-sm font-semibold text-[var(--text-1)]">{postulacionSeleccionada.direccion}</p>
+                  </div>
+                  <div className="surface-muted md:col-span-2">
+                    <p className="text-xs text-[var(--text-3)]">Experiencia previa</p>
+                    <p className="mt-1 whitespace-pre-line text-sm text-[var(--text-2)]">{postulacionSeleccionada.experiencia || "No proporcionada"}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-[var(--text-muted)]">Teléfono</p>
-                  <p className="text-sm font-semibold">{postulacionSeleccionada.telefono}</p>
-                </div>
-                <div className="md:col-span-2">
-                  <p className="text-xs text-[var(--text-muted)]">Dirección</p>
-                  <p className="text-sm font-semibold">{postulacionSeleccionada.direccion}</p>
-                </div>
-                <div className="md:col-span-2">
-                  <p className="text-xs text-[var(--text-muted)]">Experiencia previa</p>
-                  <p className="text-sm whitespace-pre-line opacity-90">{postulacionSeleccionada.experiencia || "No proporcionada"}</p>
-                </div>
-              </div>
 
-              <div className="space-y-4">
-                <h2 className="text-md font-bold text-orange-500 border-b border-[var(--bg-border)] pb-2">Respuestas de la Prueba Técnica</h2>
+              <div className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--text-1)]">Respuestas de la prueba técnica</h3>
+                  <p className="mt-0.5 text-xs text-[var(--text-3)]">Revisa cada respuesta antes de emitir una evaluación.</p>
+                </div>
                 {postulacionSeleccionada.respuestas && Array.isArray(postulacionSeleccionada.respuestas) ? (
-                  postulacionSeleccionada.respuestas.map((item: any, idx: number) => (
-                    <div key={idx} className="bg-[var(--bg-surface-2)] p-4 rounded-xl border border-[var(--bg-border)] space-y-1.5">
-                      <p className="text-sm font-bold">{idx + 1}. {item.pregunta}</p>
-                      <p className="text-sm bg-[var(--bg-surface)] p-3 rounded-lg border-l-4 border-orange-500 whitespace-pre-wrap">{item.respuesta}</p>
-                    </div>
+                  postulacionSeleccionada.respuestas.map((item, idx) => (
+                    <article key={idx} className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4">
+                      <p className="text-sm font-semibold text-[var(--text-1)]">{idx + 1}. {item.pregunta}</p>
+                      <p className="mt-3 whitespace-pre-wrap rounded-lg border-l-2 border-[var(--primary)] bg-[var(--surface)] px-3 py-2.5 text-sm leading-relaxed text-[var(--text-2)]">
+                        {item.respuesta}
+                      </p>
+                    </article>
                   ))
                 ) : (
-                  <p className="text-sm text-[var(--text-muted)]">Error al cargar las respuestas del examen.</p>
+                  <div className="surface-muted text-sm text-[var(--text-3)]">No fue posible cargar las respuestas del examen.</div>
                 )}
               </div>
 
-              <div className="bg-[var(--bg-surface-2)] p-5 rounded-xl border border-[var(--bg-border)] space-y-4">
-                <h3 className="text-sm font-bold uppercase tracking-wider">Evaluación de Administración</h3>
+              <div className="space-y-4 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4 sm:p-5">
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--text-1)]">Evaluación administrativa</h3>
+                  <p className="mt-0.5 text-xs text-[var(--text-3)]">Registra notas internas y decide el resultado del proceso.</p>
+                </div>
                 
                 {postulacionSeleccionada.estado === "pendiente" ? (
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs text-[var(--text-muted)] mb-1">Comentarios o notas de evaluación</label>
+                      <label className="mb-1 block text-xs font-medium text-[var(--text-2)]">Comentarios o notas de evaluación</label>
                       <textarea
                         value={comentariosEvaluacion}
                         onChange={(e) => setComentariosEvaluacion(e.target.value)}
                         rows={3}
                         placeholder="Escribe comentarios internos sobre las respuestas o la entrevista..."
-                        className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-orange-500 transition resize-none text-sm"
+                        className="w-full resize-none px-3 py-2.5 text-sm"
                       />
                     </div>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap justify-end gap-2">
                       <button
+                        type="button"
                         onClick={() => handleEvaluarPostulacion("rechazado")}
-                        className="btn-danger py-2.5 px-4"
+                        className="btn-danger"
                       >
                         <XCircle className="h-4 w-4" />
-                        Rechazar Candidato
+                        Rechazar candidato
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => setModalContratarAbierto(true)}
-                        className="btn-primary py-2.5 px-4"
+                        className="btn-primary"
                       >
                         <UserCheck className="h-4 w-4" />
-                        Aprobar y Contratar
+                        Aprobar y contratar
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm text-[var(--text-2)]">
                     <p>
-                      <strong>Resultado de Selección: </strong>
-                      <span className={`font-bold capitalize ${postulacionSeleccionada.estado === "aprobado" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>
+                      <strong className="text-[var(--text-1)]">Resultado de selección: </strong>
+                      <span className={`font-bold ${postulacionSeleccionada.estado === "aprobado" ? "text-[var(--success)]" : "text-[var(--danger)]"}`}>
                         {postulacionSeleccionada.estado === "aprobado" ? "Contratado" : "Rechazado"}
                       </span>
                     </p>
@@ -505,62 +787,74 @@ export default function Users() {
                       <p><strong>Evaluado el:</strong> {postulacionSeleccionada.fecha_evaluacion}</p>
                     )}
                     {postulacionSeleccionada.tecnico_usuario_id && (
-                      <p className="text-xs text-orange-500">Usuario de técnico creado en la base de datos (ID: {postulacionSeleccionada.tecnico_usuario_id}).</p>
+                      <p className="text-xs text-[var(--primary)]">Usuario técnico creado (ID: {postulacionSeleccionada.tecnico_usuario_id}).</p>
                     )}
                     <button
+                      type="button"
                       onClick={() => setPostulacionSeleccionada(null)}
-                      className="mt-2 btn-secondary py-2 px-4 text-xs"
+                      className="btn-secondary mt-2 text-xs"
                     >
-                      Volver al Listado
+                      Volver al listado
                     </button>
                   </div>
                 )}
               </div>
             </div>
+            </section>
           )}
 
           {modalContratarAbierto && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-              <div className="bg-[var(--bg-surface)] border border-[var(--bg-border)] rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4">
-                <div>
-                  <h2 className="text-lg font-bold">Contratación de Técnico</h2>
-                  <p className="text-xs text-[var(--text-muted)]">Crea las credenciales de acceso para {postulacionSeleccionada?.nombre}.</p>
+            <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="contratar-tecnico-titulo">
+              <div className="modal max-w-md">
+                <div className="modal-header">
+                  <div>
+                    <h2 id="contratar-tecnico-titulo" className="text-base font-bold text-[var(--text-1)]">Contratar técnico</h2>
+                    <p className="mt-1 text-xs text-[var(--text-3)]">Crea las credenciales de acceso para {postulacionSeleccionada?.nombre}.</p>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="modal-body space-y-4">
                   <div>
-                    <label className="block text-xs text-[var(--text-muted)] mb-1">Nombre de Usuario (Para ingresar al CRM)</label>
+                    <label className="mb-1 block text-xs font-medium text-[var(--text-2)]">Nombre de usuario</label>
                     <input
                       type="text"
+                      autoComplete="username"
                       value={nuevoUsername}
                       onChange={(e) => setNuevoUsername(e.target.value.toLowerCase().replace(/\s+/g, ""))}
-                      className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] px-4 py-2.5 text-[var(--text-primary)] outline-none focus:border-orange-500 transition text-sm"
+                      className="w-full px-3 py-2.5 text-sm"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs text-[var(--text-muted)] mb-1">Contraseña de Acceso</label>
+                    <label className="mb-1 block text-xs font-medium text-[var(--text-2)]">Contraseña de acceso</label>
                     <input
-                      type="text"
+                      type="password"
+                      autoComplete="new-password"
                       value={nuevoPassword}
                       onChange={(e) => setNuevoPassword(e.target.value)}
-                      className="w-full rounded-xl border border-[var(--bg-border)] bg-[var(--bg-input)] px-4 py-2.5 text-[var(--text-primary)] outline-none focus:border-orange-500 transition text-sm"
+                      placeholder="Crea una contraseña segura"
+                      className="w-full px-3 py-2.5 text-sm"
                     />
                   </div>
                 </div>
 
-                <div className="flex gap-2 justify-end pt-2 border-t border-[var(--bg-border)]">
+                <div className="modal-footer">
                   <button
-                    onClick={() => setModalContratarAbierto(false)}
-                    className="btn-secondary py-2 px-4 text-xs"
+                    type="button"
+                    onClick={() => {
+                      setModalContratarAbierto(false);
+                      setNuevoPassword("");
+                    }}
+                    className="btn-secondary text-xs"
                   >
                     Cancelar
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleEvaluarPostulacion("aprobado", true)}
-                    className="btn-primary py-2 px-4 text-xs"
+                    className="btn-primary text-xs"
                   >
-                    Confirmar Contratación
+                    Confirmar contratación
                   </button>
                 </div>
               </div>
@@ -568,6 +862,8 @@ export default function Users() {
           )}
         </div>
       )}
+        </main>
+      </div>
 
       {usuarioArchivosAbierto && usuarioSeleccionado && (
         <UsuarioArchivos
