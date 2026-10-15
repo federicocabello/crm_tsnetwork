@@ -88,9 +88,14 @@ const appendNewNote = (existingNotes: string, newText: string): string => {
 
 const parseNotesHistory = (rawNotes: string): NotaEntry[] => {
   if (!rawNotes || !rawNotes.trim()) return [];
-  const chunks = rawNotes.split(/\n\s*---\s*\n/).map((c) => c.trim()).filter(Boolean);
+  const chunks = rawNotes
+    .split(/\n\s*---\s*\n/)
+    .map((c) => c.trim())
+    .filter(Boolean);
   return chunks.map((chunk, idx) => {
-    const match = chunk.match(/^(\[\d{1,2}\/\d{1,2}\/\d{4}[^\]]*\])\s*\n?([\s\S]*)$/);
+    const match = chunk.match(
+      /^(\[\d{1,2}\/\d{1,2}\/\d{4}[^\]]*\])\s*\n?([\s\S]*)$/,
+    );
     if (match) {
       return {
         id: idx,
@@ -127,7 +132,8 @@ export default function HojaInspeccion({
 
   const [notas, setNotas] = useState<string>("");
   const [nuevaNota, setNuevaNota] = useState<string>("");
-  const [modoEdicionCompleta, setModoEdicionCompleta] = useState<boolean>(false);
+  const [modoEdicionCompleta, setModoEdicionCompleta] =
+    useState<boolean>(false);
 
   const [activeTab, setActiveTab] = useState<"materiales" | "dibujo" | "notas">(
     "materiales",
@@ -290,10 +296,7 @@ export default function HojaInspeccion({
     setCargadoDeCotizacion(false);
   };
 
-  const handleUpdateItem = (
-    index: number,
-    field: Partial<InspeccionItem>,
-  ) => {
+  const handleUpdateItem = (index: number, field: Partial<InspeccionItem>) => {
     const newItems = [...items];
     newItems[index] = { ...newItems[index], ...field };
     setItems(newItems);
@@ -397,7 +400,6 @@ export default function HojaInspeccion({
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
 
-
   const normalizePdfProductName = (value: string) =>
     value
       .normalize("NFD")
@@ -416,26 +418,17 @@ export default function HojaInspeccion({
     hiddenPdfProductNames.has(normalizePdfProductName(productName));
   const handleDownloadPdf = () => {
     if (items.length === 0) {
-      alert(
-        "Para descargar el PDF, la hoja debe tener al menos un producto.",
-      );
+      alert("Para descargar el PDF, la hoja debe tener al menos un producto.");
       return;
     }
 
-    const mapaSection = (dibujoUrl && dibujoUrl.trim() !== "")
-      ? `<section class="section avoid-break">
+    const mapaSection =
+      dibujoUrl && dibujoUrl.trim() !== ""
+        ? `<section class="section avoid-break">
               <h2>Mapa / imagen de instalaci&oacute;n</h2>
               <div class="mapa"><img src="${escapePdfHtml(dibujoUrl)}" /></div>
             </section>`
-      : "";
-
-    const currentNotas = appendNewNote(notas, nuevaNota);
-    const notasSection = (currentNotas && currentNotas.trim() !== "")
-      ? `<section class="section avoid-break">
-              <h2>Notas / Observaciones</h2>
-              <div style="background:#f9fafb; border:1px solid #d1d5db; padding:10px; border-radius:4px; white-space:pre-wrap; font-size:11px; color:#374151; line-height:1.4;">${escapePdfHtml(currentNotas)}</div>
-            </section>`
-      : "";
+        : "";
 
     const rows = items
       .filter((item) => !shouldHideProductInPdf(item.producto_descrip))
@@ -455,7 +448,11 @@ export default function HojaInspeccion({
       telefono: cliente?.telefono?.trim() || "No disponible",
     };
     const logoUrl = new URL("/logo_tsnetwork.png", window.location.origin).href;
-    const fechaEmision = new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+    const fechaEmision = new Date().toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
 
     const printWindow = window.open("", "_blank", "width=900,height=1100");
     if (printWindow === null) {
@@ -695,7 +692,9 @@ export default function HojaInspeccion({
               </ul>
             </section>
 
-            ${firmaUrl ? `
+            ${
+              firmaUrl
+                ? `
             <section class="final-signature">
               <div style="font-size: 10px; color: #374151; line-height: 1.4; margin-bottom: 12px; background: #f9fafb; border: 1px solid #d1d5db; padding: 8px 10px; border-radius: 4px;">
                 <strong>Aceptaci&oacute;n del Cliente:</strong> Al firmar este documento y utilizar nuestros servicios, el cliente declara que acepta los t&eacute;rminos y condiciones de TS Network, reconociendo que el equipo de c&aacute;maras pasa a ser de su propiedad una vez que termina de pagar el trabajo en su totalidad, que no puede alterar accesos ni resetear el equipo hasta saldar el total de la deuda, y que es obligaci&oacute;n del cliente revisar peri&oacute;dicamente la p&aacute;gina para informarse sobre cambios en los t&eacute;rminos y condiciones.
@@ -707,7 +706,9 @@ export default function HojaInspeccion({
                   <div class="signature-line">Firma del cliente</div>
                 </div>
               </div>
-            </section>` : ""}
+            </section>`
+                : ""
+            }
           </main>
           <script>setTimeout(function(){window.focus();window.print();},600);</script>
         </body>
@@ -724,8 +725,8 @@ export default function HojaInspeccion({
           onCancel={() => setShowFirmaModal(false)}
         />
       )}
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="bg-zinc-900 border border-white/10 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-4xl shadow-2xl overflow-hidden flex flex-col h-[95dvh]">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-0 backdrop-blur-sm sm:p-4">
+        <div className="flex h-[100dvh] w-full flex-col overflow-hidden border border-white/10 bg-zinc-900 shadow-2xl sm:h-[95dvh] sm:max-w-4xl sm:rounded-2xl">
           {/* Header */}
           <div className="bg-zinc-800 px-4 py-3 border-b border-white/10 flex justify-between items-center shrink-0">
             <div className="flex items-center gap-2.5">
@@ -737,7 +738,9 @@ export default function HojaInspeccion({
                   Hoja de Inspección
                 </h2>
                 <p className="text-xs text-white/50">
-                  {firmaUrl ? "Hoja firmada · Editable" : "Materiales para la instalación"}
+                  {firmaUrl
+                    ? "Hoja firmada · Editable"
+                    : "Materiales para la instalación"}
                 </p>
               </div>
             </div>
@@ -751,8 +754,13 @@ export default function HojaInspeccion({
           {/* Banner informativo cuando tiene firma */}
           {firmaUrl && (
             <div className="bg-emerald-500/10 border-b border-emerald-500/30 px-4 py-2 flex items-center gap-2 shrink-0">
-              <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">✅ Hoja firmada</span>
-              <span className="text-emerald-400/60 text-xs">Puedes modificar materiales, mapa y notas. La firma no se puede cambiar.</span>
+              <span className="text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                ✅ Hoja firmada
+              </span>
+              <span className="text-emerald-400/60 text-xs">
+                Puedes modificar materiales, mapa y notas. La firma no se puede
+                cambiar.
+              </span>
             </div>
           )}
 
@@ -808,24 +816,24 @@ export default function HojaInspeccion({
                       Agregar material
                     </p>
                     <div className="flex gap-1">
-                      {(["internet", "camaras", "todos"] as FiltroCategoria[]).map(
-                        (categoria) => (
-                          <button
-                            key={categoria}
-                            type="button"
-                            onClick={() => {
-                              setFiltroCategoria(categoria);
-                              setSelectedProducto("");
-                            }}
-                            className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize ${
-                              filtroCategoria === categoria
-                                ? "bg-orange-500 text-white"
-                                : "bg-zinc-800 text-white/60 hover:text-white"
-                            }`}>
-                            {categoria === "camaras" ? "Cámaras" : categoria}
-                          </button>
-                        ),
-                      )}
+                      {(
+                        ["internet", "camaras", "todos"] as FiltroCategoria[]
+                      ).map((categoria) => (
+                        <button
+                          key={categoria}
+                          type="button"
+                          onClick={() => {
+                            setFiltroCategoria(categoria);
+                            setSelectedProducto("");
+                          }}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize ${
+                            filtroCategoria === categoria
+                              ? "bg-orange-500 text-white"
+                              : "bg-zinc-800 text-white/60 hover:text-white"
+                          }`}>
+                          {categoria === "camaras" ? "Cámaras" : categoria}
+                        </button>
+                      ))}
                     </div>
 
                     {/* Producto selector */}
@@ -872,7 +880,9 @@ export default function HojaInspeccion({
                           type="text"
                           value={detalle}
                           onChange={(e) => setDetalle(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handleAddItem()
+                          }
                           placeholder="Color, largo, etc."
                           className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500/50"
                         />
@@ -911,9 +921,13 @@ export default function HojaInspeccion({
                   {items.length === 0 ? (
                     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-white/30 border border-dashed border-white/10 rounded-2xl bg-zinc-950/20">
                       <PackageSearch className="w-12 h-12 mb-3 opacity-30 text-orange-400" />
-                      <p className="text-sm font-semibold text-white/60">No hay materiales agregados</p>
+                      <p className="text-sm font-semibold text-white/60">
+                        No hay materiales agregados
+                      </p>
                       <p className="text-xs text-white/40 mt-1 max-w-xs">
-                        Selecciona un producto del panel izquierdo y presiona "Agregar material" para incluirlo en la hoja de inspección.
+                        Selecciona un producto del panel izquierdo y presiona
+                        "Agregar material" para incluirlo en la hoja de
+                        inspección.
                       </p>
                     </div>
                   ) : (
@@ -936,7 +950,9 @@ export default function HojaInspeccion({
                                 min="1"
                                 value={item.cantidad}
                                 onChange={(e) =>
-                                  handleUpdateItem(index, { cantidad: Number(e.target.value) })
+                                  handleUpdateItem(index, {
+                                    cantidad: Number(e.target.value),
+                                  })
                                 }
                                 className="w-full bg-zinc-950 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white text-center focus:outline-none focus:border-orange-500/50 font-bold"
                               />
@@ -949,7 +965,9 @@ export default function HojaInspeccion({
                             </p>
                             {bloqueada ? (
                               item.detalle && (
-                                <p className="text-white/50 text-[11px] italic">{item.detalle}</p>
+                                <p className="text-white/50 text-[11px] italic">
+                                  {item.detalle}
+                                </p>
                               )
                             ) : (
                               <input
@@ -957,7 +975,9 @@ export default function HojaInspeccion({
                                 value={item.detalle}
                                 maxLength={255}
                                 onChange={(e) =>
-                                  handleUpdateItem(index, { detalle: e.target.value })
+                                  handleUpdateItem(index, {
+                                    detalle: e.target.value,
+                                  })
                                 }
                                 placeholder="Detalle (opcional)"
                                 className="w-full bg-zinc-950 border border-white/10 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none focus:border-orange-500/50"
@@ -1023,7 +1043,9 @@ export default function HojaInspeccion({
                     onClick={() => setModoEdicionCompleta(!modoEdicionCompleta)}
                     className="flex items-center gap-1.5 text-xs text-white/60 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded-lg border border-white/10 transition-colors">
                     <Edit3 className="w-3.5 h-3.5 text-orange-400" />
-                    {modoEdicionCompleta ? "Volver a vista organizada" : "Editar historial completo"}
+                    {modoEdicionCompleta
+                      ? "Volver a vista organizada"
+                      : "Editar historial completo"}
                   </button>
                 </div>
 
@@ -1033,7 +1055,9 @@ export default function HojaInspeccion({
                     <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 text-xs text-amber-300/90 flex items-center gap-2">
                       <Sparkles className="w-4 h-4 shrink-0 text-amber-400" />
                       <span>
-                        Modo de edición directa. Puedes modificar o corregir el texto completo del historial. Cada nota se separa con <code>---</code>.
+                        Modo de edición directa. Puedes modificar o corregir el
+                        texto completo del historial. Cada nota se separa con{" "}
+                        <code>---</code>.
                       </span>
                     </div>
                     <textarea
@@ -1058,9 +1082,12 @@ export default function HojaInspeccion({
                       {parseNotesHistory(notas).length === 0 ? (
                         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center text-white/40">
                           <StickyNote className="w-10 h-10 mb-2 opacity-25 text-orange-400" />
-                          <p className="text-xs font-semibold text-white/60">No hay notas registradas</p>
+                          <p className="text-xs font-semibold text-white/60">
+                            No hay notas registradas
+                          </p>
                           <p className="text-[11px] text-white/40 mt-1 max-w-xs">
-                            Escribe una nueva nota en el panel contiguo. Al guardar, se registrará con la fecha del día actual.
+                            Escribe una nueva nota en el panel contiguo. Al
+                            guardar, se registrará con la fecha del día actual.
                           </p>
                         </div>
                       ) : (
@@ -1096,7 +1123,8 @@ export default function HojaInspeccion({
                         </span>
                       </div>
                       <p className="text-[11px] text-white/50 mb-2 leading-tight">
-                        Escribe las observaciones de hoy. Se anexará automáticamente con la fecha al guardar.
+                        Escribe las observaciones de hoy. Se anexará
+                        automáticamente con la fecha al guardar.
                       </p>
                       <textarea
                         value={nuevaNota}
@@ -1107,7 +1135,9 @@ export default function HojaInspeccion({
                       />
                       <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-white/40">
                         <span>Se guardará al pulsar:</span>
-                        <span className="font-semibold text-orange-400">"Guardar Cambios"</span>
+                        <span className="font-semibold text-orange-400">
+                          "Guardar Cambios"
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1130,8 +1160,7 @@ export default function HojaInspeccion({
               <button
                 type="button"
                 onClick={() => setShowFotoModal(true)}
-                className="ml-2 text-xs font-semibold text-blue-400 hover:text-blue-300 underline"
-              >
+                className="ml-2 text-xs font-semibold text-blue-400 hover:text-blue-300 underline">
                 Ver foto
               </button>
             </div>
@@ -1143,27 +1172,23 @@ export default function HojaInspeccion({
               role="dialog"
               aria-modal="true"
               aria-label="Foto del cliente"
-              onClick={() => setShowFotoModal(false)}
-            >
+              onClick={() => setShowFotoModal(false)}>
               <div
                 className="relative w-full max-w-4xl max-h-screen p-4 flex flex-col items-center justify-center"
-                onClick={(e) => e.stopPropagation()}
-              >
+                onClick={(e) => e.stopPropagation()}>
                 <div className="absolute top-4 right-4 flex gap-2">
                   <a
                     href={firmaFotoUrl}
                     download={fotoClienteDownloadName}
                     className="bg-zinc-800/80 hover:bg-zinc-700 p-2 rounded-full text-white backdrop-blur-sm transition-colors"
-                    title="Descargar foto"
-                  >
+                    title="Descargar foto">
                     <Download className="w-5 h-5" />
                   </a>
                   <button
                     type="button"
                     onClick={() => setShowFotoModal(false)}
                     className="bg-zinc-800/80 hover:bg-zinc-700 p-2 rounded-full text-white backdrop-blur-sm transition-colors"
-                    aria-label="Cerrar foto"
-                  >
+                    aria-label="Cerrar foto">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -1177,7 +1202,7 @@ export default function HojaInspeccion({
           )}
 
           {/* Footer */}
-          <div className="bg-zinc-800 px-4 py-3 border-t border-white/10 flex gap-2 shrink-0">
+          <div className="flex shrink-0 flex-col gap-2 border-t border-white/10 bg-zinc-800 px-4 py-3 sm:flex-row">
             <button
               onClick={onClose}
               className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold text-white/70 hover:text-white bg-white/5 hover:bg-white/10 transition-colors">

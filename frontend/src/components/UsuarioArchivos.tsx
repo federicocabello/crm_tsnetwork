@@ -88,25 +88,27 @@ export default function UsuarioArchivos({ usuarioId, usuarioNombre, onClose }: U
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4">
+      <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)] sm:max-h-[90dvh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-zinc-950/50">
-          <div>
-            <h2 className="text-lg font-bold text-white">Archivos de {usuarioNombre}</h2>
-            <p className="text-xs text-white/50">Gestiona documentos, contratos, etc.</p>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface-subtle)] p-4">
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-bold text-[var(--text-1)]">Archivos de {usuarioNombre}</h2>
+            <p className="text-xs text-[var(--text-3)]">Gestiona documentos, contratos, etc.</p>
           </div>
-          <button 
+          <button
+            type="button"
             onClick={onClose}
-            className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+            className="btn-icon shrink-0"
+            aria-label="Cerrar archivos"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-4 overflow-y-auto flex-1">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
           {/* Upload Area */}
           <div className="mb-6 relative group">
             <input 
@@ -115,35 +117,35 @@ export default function UsuarioArchivos({ usuarioId, usuarioNombre, onClose }: U
               onChange={handleUpload}
               disabled={uploading}
             />
-            <div className={`border-2 border-dashed border-white/20 rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all ${uploading ? 'opacity-50' : 'group-hover:border-orange-500 group-hover:bg-orange-500/5'}`}>
-              <Upload className={`w-10 h-10 mb-3 ${uploading ? 'text-white/50' : 'text-orange-500'}`} />
-              <h3 className="font-semibold text-white mb-1">
+            <div className={`flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-subtle)] p-5 text-center transition-colors sm:p-8 ${uploading ? 'opacity-50' : 'group-hover:border-[var(--primary)] group-hover:bg-[var(--primary-soft)]'}`}>
+              <Upload className={`w-10 h-10 mb-3 ${uploading ? 'text-[var(--text-3)]' : 'text-orange-500'}`} />
+              <h3 className="mb-1 font-semibold text-[var(--text-1)]">
                 {uploading ? 'Subiendo...' : 'Haz clic o arrastra un archivo'}
               </h3>
-              <p className="text-xs text-white/50">Soporta cualquier tipo de documento</p>
+              <p className="text-xs text-[var(--text-3)]">Soporta cualquier tipo de documento</p>
             </div>
           </div>
 
           {/* Files List */}
           <div>
-            <h3 className="text-sm font-bold text-white/70 mb-3 uppercase tracking-wider">Archivos ({archivos.length})</h3>
+            <h3 className="text-sm font-bold text-[var(--text-2)] mb-3 uppercase tracking-wider">Archivos ({archivos.length})</h3>
             
             {loading ? (
-              <div className="text-center py-8 text-white/50">Cargando archivos...</div>
+              <div className="text-center py-8 text-[var(--text-3)]">Cargando archivos...</div>
             ) : archivos.length === 0 ? (
-              <div className="text-center py-8 text-white/40 border border-white/5 rounded-xl bg-white/5">
+              <div className="text-center py-8 text-[var(--text-3)] border border-[var(--border)] rounded-xl bg-[var(--surface-subtle)]">
                 No hay archivos para este usuario
               </div>
             ) : (
               <div className="flex flex-col gap-2">
                 {archivos.map(archivo => (
-                  <div key={archivo.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
+                  <div key={archivo.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--surface-subtle)] border border-[var(--border)] hover:bg-[var(--surface-raised)] transition-all">
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="p-2 bg-blue-500/20 text-blue-400 rounded-lg shrink-0">
+                      <div className="shrink-0 rounded-lg bg-[var(--info-soft)] p-2 text-[var(--info)]">
                         <FileText className="w-5 h-5" />
                       </div>
                       <div className="truncate">
-                        <p className="text-sm font-medium text-white truncate" title={archivo.original}>
+                        <p className="truncate text-sm font-medium text-[var(--text-1)]" title={archivo.original}>
                           {archivo.original}
                         </p>
                       </div>
@@ -154,14 +156,14 @@ export default function UsuarioArchivos({ usuarioId, usuarioNombre, onClose }: U
                         href={`${API_URL}/uploads/usuarios/${archivo.directorio}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                        className="rounded-lg p-2 text-[var(--text-3)] transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]"
                         title="Descargar / Ver"
                       >
                         <Download className="w-4 h-4" />
                       </a>
                       <button 
                         onClick={() => handleDelete(archivo.id)}
-                        className="p-2 text-red-400/60 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                        className="rounded-lg p-2 text-[var(--danger)] opacity-70 transition-colors hover:bg-[var(--danger-soft)] hover:opacity-100"
                         title="Eliminar archivo"
                       >
                         <Trash2 className="w-4 h-4" />

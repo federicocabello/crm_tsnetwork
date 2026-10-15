@@ -23,8 +23,8 @@ export default function SortableSpeechCard({ item, isEditing, children }: Props)
     <div
       ref={setNodeRef}
       style={style}
-      className={`card-event flex flex-col justify-between border-l-4 border-l-orange-500 relative transition-all duration-200 max-h-72 overflow-hidden ${
-        isDragging ? "ring-2 ring-orange-500 shadow-2xl scale-[1.02] z-50" : ""
+      className={`card-event relative flex flex-col justify-between border-l-4 border-l-[var(--primary)] transition-all duration-200 ${
+        isDragging ? "z-50 scale-[1.01] ring-2 ring-[var(--primary)] shadow-[var(--shadow-lg)]" : ""
       }`}>
       {isEditing && (
         <div
@@ -32,7 +32,7 @@ export default function SortableSpeechCard({ item, isEditing, children }: Props)
           {...attributes}
           {...listeners}
           title="Arrastrar para reordenar">
-          <span className="font-black flex items-center gap-1.5 text-orange-500">
+          <span className="flex items-center gap-1.5 font-semibold text-[var(--primary)]">
             <Move className="w-4 h-4" />
             <span>Mover Card</span>
           </span>
@@ -40,7 +40,7 @@ export default function SortableSpeechCard({ item, isEditing, children }: Props)
         </div>
       )}
 
-      <div className="flex-1 flex flex-col gap-2 min-w-0 overflow-y-auto pr-1 scrollbar-thin">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
         {children}
       </div>
     </div>

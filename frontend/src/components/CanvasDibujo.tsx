@@ -230,20 +230,20 @@ export default function CanvasDibujo({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-zinc-950/40 border-t border-white/10 p-4">
+    <div className="flex h-full min-h-0 flex-col border-t border-[var(--border)] bg-[var(--surface-subtle)] p-3 sm:p-4">
       {/* Tools */}
       {!readOnly && (
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="mb-4 flex shrink-0 flex-wrap items-start justify-between gap-3 sm:items-center">
+        <div className="flex flex-wrap items-center gap-2">
           {colors.map((c) => (
             <button
               key={c}
               onClick={() => setColor(c)}
-              className={`w-6 h-6 rounded-full border-2 transition-transform ${color === c ? "scale-125 border-white" : "border-transparent"}`}
+              className={`h-6 w-6 rounded-full border-2 transition-transform ${color === c ? "scale-110 border-[var(--text-1)] ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--surface-subtle)]" : "border-[var(--border-strong)]"}`}
               style={{ backgroundColor: c }}
             />
           ))}
-          <div className="w-px h-6 bg-white/20 mx-2"></div>
+          <div className="w-px h-6 bg-[var(--surface-raised)] mx-2"></div>
           <input
             type="range"
             min="1"
@@ -254,8 +254,8 @@ export default function CanvasDibujo({
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="cursor-pointer bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]">
             <ImagePlus className="w-4 h-4" />
             <span>Agregar Imagen</span>
             <input
@@ -267,13 +267,13 @@ export default function CanvasDibujo({
           </label>
           <button
             onClick={clearCanvas}
-            className="bg-zinc-800 hover:bg-zinc-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--text-2)] transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]"
             title="Limpiar trazos">
             <Eraser className="w-4 h-4" />
           </button>
           <button
             onClick={deleteBgAndClear}
-            className="bg-red-500/20 hover:bg-red-500/40 text-red-400 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            className="flex items-center gap-1.5 rounded-lg bg-[var(--danger-soft)] px-3 py-1.5 text-xs font-semibold text-[var(--danger)] transition-colors hover:bg-red-500/20"
             title="Borrar todo">
             <Trash2 className="w-4 h-4" />
           </button>
@@ -284,7 +284,7 @@ export default function CanvasDibujo({
       {/* Canvas Area */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0 w-full bg-zinc-900 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center touch-none relative">
+        className="flex-1 min-h-0 w-full bg-[var(--surface)] rounded-xl overflow-hidden border border-[var(--border)] flex items-center justify-center touch-none relative">
         <canvas
           ref={canvasRef}
           width={800}
@@ -300,13 +300,13 @@ export default function CanvasDibujo({
           onTouchMove={draw}
         />
         {loadingImage && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-zinc-900/80 text-white">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-[var(--surface)] text-[var(--text-1)]">
             <Loading />
           </div>
         )}
         {!loadingImage && !bgImage && !isDrawing && !readOnly && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
-            <p className="text-white text-sm font-semibold">
+            <p className="text-sm font-semibold text-[var(--text-2)]">
               Usa el mouse o el dedo para dibujar
             </p>
           </div>

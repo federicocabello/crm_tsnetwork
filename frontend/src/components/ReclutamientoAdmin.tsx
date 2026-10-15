@@ -21,9 +21,9 @@ type Postulacion = {
 };
 
 const estadoClass: Record<EstadoPostulacion, string> = {
-  pendiente: "border-yellow-500/30 bg-yellow-500/10 text-yellow-100",
-  aprobado: "border-green-500/30 bg-green-500/10 text-green-100",
-  rechazado: "border-red-500/30 bg-red-500/10 text-red-100",
+  pendiente: "border-[var(--warning)] bg-[var(--warning-soft)] text-[var(--warning)]",
+  aprobado: "border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]",
+  rechazado: "border-[var(--danger)] bg-[var(--danger-soft)] text-[var(--danger)]",
 };
 
 export default function ReclutamientoAdmin() {
@@ -84,43 +84,43 @@ export default function ReclutamientoAdmin() {
   }
 
   return (
-    <div className="cuadro h-full overflow-auto">
+    <div className="cuadro min-w-0">
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1>Reclutamiento</h1>
-          <p className="text-sm text-white/50">Postulaciones tecnicas recibidas desde el formulario publico.</p>
+          <p className="text-sm text-[var(--text-3)]">Postulaciones tecnicas recibidas desde el formulario publico.</p>
         </div>
-        <button onClick={cargar} className="boton inline-flex items-center justify-center border border-white/10 bg-white/5 hover:bg-white/10">
+        <button onClick={cargar} className="boton inline-flex items-center justify-center border border-[var(--border)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-raised)]">
           <RefreshCw className="h-4 w-4" /> Actualizar
         </button>
       </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-3">
-        <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3"><p className="text-xs text-yellow-100/70">Pendientes</p><strong className="text-2xl">{resumen.pendientes}</strong></div>
-        <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-3"><p className="text-xs text-green-100/70">Aprobadas</p><strong className="text-2xl">{resumen.aprobadas}</strong></div>
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3"><p className="text-xs text-red-100/70">Rechazadas</p><strong className="text-2xl">{resumen.rechazadas}</strong></div>
+        <div className="rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-3"><p className="text-xs text-[var(--warning)]">Pendientes</p><strong className="text-2xl text-[var(--text-1)]">{resumen.pendientes}</strong></div>
+        <div className="rounded-lg border border-[var(--success)] bg-[var(--success-soft)] p-3"><p className="text-xs text-[var(--success)]">Aprobadas</p><strong className="text-2xl text-[var(--text-1)]">{resumen.aprobadas}</strong></div>
+        <div className="rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] p-3"><p className="text-xs text-[var(--danger)]">Rechazadas</p><strong className="text-2xl text-[var(--text-1)]">{resumen.rechazadas}</strong></div>
       </div>
 
-      {error && <p className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
+      {error && <p className="mb-3 rounded-lg border border-[var(--danger)] bg-[var(--danger-soft)] px-3 py-2 text-sm text-[var(--danger)]">{error}</p>}
 
       {loading ? (
-        <div className="flex h-48 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-orange-300" /></div>
+        <div className="flex h-48 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-[var(--primary)]" /></div>
       ) : postulaciones.length === 0 ? (
-        <div className="rounded-lg border border-white/10 bg-white/5 p-8 text-center text-white/55">No hay postulaciones todavia.</div>
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-8 text-center text-[var(--text-3)]">No hay postulaciones todavia.</div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-white/10">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead className="bg-white/10 text-left text-white/70">
+        <div className="table-wrap">
+          <table className="table table-mobile-cards min-w-full sm:min-w-[760px]">
+            <thead className="bg-[var(--surface-raised)] text-left text-[var(--text-2)]">
               <tr><th className="px-4 py-3">Postulante</th><th className="px-4 py-3">Contacto</th><th className="px-4 py-3">Fecha</th><th className="px-4 py-3">Estado</th><th className="px-4 py-3 text-right">Acciones</th></tr>
             </thead>
             <tbody>
               {postulaciones.map((postulacion) => (
-                <tr key={postulacion.id} className="border-t border-white/10">
-                  <td className="px-4 py-3"><strong>{postulacion.nombre}</strong><p className="text-xs text-white/45">{postulacion.direccion}</p></td>
-                  <td className="px-4 py-3"><p>{postulacion.email}</p><p className="text-xs text-white/45">{postulacion.telefono}</p></td>
-                  <td className="px-4 py-3 text-white/60">{postulacion.fecha_postulacion}</td>
-                  <td className="px-4 py-3"><span className={`rounded-full border px-2.5 py-1 text-xs font-bold capitalize ${estadoClass[postulacion.estado]}`}>{postulacion.estado}</span></td>
-                  <td className="px-4 py-3 text-right"><button className="boton inline-flex items-center justify-center border border-orange-500/30 bg-orange-500/10 text-orange-100 hover:bg-orange-500/20" onClick={() => abrir(postulacion)}><Eye className="h-4 w-4" /> Ver</button></td>
+                <tr key={postulacion.id} className="border-t border-[var(--border)]">
+                  <td data-label="Postulante" className="px-4 py-3"><div className="min-w-0"><strong>{postulacion.nombre}</strong><p className="text-xs text-[var(--text-3)]">{postulacion.direccion}</p></div></td>
+                  <td data-label="Contacto" className="px-4 py-3"><div className="min-w-0"><p className="break-all">{postulacion.email}</p><p className="text-xs text-[var(--text-3)]">{postulacion.telefono}</p></div></td>
+                  <td data-label="Fecha" className="px-4 py-3 text-[var(--text-3)]">{postulacion.fecha_postulacion}</td>
+                  <td data-label="Estado" className="px-4 py-3"><span className={`rounded-full border px-2.5 py-1 text-xs font-bold capitalize ${estadoClass[postulacion.estado]}`}>{postulacion.estado}</span></td>
+                  <td data-label="Acciones" className="px-4 py-3 text-right"><button className="boton inline-flex items-center justify-center border border-[var(--primary-border)] bg-[var(--primary-soft)] text-[var(--primary)] hover:border-[var(--primary)]" onClick={() => abrir(postulacion)}><Eye className="h-4 w-4" /> Ver</button></td>
                 </tr>
               ))}
             </tbody>
@@ -129,38 +129,38 @@ export default function ReclutamientoAdmin() {
       )}
 
       {seleccionada && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-white/10 bg-zinc-950 p-5 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4">
+          <div role="dialog" aria-modal="true" aria-label={`Evaluar a ${seleccionada.nombre}`} className="max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-lg)] sm:max-h-[90dvh] sm:p-5">
             <div className="mb-4 flex items-start justify-between gap-3">
-              <div><h2 className="text-xl font-black">{seleccionada.nombre}</h2><p className="text-sm text-white/50">{seleccionada.email} - {seleccionada.telefono}</p></div>
-              <button className="boton border border-white/10 bg-white/5 hover:bg-white/10" onClick={() => setSeleccionada(null)} aria-label="Cerrar"><X className="h-4 w-4" /></button>
+              <div><h2 className="text-xl font-black">{seleccionada.nombre}</h2><p className="text-sm text-[var(--text-3)]">{seleccionada.email} - {seleccionada.telefono}</p></div>
+              <button className="boton border border-[var(--border)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-raised)]" onClick={() => setSeleccionada(null)} aria-label="Cerrar"><X className="h-4 w-4" /></button>
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="rounded-lg border border-white/10 bg-white/5 p-3"><p className="text-xs text-white/45">Direccion</p><p className="font-semibold">{seleccionada.direccion}</p></div>
-              <div className="rounded-lg border border-white/10 bg-white/5 p-3"><p className="text-xs text-white/45">Estado</p><p className="font-semibold capitalize">{seleccionada.estado}</p></div>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3"><p className="text-xs text-[var(--text-3)]">Direccion</p><p className="font-semibold">{seleccionada.direccion}</p></div>
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3"><p className="text-xs text-[var(--text-3)]">Estado</p><p className="font-semibold capitalize">{seleccionada.estado}</p></div>
             </div>
-            <div className="mt-3 rounded-lg border border-white/10 bg-white/5 p-3"><p className="text-xs text-white/45">Experiencia</p><p className="whitespace-pre-wrap text-sm">{seleccionada.experiencia || "Sin experiencia registrada."}</p></div>
+            <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3"><p className="text-xs text-[var(--text-3)]">Experiencia</p><p className="whitespace-pre-wrap text-sm">{seleccionada.experiencia || "Sin experiencia registrada."}</p></div>
 
-            <div className="mt-3 rounded-lg border border-white/10 bg-white/5 p-3">
-              <p className="mb-2 text-xs text-white/45">Respuestas</p>
+            <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3">
+              <p className="mb-2 text-xs text-[var(--text-3)]">Respuestas</p>
               <div className="space-y-2">
-                {Object.entries(seleccionada.respuestas || {}).map(([key, value]) => <div key={key} className="rounded-lg bg-black/20 p-2"><p className="text-xs font-bold uppercase text-orange-200">{key.replace(/_/g, " ")}</p><p className="text-sm text-white/80">{value}</p></div>)}
+                {Object.entries(seleccionada.respuestas || {}).map(([key, value]) => <div key={key} className="rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-2"><p className="text-xs font-bold uppercase text-[var(--primary)]">{key.replace(/_/g, " ")}</p><p className="text-sm text-[var(--text-2)]">{value}</p></div>)}
               </div>
             </div>
 
-            <label className="mt-4 block text-sm font-bold">Comentarios de evaluacion<textarea className="mt-2 min-h-24 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 font-normal outline-none focus:border-orange-400" value={comentarios} onChange={(e) => setComentarios(e.target.value)} /></label>
+            <label className="mt-4 block text-sm font-bold">Comentarios de evaluacion<textarea className="mt-2 min-h-24 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 font-normal outline-none focus:border-orange-400" value={comentarios} onChange={(e) => setComentarios(e.target.value)} /></label>
 
             {seleccionada.estado !== "aprobado" && (
               <div className="mt-4 grid gap-3 rounded-lg border border-green-500/20 bg-green-500/10 p-3 md:grid-cols-2">
-                <label className="text-sm font-bold">Usuario tecnico<input className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 font-normal outline-none focus:border-orange-400" value={credenciales.user} onChange={(e) => setCredenciales((prev) => ({ ...prev, user: e.target.value }))} /></label>
-                <label className="text-sm font-bold">Contrasena<input className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 font-normal outline-none focus:border-orange-400" value={credenciales.password} onChange={(e) => setCredenciales((prev) => ({ ...prev, password: e.target.value }))} /></label>
+                <label className="text-sm font-bold">Usuario tecnico<input className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 font-normal outline-none focus:border-orange-400" value={credenciales.user} onChange={(e) => setCredenciales((prev) => ({ ...prev, user: e.target.value }))} /></label>
+                <label className="text-sm font-bold">Contrasena<input type="password" autoComplete="new-password" className="mt-2 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 font-normal outline-none focus:border-orange-400" value={credenciales.password} onChange={(e) => setCredenciales((prev) => ({ ...prev, password: e.target.value }))} /></label>
               </div>
             )}
 
-            <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <button disabled={guardando} onClick={() => evaluar("rechazado")} className="boton inline-flex items-center justify-center border border-red-500/30 bg-red-600/20 text-red-100 hover:bg-red-600/30 disabled:opacity-60"><XCircle className="h-4 w-4" /> Rechazar</button>
-              <button disabled={guardando} onClick={() => evaluar("aprobado")} className="boton inline-flex items-center justify-center border border-green-500/30 bg-green-600/20 text-green-100 hover:bg-green-600/30 disabled:opacity-60">{guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />} Contratar</button>
+            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button disabled={guardando} onClick={() => evaluar("rechazado")} className="btn-danger w-full sm:w-auto"><XCircle className="h-4 w-4" /> Rechazar</button>
+              <button disabled={guardando} onClick={() => evaluar("aprobado")} className="boton inline-flex w-full items-center justify-center border border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)] hover:bg-[var(--success)] hover:text-[var(--text-inverse)] disabled:opacity-60 sm:w-auto">{guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />} Contratar</button>
             </div>
           </div>
         </div>

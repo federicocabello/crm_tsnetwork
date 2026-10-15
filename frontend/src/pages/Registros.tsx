@@ -202,7 +202,7 @@ export default function Registros() {
   return (
     <div className="h-full min-h-0 overflow-y-auto pr-4">
       <section className="space-y-4 pb-6">
-        <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4 shadow-lg shadow-black/20 xl:flex-row xl:items-center xl:justify-between">
           <div className="shrink-0">
             <div className="flex items-center gap-2 text-orange-300">
               <ListTodo className="h-5 w-5" />
@@ -212,20 +212,20 @@ export default function Registros() {
           </div>
 
           <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-[minmax(220px,1fr)_150px_170px_200px_auto]">
-            <label className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 focus-within:border-orange-500/40">
-              <Search className="h-4 w-4 shrink-0 text-white/45" />
+            <label className="flex min-w-0 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 focus-within:border-orange-500/40">
+              <Search className="h-4 w-4 shrink-0 text-[var(--text-3)]" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar cliente, telefono, direccion o nota"
-                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-white/35"
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--text-3)]"
               />
             </label>
 
             <select
               value={tipo}
               onChange={(e) => setTipo(e.target.value)}
-              className="rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm font-semibold outline-none focus:border-orange-500/40">
+              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold outline-none focus:border-orange-500/40">
               <option value="todos">Todos los registros</option>
               <option value="instalacion">Instalacion</option>
               <option value="soporte">Soporte</option>
@@ -234,7 +234,7 @@ export default function Registros() {
             <select
               value={estado}
               onChange={(e) => setEstado(e.target.value)}
-              className="rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm font-semibold outline-none focus:border-orange-500/40">
+              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold outline-none focus:border-orange-500/40">
               <option value="todos">Todos los estados</option>
               {estados.map((item) => (
                 <option key={item.id} value={item.id}>{item.estado}</option>
@@ -244,7 +244,7 @@ export default function Registros() {
             <select
               value={agente}
               onChange={(e) => setAgente(e.target.value)}
-              className="rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm font-semibold outline-none focus:border-orange-500/40">
+              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-semibold outline-none focus:border-orange-500/40">
               <option value="todos">Todos los agentes</option>
               {usuarios.map((item) => (
                 <option key={item.id} value={item.id}>{item.fullname}</option>
@@ -254,7 +254,7 @@ export default function Registros() {
             <button
               type="button"
               onClick={limpiarFiltros}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-bold text-white/75 transition hover:border-orange-500/30 hover:bg-orange-500/10 hover:text-orange-200">
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm font-bold text-[var(--text-2)] transition hover:border-orange-500/30 hover:bg-orange-500/10 hover:text-orange-200">
               <X className="h-4 w-4" />
               Limpiar
             </button>
@@ -262,8 +262,8 @@ export default function Registros() {
         </div>
 
         {registrosFiltrados.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/55">
-            <Filter className="mx-auto mb-3 h-8 w-8 text-white/35" />
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-8 text-center text-[var(--text-3)]">
+            <Filter className="mx-auto mb-3 h-8 w-8 text-[var(--text-3)]" />
             No hay registros para los filtros seleccionados.
           </div>
         ) : (
@@ -285,7 +285,7 @@ export default function Registros() {
                       setRegistroAbierto(abierto ? null : registro.idcita);
                     }
                   }}
-                  className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-4 py-3 shadow-lg shadow-black/20 transition hover:border-orange-500/25 hover:bg-white/[0.07]">
+                  className="cursor-pointer rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 shadow-lg shadow-black/20 transition hover:border-orange-500/25 hover:bg-white/[0.07]">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -309,44 +309,44 @@ export default function Registros() {
                       </div>
                     </div>
 
-                    <div className="flex shrink-0 items-center justify-between gap-3 rounded-lg border border-white/10 bg-zinc-950/40 px-3 py-2 sm:justify-end">
+                    <div className="flex shrink-0 items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 sm:justify-end">
                       <div className="text-right">
                         <div className="flex items-center justify-end gap-2 text-sm font-bold text-white">
                           <CalendarDays className="h-4 w-4 text-orange-300" />
                           {formatDate(registro.dia)}
                         </div>
-                        <div className="mt-1 flex items-center justify-end gap-2 text-xs font-semibold text-white/55">
+                        <div className="mt-1 flex items-center justify-end gap-2 text-xs font-semibold text-[var(--text-3)]">
                           <Clock className="h-3.5 w-3.5" />
                           {registro.hora_format || registro.hora}
                         </div>
                       </div>
-                      <ChevronDown className={`h-5 w-5 text-white/45 transition-transform ${abierto ? "rotate-180" : ""}`} />
+                      <ChevronDown className={`h-5 w-5 text-[var(--text-3)] transition-transform ${abierto ? "rotate-180" : ""}`} />
                     </div>
                   </div>
 
                   {abierto && (
-                    <div className="mt-4 border-t border-white/10 pt-4">
-                      <div className="grid grid-cols-1 gap-2 text-sm text-white/70 md:grid-cols-2">
-                        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-zinc-950/30 px-3 py-2">
-                          <User className="h-4 w-4 shrink-0 text-white/40" />
+                    <div className="mt-4 border-t border-[var(--border)] pt-4">
+                      <div className="grid grid-cols-1 gap-2 text-sm text-[var(--text-2)] md:grid-cols-2">
+                        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2">
+                          <User className="h-4 w-4 shrink-0 text-[var(--text-3)]" />
                           <span className="truncate">{registro.fullname}</span>
                         </div>
-                        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-zinc-950/30 px-3 py-2">
-                          <Phone className="h-4 w-4 shrink-0 text-white/40" />
+                        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2">
+                          <Phone className="h-4 w-4 shrink-0 text-[var(--text-3)]" />
                           <span className="truncate">{registro.telefono || "Sin telefono"}</span>
                         </div>
-                        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-white/10 bg-zinc-950/30 px-3 py-2 md:col-span-2">
-                          <MapPin className="h-4 w-4 shrink-0 text-white/40" />
+                        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 md:col-span-2">
+                          <MapPin className="h-4 w-4 shrink-0 text-[var(--text-3)]" />
                           <span className="break-words">{registro.direccion || "Sin direccion"}</span>
                         </div>
                       </div>
 
                       {registro.notas?.trim() ? (
-                        <p className="mt-3 rounded-lg border border-white/10 bg-zinc-950/30 px-3 py-2 text-sm leading-relaxed text-white/75">
+                        <p className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm leading-relaxed text-[var(--text-2)]">
                           {registro.notas}
                         </p>
                       ) : (
-                        <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-zinc-950/30 px-3 py-2 text-xs font-semibold text-white/40">
+                        <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-xs font-semibold text-[var(--text-3)]">
                           <CheckCircle2 className="h-4 w-4" />
                           Sin notas cargadas
                         </div>

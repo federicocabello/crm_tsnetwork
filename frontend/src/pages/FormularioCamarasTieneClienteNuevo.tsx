@@ -228,36 +228,36 @@ export default function FormularioCamarasTieneClienteNuevo() {
             <div className="flex flex-col gap-3">
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Nombre</label>
+              <label className="text-xs text-[var(--text-3)]">Nombre</label>
               <input
                 type="text"
                 name="nombre"
                 placeholder="Nombre completo"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
                 value={formRegistro.nombre}
                 onChange={handleInputChange}
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Dirección</label>
+              <label className="text-xs text-[var(--text-3)]">Dirección</label>
               <input
                 type="text"
                 name="direccion"
                 placeholder="Dirección"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
                 value={formRegistro.direccion}
                 onChange={handleInputChange}
               />
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Teléfono</label>
+              <label className="text-xs text-[var(--text-3)]">Teléfono</label>
               <input
                 type="tel"
                 name="telefono"
                 placeholder="(+1) 000-0000"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40"
                 value={formRegistro.telefono}
                 onChange={handleInputChange}
                 onBlur={handleBlur}
@@ -268,12 +268,12 @@ export default function FormularioCamarasTieneClienteNuevo() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-white/60">Email</label>
+              <label className="text-xs text-[var(--text-3)]">Email</label>
               <input
                 type="email"
                 name="email"
                 placeholder="correo@email.com"
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 lowercase"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40 lowercase"
                 value={formRegistro.email}
                 onChange={handleInputChange}
               />
@@ -284,12 +284,12 @@ export default function FormularioCamarasTieneClienteNuevo() {
                 name="notas"
                 placeholder="Notas..."
                 rows={5}
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
+                className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40"
                 value={notas}
                 onChange={(e) => setNotas(e.target.value)}
               />
               {opcionTipoInstalacion == "instalacion" && (
-                <div className="text-xs italic transition-all mt-1 text-white/60">ACLARACIÓN: preguntar si utiliza alguna aplicación y <strong className="text-red-500">solicitar credenciales.</strong> Apuntarlo en "Notas".</div>
+                <div className="text-xs italic transition-all mt-1 text-[var(--text-3)]">ACLARACIÓN: preguntar si utiliza alguna aplicación y <strong className="text-red-500">solicitar credenciales.</strong> Apuntarlo en "Notas".</div>
                 )}
             </div>
             
@@ -321,12 +321,12 @@ export default function FormularioCamarasTieneClienteNuevo() {
             <div className="flex flex-col gap-3">
               <div className="flex gap-2">
                 <div>
-                  <label className="text-xs text-white/60">Modelo de cámara y NVR</label>
+                  <label className="text-xs text-[var(--text-3)]">Modelo de cámara y NVR</label>
                   <input
                     type="text"
                     name="modelocamara"
                     placeholder="Modelos"
-                    className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm outline-none focus:border-orange-500/40 uppercase"
                     value={respuestas.modelonvr}
                     onChange={(e) => setRespuestas((prev) => ({ ...prev, modelonvr: e.target.value }))}
                   />
@@ -353,7 +353,7 @@ export default function FormularioCamarasTieneClienteNuevo() {
 
                 <div>
                     <div className="flex flex-col gap-1">
-                        <label className="text-xs text-white/60">Ático</label>
+                        <label className="text-xs text-[var(--text-3)]">Ático</label>
                         <div className="flex gap-1">
                         <div
                             onClick={() => setRespuestas((prev) => ({ ...prev, atico: "espacioso" }))}
@@ -378,7 +378,7 @@ export default function FormularioCamarasTieneClienteNuevo() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs text-white/60">Cableado</label>
+                    <label className="text-xs text-[var(--text-3)]">Cableado</label>
                     <div className="flex gap-1">
                     <div
                         onClick={() => setRespuestas((prev) => ({ ...prev, cableado: "red" }))}

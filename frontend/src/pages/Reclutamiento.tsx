@@ -146,7 +146,7 @@ export default function Reclutamiento() {
   };
 
   return (
-    <div className="relative min-h-screen bg-zinc-950 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-hidden text-white">
+    <div className="relative min-h-screen bg-[var(--surface)] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-hidden text-white">
       {/* Fondo estético tecnológico */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(249,115,22,0.1),transparent_35%)] pointer-events-none" />
       <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(to_right,rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:50px_50px] pointer-events-none" />
@@ -161,7 +161,7 @@ export default function Reclutamiento() {
           <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
             Postulación para Técnico Instalador
           </h1>
-          <p className="mt-2 text-sm text-zinc-400">
+          <p className="mt-2 text-sm text-[var(--text-3)]">
             Completa tus datos y realiza nuestra prueba de conocimientos técnicos para iniciar el proceso de selección.
           </p>
         </div>
@@ -175,14 +175,14 @@ export default function Reclutamiento() {
         )}
 
         {/* Contenido Principal según Paso */}
-        <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-6 sm:p-10 shadow-2xl backdrop-blur-xl">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-10 shadow-[var(--shadow-lg)] backdrop-blur-xl">
           {/* Indicador de pasos */}
           {paso !== 3 && (
-            <div className="mb-8 flex items-center justify-center gap-4 text-xs font-bold uppercase tracking-wider text-zinc-500">
-              <span className={`pb-1 border-b-2 transition ${paso === 1 ? "border-orange-500 text-orange-400" : "border-transparent text-zinc-400"}`}>
+            <div className="mb-8 flex items-center justify-center gap-4 text-xs font-bold uppercase tracking-wider text-[var(--text-3)]">
+              <span className={`pb-1 border-b-2 transition ${paso === 1 ? "border-orange-500 text-orange-400" : "border-transparent text-[var(--text-3)]"}`}>
                 1. Datos Personales
               </span>
-              <ChevronRight className="h-4 w-4 text-zinc-600" />
+              <ChevronRight className="h-4 w-4 text-[var(--text-3)]" />
               <span className={`pb-1 border-b-2 transition ${paso === 2 ? "border-orange-500 text-orange-400" : "border-transparent"}`}>
                 2. Evaluación Técnica
               </span>
@@ -194,62 +194,62 @@ export default function Reclutamiento() {
             <form onSubmit={handleNextStep} className="space-y-6">
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-semibold text-zinc-300">Nombre Completo *</label>
+                  <label className="block text-sm font-semibold text-[var(--text-2)]">Nombre Completo *</label>
                   <input
                     type="text"
                     required
                     value={nombre}
                     onChange={e => setNombre(e.target.value)}
                     placeholder="Ej. Juan Pérez"
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-zinc-600 outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition"
+                    className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-white placeholder:text-[var(--text-3)] outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-zinc-300">Correo Electrónico *</label>
+                  <label className="block text-sm font-semibold text-[var(--text-2)]">Correo Electrónico *</label>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="ejemplo@correo.com"
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-zinc-600 outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition"
+                    className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-white placeholder:text-[var(--text-3)] outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-zinc-300">Teléfono Celular *</label>
+                  <label className="block text-sm font-semibold text-[var(--text-2)]">Teléfono Celular *</label>
                   <input
                     type="tel"
                     required
                     value={telefono}
                     onChange={e => setTelefono(e.target.value)}
                     placeholder="Ej. 55 1234 5678"
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-zinc-600 outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition"
+                    className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-white placeholder:text-[var(--text-3)] outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-zinc-300">Dirección Residencial *</label>
+                  <label className="block text-sm font-semibold text-[var(--text-2)]">Dirección Residencial *</label>
                   <input
                     type="text"
                     required
                     value={direccion}
                     onChange={e => setDireccion(e.target.value)}
                     placeholder="Calle, Número, Colonia, Ciudad"
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-zinc-600 outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition"
+                    className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-white placeholder:text-[var(--text-3)] outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-zinc-300">Resumen de Experiencia Previa (Instalación de cámaras, alarmas, cableado, etc.)</label>
+                <label className="block text-sm font-semibold text-[var(--text-2)]">Resumen de Experiencia Previa (Instalación de cámaras, alarmas, cableado, etc.)</label>
                 <textarea
                   value={experiencia}
                   onChange={e => setExperiencia(e.target.value)}
                   rows={4}
                   placeholder="Describe brevemente tus trabajos anteriores relacionados con redes o seguridad..."
-                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-zinc-600 outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition resize-none font-sans"
+                  className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-white placeholder:text-[var(--text-3)] outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition resize-none font-sans"
                 />
               </div>
 
@@ -278,7 +278,7 @@ export default function Reclutamiento() {
               <div className="space-y-8">
                 {CUESTIONARIO.map((preg, idx) => (
                   <div key={preg.id} className="space-y-3">
-                    <h3 className="text-base font-bold text-zinc-200">
+                    <h3 className="text-base font-bold text-[var(--text-1)]">
                       {idx + 1}. {preg.texto}
                     </h3>
 
@@ -293,7 +293,7 @@ export default function Reclutamiento() {
                               onClick={() => handleOptionSelect(preg.id, opcion)}
                               className={`text-left w-full px-4 py-3 rounded-xl border transition cursor-pointer text-sm ${seleccionado
                                 ? "border-orange-500 bg-orange-500/10 text-white font-semibold"
-                                : "border-white/5 bg-white/5 text-zinc-400 hover:border-white/10 hover:text-white"
+                                : "border-[var(--border)] bg-[var(--surface-subtle)] text-[var(--text-3)] hover:border-[var(--border)] hover:text-white"
                                 }`}
                             >
                               {opcion}
@@ -308,18 +308,18 @@ export default function Reclutamiento() {
                         value={respuestas[preg.id] || ""}
                         onChange={e => handleTextChange(preg.id, e.target.value)}
                         placeholder="Escribe tu respuesta aquí detallando los pasos..."
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-zinc-600 outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition resize-none text-sm font-sans"
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-white placeholder:text-[var(--text-3)] outline-none focus:border-orange-500/50 focus:ring-1 focus:ring-orange-500/20 transition resize-none text-sm font-sans"
                       />
                     )}
                   </div>
                 ))}
               </div>
 
-              <div className="flex justify-between items-center pt-4 border-t border-white/5">
+              <div className="flex justify-between items-center pt-4 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => setPaso(1)}
-                  className="px-5 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300 font-bold transition cursor-pointer"
+                  className="px-5 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] hover:bg-[var(--surface-raised)] text-[var(--text-2)] font-bold transition cursor-pointer"
                 >
                   Volver a Datos
                 </button>
@@ -332,7 +332,7 @@ export default function Reclutamiento() {
                 >
                   {loading ? (
                     <>
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--border-strong)] border-t-white" />
                       Enviando...
                     </>
                   ) : (
@@ -350,12 +350,12 @@ export default function Reclutamiento() {
                 <CheckCircle2 className="h-10 w-10" />
               </div>
               <h2 className="text-2xl font-extrabold text-white">¡Postulación Enviada con Éxito!</h2>
-              <div className="max-w-md mx-auto text-zinc-400 text-sm space-y-2">
+              <div className="max-w-md mx-auto text-[var(--text-3)] text-sm space-y-2">
                 <p>Hemos recibido tus datos personales y las respuestas de tu examen técnico correctamente.</p>
                 <p>Nuestro equipo de administración evaluará tu prueba en las próximas horas. Si tu perfil cumple con lo requerido, nos pondremos en contacto contigo para completar el proceso de contratación y crear tu perfil de inducción.</p>
               </div>
               <div className="pt-6">
-                <p className="text-xs text-zinc-500">Gracias por tu interés en formar parte de TS Network.</p>
+                <p className="text-xs text-[var(--text-3)]">Gracias por tu interés en formar parte de TS Network.</p>
               </div>
             </div>
           )}

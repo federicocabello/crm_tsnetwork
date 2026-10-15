@@ -85,7 +85,7 @@ const inicial: Formulario = {
   asignado: "",
 };
 const claseEntrada =
-  "mt-1 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 font-normal outline-none focus:border-orange-500/50";
+  "mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 font-normal outline-none focus:border-orange-500/50";
 
 function fechaLegible(valor: string) {
   const [anio, mes, dia] = valor.split("-").map(Number);
@@ -295,7 +295,7 @@ export default function TareasResumen() {
   return (
     <div className="h-full min-h-0 overflow-y-auto pr-4">
       <section className="space-y-4 pb-6">
-        <header className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg shadow-black/20">
+        <header className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4 shadow-lg shadow-black/20">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex items-center gap-2 text-orange-300">
@@ -305,7 +305,7 @@ export default function TareasResumen() {
                 </span>
               </div>
               <h1 className="mt-1 text-2xl font-black">Tareas</h1>
-              <p className="mt-1 text-sm text-white/50">
+              <p className="mt-1 text-sm text-[var(--text-3)]">
                 Citas de clientes y actividades recurrentes.
               </p>
             </div>
@@ -316,7 +316,7 @@ export default function TareasResumen() {
                 disabled={loading}
                 aria-label="Copiar tareas de hoy"
                 title="Copiar tareas de hoy"
-                className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${estadoCopia === "copiado" ? "border-green-500/40 bg-green-500/15 text-green-300" : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"}`}>
+                className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${estadoCopia === "copiado" ? "border-green-500/40 bg-green-500/15 text-green-300" : "border-[var(--border)] bg-[var(--surface-subtle)] text-[var(--text-2)] hover:bg-[var(--surface-raised)]"}`}>
                 {estadoCopia === "copiado" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 {estadoCopia === "copiado" ? "Copiado" : estadoCopia === "error" ? "Error" : "Copiar"}
               </button>
@@ -334,8 +334,8 @@ export default function TareasResumen() {
             </div>
           </div>
           <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_150px_150px_150px_auto_auto]">
-            <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2">
-              <Search className="h-4 w-4 text-white/40" />
+            <label className="flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2">
+              <Search className="h-4 w-4 text-[var(--text-3)]" />
               <input
                 value={query}
                 onChange={(e) => {
@@ -355,7 +355,7 @@ export default function TareasResumen() {
                 setSoloDelDia(false);
                 setPagina(1);
               }}
-              className="rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm"
+              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
             />
             <input
               aria-label="Hasta"
@@ -366,7 +366,7 @@ export default function TareasResumen() {
                 setSoloDelDia(false);
                 setPagina(1);
               }}
-              className="rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm"
+              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
             />
             <select
               value={categoria}
@@ -374,7 +374,7 @@ export default function TareasResumen() {
                 setCategoria(e.target.value as "todas" | Categoria);
                 setPagina(1);
               }}
-              className="rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm">
+              className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm">
               <option value="todas">Todas las áreas</option>
               <option value="internet">Internet</option>
               <option value="camaras">Cámaras</option>
@@ -385,7 +385,7 @@ export default function TareasResumen() {
                 setSoloDelDia((valor) => !valor);
                 setPagina(1);
               }}
-              className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${soloDelDia ? "border-orange-400/50 bg-orange-500/20 text-orange-100" : "border-white/10 bg-white/5 text-white/65"}`}>
+              className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${soloDelDia ? "border-orange-400/50 bg-orange-500/20 text-orange-100" : "border-[var(--border)] bg-[var(--surface-subtle)] text-[var(--text-2)]"}`}>
               <CalendarDays className="h-4 w-4" />
               {soloDelDia ? "Hoy" : "Todo el rango"}
             </button>
@@ -394,7 +394,7 @@ export default function TareasResumen() {
                 setSoloRecurrentes((valor) => !valor);
                 setPagina(1);
               }}
-              className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${soloRecurrentes ? "border-purple-400/50 bg-purple-500/20 text-purple-200" : "border-white/10 bg-white/5 text-white/65"}`}>
+              className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${soloRecurrentes ? "border-purple-400/50 bg-purple-500/20 text-purple-200" : "border-[var(--border)] bg-[var(--surface-subtle)] text-[var(--text-2)]"}`}>
               <Repeat2 className="h-4 w-4" />
               Recurrentes
             </button>
@@ -407,7 +407,7 @@ export default function TareasResumen() {
           </div>
         )}
         {administra && configuraciones.length > 0 && (
-          <section className="rounded-2xl border border-purple-400/20 bg-purple-500/[0.06] p-4">
+          <section className="rounded-xl border border-purple-400/20 bg-purple-500/[0.06] p-4">
             <h2 className="flex items-center gap-2 font-black text-purple-100">
               <Repeat2 className="h-4 w-4" />
               Recurrencias configuradas
@@ -416,10 +416,10 @@ export default function TareasResumen() {
               {configuraciones.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-zinc-950/35 p-3">
+                  className="flex items-start justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3">
                   <div className="min-w-0 text-sm">
                     <div className="truncate font-black">{item.tarea}</div>
-                    <div className="mt-1 text-xs text-white/45">
+                    <div className="mt-1 text-xs text-[var(--text-3)]">
                       {item.frecuencia} · {item.hora} · {item.fullname}
                     </div>
                   </div>
@@ -437,14 +437,14 @@ export default function TareasResumen() {
         {loading ? (
           <Loading />
         ) : visibles.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/45">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-8 text-center text-[var(--text-3)]">
             {soloDelDia
               ? "No hay tareas para hoy."
               : "No hay tareas en el rango seleccionado."}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-            <div className="hidden grid-cols-[150px_minmax(210px,1fr)_minmax(230px,1.2fr)_150px] gap-4 border-b border-white/10 bg-zinc-900/70 px-4 py-3 text-xs font-black uppercase text-white/80 lg:grid">
+          <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)]">
+            <div className="hidden grid-cols-[150px_minmax(210px,1fr)_minmax(230px,1.2fr)_150px] gap-4 border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-xs font-black uppercase text-[var(--text-2)] lg:grid">
               <span>Fecha</span>
               <span>Cliente</span>
               <span>Tarea</span>
@@ -453,36 +453,36 @@ export default function TareasResumen() {
             {tareasPaginadas.map((item) => (
               <article
                 key={item.id}
-                className="grid gap-3 border-b border-white/10 px-4 py-4 last:border-0 lg:grid-cols-[150px_minmax(210px,1fr)_minmax(230px,1.2fr)_150px] lg:items-center lg:gap-4">
+                className="grid gap-3 border-b border-[var(--border)] px-4 py-4 last:border-0 lg:grid-cols-[150px_minmax(210px,1fr)_minmax(230px,1.2fr)_150px] lg:items-center lg:gap-4">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-black text-orange-200">
                     <CalendarDays className="h-4 w-4" />
                     {fechaLegible(item.dia)}
                   </div>
-                  <div className="mt-1 flex items-center gap-2 text-xs text-white/45">
+                  <div className="mt-1 flex items-center gap-2 text-xs text-[var(--text-3)]">
                     <Clock className="h-3.5 w-3.5" />
                     {item.hora_format || item.hora}
                   </div>
                 </div>
                 <div className="min-w-0 space-y-1">
                   <div className="flex items-center gap-2 font-black">
-                    <User className="h-4 w-4 text-white/40" />
+                    <User className="h-4 w-4 text-[var(--text-3)]" />
                     <span className="truncate">
                       {item.nombre || "Tarea interna"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-white/55">
+                  <div className="flex items-center gap-2 text-xs text-[var(--text-3)]">
                     <Phone className="h-3.5 w-3.5" />
                     {item.telefono || "Sin teléfono"}
                   </div>
-                  <div className="flex items-start gap-2 text-xs text-white/55">
+                  <div className="flex items-start gap-2 text-xs text-[var(--text-3)]">
                     <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                     <span>{item.direccion || "Sin dirección"}</span>
                   </div>
                 </div>
                 <div>
                   <div className="font-bold">{item.tarea}</div>
-                  <div className="mt-1 text-xs text-white/45">
+                  <div className="mt-1 text-xs text-[var(--text-3)]">
                     Responsable: {item.fullname}
                   </div>
                   {item.frecuencia && (
@@ -493,7 +493,7 @@ export default function TareasResumen() {
                   )}
                 </div>
                 <span
-                  className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-black ${item.categoria === "internet" ? "border-orange-400/30 bg-orange-500/10 text-orange-200" : item.categoria === "camaras" ? "border-blue-400/30 bg-blue-500/10 text-blue-200" : "border-white/15 bg-white/5 text-white/65"}`}>
+                  className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-black ${item.categoria === "internet" ? "border-orange-400/30 bg-orange-500/10 text-orange-200" : item.categoria === "camaras" ? "border-blue-400/30 bg-blue-500/10 text-blue-200" : "border-[var(--border)] bg-[var(--surface-subtle)] text-[var(--text-2)]"}`}>
                   {item.categoria === "internet" ? (
                     <Globe className="h-3.5 w-3.5" />
                   ) : item.categoria === "camaras" ? (
@@ -505,7 +505,7 @@ export default function TareasResumen() {
                 </span>
               </article>
             ))}
-            <div className="flex flex-col gap-3 border-t border-white/10 bg-zinc-950/25 px-4 py-3 text-sm text-white/55 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-t border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-3 text-sm text-[var(--text-3)] sm:flex-row sm:items-center sm:justify-between">
               <span>
                 Mostrando {inicioPagina + 1}-
                 {Math.min(inicioPagina + TAREAS_POR_PAGINA, visibles.length)} de{" "}
@@ -517,10 +517,10 @@ export default function TareasResumen() {
                   aria-label="Pagina anterior"
                   disabled={paginaActual === 1}
                   onClick={() => setPagina(Math.max(1, paginaActual - 1))}
-                  className="rounded-lg border border-white/10 p-2 text-white/70 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30">
+                  className="rounded-lg border border-[var(--border)] p-2 text-[var(--text-2)] hover:bg-[var(--surface-raised)] disabled:cursor-not-allowed disabled:opacity-30">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
-                <span className="min-w-28 text-center font-bold text-white/70">
+                <span className="min-w-28 text-center font-bold text-[var(--text-2)]">
                   Pagina {paginaActual} de {totalPaginas}
                 </span>
                 <button
@@ -530,7 +530,7 @@ export default function TareasResumen() {
                   onClick={() =>
                     setPagina(Math.min(totalPaginas, paginaActual + 1))
                   }
-                  className="rounded-lg border border-white/10 p-2 text-white/70 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30">
+                  className="rounded-lg border border-[var(--border)] p-2 text-[var(--text-2)] hover:bg-[var(--surface-raised)] disabled:cursor-not-allowed disabled:opacity-30">
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
@@ -543,18 +543,18 @@ export default function TareasResumen() {
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm">
           <form
             onSubmit={guardar}
-            className="my-auto w-full max-w-2xl rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-2xl">
+            className="my-auto w-full max-w-2xl rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-lg)]">
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-black">Nueva tarea recurrente</h2>
-                <p className="mt-1 text-sm text-white/45">
+                <p className="mt-1 text-sm text-[var(--text-3)]">
                   Aparecerá automáticamente en Tareas y en la agenda.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setModal(false)}
-                className="rounded-lg p-2 text-white/55 hover:bg-white/10">
+                className="rounded-lg p-2 text-[var(--text-3)] hover:bg-[var(--surface-raised)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -680,7 +680,7 @@ export default function TareasResumen() {
                   }
                   className={claseEntrada}
                 />
-                <span className="mt-1 block text-xs font-normal text-white/35">
+                <span className="mt-1 block text-xs font-normal text-[var(--text-3)]">
                   Vacía: repetición indefinida.
                 </span>
               </Campo>
@@ -689,7 +689,7 @@ export default function TareasResumen() {
               <button
                 type="button"
                 onClick={() => setModal(false)}
-                className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-white/65">
+                className="rounded-xl border border-[var(--border)] px-4 py-2 text-sm font-bold text-[var(--text-2)]">
                 Cancelar
               </button>
               <button

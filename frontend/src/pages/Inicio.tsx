@@ -6,7 +6,6 @@ import { useAuth } from "../auth/AuthContext";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api, getToken } from "../lib/api";
 import {
-  FilePlusCorner,
   Cctv,
   Globe,
   Home,
@@ -93,6 +92,12 @@ type TareaProgramadaAgenda = {
   hora_format: string;
   idagente: number;
   fullname: string;
+};
+
+type InspeccionAgendaItem = {
+  cantidad: number;
+  producto_descrip: string;
+  detalle?: string;
 };
 
 type ClienteInspeccion = {
@@ -225,9 +230,9 @@ function NotaCompacta({ nota }: { nota: string }) {
   return (
     <div className="my-1.5 rounded-lg border border-amber-400/15 bg-amber-400/5 px-2.5 py-2">
       <div className="flex items-start gap-2">
-        <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300/80" />
+        <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" />
         <p
-          className={`min-w-0 flex-1 whitespace-pre-wrap text-xs leading-5 text-white/70 ${
+          className={`min-w-0 flex-1 whitespace-pre-wrap text-xs leading-5 text-[var(--text-2)] ${
             esLarga && !expandida ? "line-clamp-2" : ""
           }`}>
           {contenido}
@@ -237,7 +242,7 @@ function NotaCompacta({ nota }: { nota: string }) {
             type="button"
             aria-expanded={expandida}
             onClick={() => setExpandida((valor) => !valor)}
-            className="flex shrink-0 items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-bold text-white/65 hover:bg-white/10 hover:text-white">
+            className="flex shrink-0 items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-subtle)] px-2 py-1 text-[11px] font-bold text-[var(--text-2)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]">
             <span className="hidden sm:inline">
               {expandida ? "Ver menos" : "Ver más"}
             </span>
@@ -267,8 +272,6 @@ export default function Inicio() {
   const [selectedDay, setSelectedDay] = useState<string>(todayKey);
   const [citaResaltada, setCitaResaltada] = useState<string | null>(null);
   const citaResaltadaInicial = useRef(false);
-  const [selectedDayNuevaCita, setSelectedDayNuevaCita] =
-    useState<string>(todayKey);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const diaParam = params.get("dia");
@@ -277,7 +280,6 @@ export default function Inicio() {
     if (diaParam) {
       const diaSeleccionable = getSelectableDateKey(diaParam);
       setSelectedDay(diaSeleccionable);
-      setSelectedDayNuevaCita(diaSeleccionable);
     }
 
     if (citaParam && !citaResaltadaInicial.current) {
@@ -291,8 +293,6 @@ export default function Inicio() {
   }, [location.pathname, location.search, location.state]);
   const [openModalConfirm, setOpenModalConfirm] = useState(false);
   const [idHojaConfirmar, setIdHojaConfirmar] = useState<number | null>(null);
-  const [time, setTime] = useState("09:00");
-  const [notes, setNotes] = useState("");
   const [openCotizacion, setOpenCotizacion] = useState(false);
   const [openInspeccion, setOpenInspeccion] = useState(false);
   const [idCitaInspeccion, setIdCitaInspeccion] = useState<number | null>(null);
@@ -330,7 +330,7 @@ export default function Inicio() {
   };
 
   const [inspeccionItemsMap, setInspeccionItemsMap] = useState<
-    Record<string, { items: any[]; visible: boolean }>
+    Record<string, { items: InspeccionAgendaItem[]; visible: boolean }>
   >({});
   const [idCotizacion, setIdCotizacion] = useState<number | null>(null);
   const [cotizacionBloqueada, setCotizacionBloqueada] = useState(false);
@@ -382,6 +382,7 @@ export default function Inicio() {
 
   const [loading, setLoading] = useState(true);
   const [cuotasAlertas, setCuotasAlertas] = useState<CuotaAlerta[]>([]);
+  const [cobrosDrawerOpen, setCobrosDrawerOpen] = useState(false);
   const [induccionCompleta, setInduccionCompleta] = useState(false);
 
   const cuotasVencidas = useMemo(
@@ -399,6 +400,22 @@ export default function Inicio() {
     () => cuotasAlertas.filter((cuota) => Number(cuota.dias) > 0),
     [cuotasAlertas],
   );
+
+  useEffect(() => {
+    if (!cobrosDrawerOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCobrosDrawerOpen(false);
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [cobrosDrawerOpen]);
 
   const cargarInicio = async () => {
     setLoading(true);
@@ -440,13 +457,6 @@ export default function Inicio() {
     setCitaResaltada(null);
     setSelectedDay(todayKey);
   }
-
-  const [selectedOption, setSelectedOption] = useState<
-    "camaras" | "internet" | null
-  >(null);
-  const handleSelection = (option: "camaras" | "internet") => {
-    setSelectedOption((prev) => (prev === option ? null : option));
-  };
 
   const [selectedOptionEventos, setSelectedOptionEventos] = useState<
     "my" | "all" | null
@@ -808,11 +818,11 @@ export default function Inicio() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-3 overflow-y-auto">
       {user?.rol === "tecnico" && induccionCompleta === false && (
-        <div className="mr-4 rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-sm text-orange-50 shadow-lg shadow-black/20">
+        <div className="mr-4 rounded-lg border border-[var(--primary-border)] bg-[var(--primary-soft)] px-4 py-3 text-sm text-[var(--text-1)] shadow-[var(--shadow-sm)]">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <strong>Completa tu induccion tecnica</strong>
-              <p className="text-xs text-orange-100/70">Revisa los videos introductorios antes de tus proximas instalaciones.</p>
+              <p className="text-xs text-[var(--text-2)]">Revisa los videos introductorios antes de tus proximas instalaciones.</p>
             </div>
             <Link to="/perfil-tecnico" className="boton inline-flex items-center justify-center border border-orange-400/40 bg-orange-600 text-white hover:bg-orange-500">
               Ver capacitacion
@@ -820,16 +830,21 @@ export default function Inicio() {
           </div>
         </div>
       )}
-      <div className="flex min-h-0 w-full flex-col gap-3 xl:flex-row">
-      <div className="w-full shrink-0 xl:h-full xl:w-1/4 xl:overflow-y-auto xl:pr-1">
-        <div className="w-full cuadro">
-          <div className="mb-2 text-center">
-            <div className="text-sm font-extrabold capitalize sm:text-base">
-              {formatHeader(selectedDay)}
+      <div className="flex min-h-0 w-full flex-1 flex-col gap-3">
+      <section className="relative w-full shrink-0 cuadro">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)_auto] xl:items-end">
+        <div className="min-w-0">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-300">
+              <CalendarClock className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-sm font-extrabold text-[var(--text-1)]">Agenda</h2>
+              <p className="truncate text-xs font-semibold capitalize text-[var(--text-3)]">{formatHeader(selectedDay)}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-[auto_auto_auto_minmax(0,1fr)] items-center gap-1">
+          <div className="grid grid-cols-3 items-center gap-1 sm:grid-cols-[auto_auto_auto_minmax(8rem,1fr)]">
             <button
               onClick={goPrev}
               className="btn-secondary whitespace-nowrap !px-2 !py-1.5 text-[10px] font-bold">
@@ -846,7 +861,7 @@ export default function Inicio() {
               Siguiente →
             </button>
 
-            <div className="flex min-w-0 items-center gap-1 rounded-lg border border-[var(--bg-border)] bg-[var(--bg-surface-2)] px-2 py-1.5">
+            <div className="col-span-3 flex min-w-0 items-center gap-1 rounded-lg border border-[var(--bg-border)] bg-[var(--bg-surface-2)] px-2 py-1.5 sm:col-span-1">
               <span className="shrink-0 text-[10px] text-muted">Ir a</span>
               <DatePicker
                 selected={fromDateKey(selectedDay)}
@@ -865,120 +880,8 @@ export default function Inicio() {
             </div>
           </div>
         </div>
-
-        {user?.rol?.toLowerCase() !== "tecnico" && (
-          <div
-            className="mt-3 grid grid-cols-1 gap-3 w-full cuadro shrink-0"
-            hidden>
-            <div className="flex justify-between items-center">
-              <h2 className="text-sm font-extrabold tracking-tight flex items-center gap-1">
-                <FilePlusCorner className="w-4 h-4" />
-                <span>Nueva tarea</span>
-              </h2>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleSelection("camaras")}
-                  className={`boton flex gap-1 justify-center items-center ${
-                    selectedOption == "camaras"
-                      ? "bg-blue-500 text-white"
-                      : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                  }`}>
-                  <Cctv className="w-4 h-4" />
-                  Cámaras
-                </button>
-                <button
-                  onClick={() => handleSelection("internet")}
-                  className={`boton flex gap-1 justify-center items-center ${
-                    selectedOption == "internet"
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-300 text-gray-800 hover:bg-gray-400"
-                  }`}>
-                  <Globe className="w-4 h-4" />
-                  Internet
-                </button>
-              </div>
-            </div>
-            {selectedOption && (
-              <div className="flex flex-col gap-3">
-                <div className="flex justify-between gap-2">
-                  <div className="w-full">
-                    <label className="block text-xs text-white/60 mb-1">
-                      Fecha
-                    </label>
-                    <DatePicker
-                      selected={fromDateKey(selectedDayNuevaCita)}
-                      onChange={(date: Date | null) => {
-                        if (!date || isSundayDate(date)) return;
-                        setSelectedDayNuevaCita(toDateKey(date));
-                      }}
-                      filterDate={(date: Date) => !isSundayDate(date)}
-                      dayClassName={(date: Date) =>
-                        isSundayDate(date) ? "datepicker-sunday-blocked" : ""
-                      }
-                      dateFormat="MM/dd/yyyy"
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer"
-                    />
-                  </div>
-
-                  <div className="w-full">
-                    <label className="block text-xs text-white/60 mb-1">
-                      Hora
-                    </label>
-                    <input
-                      type="time"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40 cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs text-white/60 mb-1">
-                    Notas
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={20}
-                    placeholder="Detalles, tareas, pendientes, etc."
-                    className="w-full resize-none rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm outline-none focus:border-orange-500/40"
-                  />
-                </div>
-
-                {user?.rol == "moderador" ||
-                  user?.rol == "administrador" ||
-                  (user?.rol == "superadmin" && (
-                    <div>
-                      <label className="block text-xs text-white/60 mb-1 ">
-                        Asignado a
-                      </label>
-                      <select className="capitalize bg-gray-700 text-white p-2 rounded-md cursor-pointer w-full">
-                        <option key={user?.id} value={user?.id} selected>
-                          {user?.fullname}
-                        </option>
-                        {users
-                          .filter((u) => u.id !== user?.id)
-                          .map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.fullname}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  ))}
-
-                <div className="flex items-center gap-2">
-                  <button className="flex-1 boton bg-orange-500 text-white hover:bg-orange-600"></button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="mt-3 grid grid-cols-1 gap-2 w-full cuadro shrink-0">
-          <div className="flex items-center justify-between gap-2">
+        <div className="relative min-w-0">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
             <div className="font-bold flex items-center gap-1">
               <UserRoundSearch className="w-4 h-4" />
               Buscar cliente
@@ -991,16 +894,18 @@ export default function Inicio() {
                   setQuery("");
                   setResultados([]);
                 }}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/5 p-0 text-white/60 transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-200"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-0 text-[var(--text-3)] transition hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-700 dark:hover:text-orange-200"
               >
                 <X className="h-4 w-4" />
               </button>
             )}
           </div>
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="relative flex min-w-0 items-center gap-2">
+            <UserRoundSearch className="pointer-events-none absolute left-3 h-4 w-4 text-[var(--text-3)]" />
             <input
               type="text"
-              className="min-w-0 bg-[var(--bg-input)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] border border-[var(--bg-border)] focus:border-orange-500/40 text-sm p-2 rounded-lg w-full uppercase"
+              aria-label="Buscar cliente por nombre, teléfono o domicilio"
+              className="input min-w-0 w-full py-2 pl-9 pr-3 text-sm uppercase"
               placeholder="Nombre, teléfono o domicilio"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -1008,18 +913,18 @@ export default function Inicio() {
           </div>
 
           {resultados?.length > 0 && (
-            <ul className="bg-[var(--bg-surface-2)] mt-2 max-h-60 overflow-y-auto rounded-lg border border-[var(--bg-border)] text-xs shadow-lg">
+            <ul className="absolute inset-x-0 top-full z-40 mt-2 max-h-72 overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1 text-xs shadow-[var(--shadow-md)]">
               {resultados.map((c) => {
                 return (
                   <li
                     key={c.id}
-                    className="p-2 text-white cursor-pointer flex items-center gap-2 transition-all hover:bg-orange-600 hover:text-white/90"
+                    className="flex cursor-pointer items-center gap-2 rounded-md p-2 text-[var(--text-1)] transition-colors hover:bg-[var(--primary-soft)] hover:text-[var(--primary)]"
                     onClick={() => seleccionarCliente(c.id)}
                   >
                     <span className="min-w-0 flex-1">
                       <span className="block font-bold">{c.nombre}</span>
                       {(c.telefono || c.domicilio) && (
-                        <span className="block truncate text-[11px] text-white/55">
+                        <span className="block truncate text-[11px] text-[var(--text-3)]">
                           {[c.telefono, c.domicilio].filter(Boolean).join(" - ")}
                         </span>
                       )}
@@ -1031,92 +936,47 @@ export default function Inicio() {
           )}
         </div>
 
-        {cuotasAlertas.length > 0 && user?.rol != "tecnico" && (
-          <div className="mt-3 w-full cuadro shrink-0">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="font-bold flex min-w-0 items-center gap-1">
-                <TriangleAlert className="w-4 h-4 text-orange-400" />
-                Cuotas por vencer
-              </div>
-              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-bold text-white/60">
-                {cuotasAlertas.length}
-              </span>
+        {user?.rol !== "tecnico" && (
+          <div className="min-w-0">
+            <div className="mb-1.5 flex items-center justify-between gap-2 text-xs font-bold text-[var(--text-2)]">
+              <span>Cartera</span>
+              <span className="text-[var(--text-3)]">{cuotasAlertas.length} alertas</span>
             </div>
-
-            {cuotasAlertas.length === 0 ? (
-              <div className="rounded-lg border border-white/10 bg-zinc-950/30 p-3 text-xs text-white/50">
-                No hay cuotas vencidas ni próximas.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {[
-                  {
-                    titulo: "Vencidas",
-                    items: cuotasVencidas,
-                    color: "border-red-500/25 bg-red-500/10 text-red-300",
-                    scroll: true,
-                  },
-                  {
-                    titulo: "Vencen hoy",
-                    items: cuotasHoy,
-                    color:
-                      "border-yellow-500/25 bg-yellow-500/10 text-yellow-200",
-                    scroll: false,
-                  },
-                  {
-                    titulo: "Por vencer",
-                    items: cuotasProximas,
-                    color: "border-cyan-500/25 bg-cyan-500/10 text-cyan-200",
-                    scroll: true,
-                  },
-                ].map((grupo) => (
-                  <div key={grupo.titulo}>
-                    <div
-                      className={`mb-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-bold ${grupo.color}`}>
-                      {grupo.titulo} · {grupo.items.length}
-                    </div>
-
-                    {grupo.items.length > 0 && (
-                      <div
-                        className={`${grupo.scroll ? "max-h-36 overflow-y-auto pr-1" : ""} space-y-1.5`}>
-                        {grupo.items.map((cuota) => (
-                          <button
-                            key={cuota.idcuota}
-                            onClick={() =>
-                              navigate(`/clientes/${cuota.idcliente}`)
-                            }
-                            className="w-full rounded-md border border-[var(--bg-border)] bg-[var(--bg-surface-2)] px-2.5 py-1.5 text-left text-[11px] leading-tight transition hover:bg-[var(--color-primary-l)]">
-                            <div className="flex min-w-0 items-start justify-between gap-2">
-                              <span className="truncate font-bold text-[var(--text-primary)]">
-                                {cuota.cliente}
-                              </span>
-                              <span className="shrink-0 font-extrabold text-orange-500">
-                                <FormatearNumero numero={Number(cuota.monto)} />
-                              </span>
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[10px] leading-tight opacity-70">
-                              <span>{formatShortDate(cuota.vencimiento)}</span>
-                              <span>
-                                {Number(cuota.dias) < 0
-                                  ? `${Math.abs(Number(cuota.dias))} días tarde`
-                                  : Number(cuota.dias) === 0
-                                    ? "Hoy"
-                                    : `en ${cuota.dias} días`}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => setCobrosDrawerOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={cobrosDrawerOpen}
+              className="flex w-full min-w-[15rem] items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-left transition-colors hover:border-orange-500/40 hover:bg-[var(--primary-soft)]">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-300">
+                <TriangleAlert className="h-4 w-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-extrabold text-[var(--text-1)]">
+                  Cobros pendientes
+                </span>
+                <span className="block truncate text-[11px] text-[var(--text-3)]">
+                  {cuotasAlertas.length > 0 ? "Revisar vencimientos" : "Sin alertas pendientes"}
+                </span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1 text-[10px] font-extrabold">
+                <span title="Vencidas" className="rounded-full bg-red-500/10 px-1.5 py-1 text-red-600 dark:text-red-300">
+                  {cuotasVencidas.length}
+                </span>
+                <span title="Vencen hoy" className="rounded-full bg-amber-500/10 px-1.5 py-1 text-amber-700 dark:text-amber-300">
+                  {cuotasHoy.length}
+                </span>
+                <span title="Próximas" className="rounded-full bg-[var(--surface-raised)] px-1.5 py-1 text-[var(--text-2)]">
+                  {cuotasProximas.length}
+                </span>
+              </span>
+            </button>
           </div>
         )}
       </div>
+      </section>
 
-      <div className="flex min-h-[28rem] w-full min-w-0 flex-col cuadro xl:min-h-0 xl:w-3/4">
+      <div className="flex min-h-[28rem] w-full min-w-0 flex-1 flex-col cuadro xl:min-h-0">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-extrabold tracking-tight">
             Eventos del día
@@ -1124,26 +984,24 @@ export default function Inicio() {
           <span className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={() => handleSelectionEventos("my")}
-              className={`boton border border-white/10 ${
+              className={`boton border border-[var(--border)] ${
                 selectedOptionEventos == "my"
-                  ? "bg-orange-600 hover:bg-white/20"
-                  : "hover:bg-orange-600 bg-white/20"
+                  ? "bg-orange-600 hover:bg-[var(--surface-raised)]"
+                  : "hover:bg-orange-600 bg-[var(--surface-raised)]"
               }`}>
               Mis eventos
             </button>
-            {user?.rol == "moderador" ||
-              user?.rol == "administrador" ||
-              (user?.rol == "superadmin" && (
-                <button
-                  onClick={() => handleSelectionEventos("all")}
-                  className={`boton border border-white/10 ${
-                    selectedOptionEventos == "all"
-                      ? "bg-orange-600 hover:bg-white/20"
-                      : "hover:bg-orange-600 bg-white/20"
-                  }`}>
-                  Todos los eventos
-                </button>
-              ))}
+            {["moderador", "administrador", "superadmin"].includes(user?.rol ?? "") && (
+              <button
+                onClick={() => handleSelectionEventos("all")}
+                className={`boton border border-[var(--border)] ${
+                  selectedOptionEventos == "all"
+                    ? "bg-orange-600 hover:bg-[var(--surface-raised)]"
+                    : "hover:bg-orange-600 bg-[var(--surface-raised)]"
+                }`}>
+                Todos los eventos
+              </button>
+            )}
           </span>
         </div>
 
@@ -1225,21 +1083,21 @@ export default function Inicio() {
               Number(it.eliminado) === 1 ? (
                 <div
                   key={it.idcita}
-                  className="card-event cursor-not-allowed border-zinc-500/40 bg-zinc-800/60 opacity-65 grayscale"
+                  className="card-event cursor-not-allowed border-[var(--border-strong)] bg-[var(--surface-raised)] opacity-65 grayscale"
                   style={{ borderLeftColor: "#71717a", borderLeftWidth: "5px" }}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs font-black text-red-300">
+                        <span className="rounded-full border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs font-black text-red-700 dark:text-red-300">
                           CITA ELIMINADA
                         </span>
-                        <span className="text-sm font-bold text-white/70">{it.hora_format}</span>
+                        <span className="text-sm font-bold text-[var(--text-2)]">{it.hora_format}</span>
                       </div>
-                      <p className="mt-2 font-bold text-white/70">{it.nombre}</p>
-                      <p className="text-sm text-white/45">{it.direccion || "Sin domicilio"}</p>
+                      <p className="mt-2 font-bold text-[var(--text-2)]">{it.nombre}</p>
+                      <p className="text-sm text-[var(--text-3)]">{it.direccion || "Sin domicilio"}</p>
                     </div>
-                    <span className="text-xs font-semibold text-white/40">Deshabilitada</span>
+                    <span className="text-xs font-semibold text-[var(--text-3)]">Deshabilitada</span>
                   </div>
                 </div>
               ) : user?.rol === "tecnico" ? (
@@ -1294,7 +1152,7 @@ export default function Inicio() {
 
                       <div className="flex shrink-0 items-center justify-end gap-2 lg:text-right">
                         {esCitaSoporte(it) && Number(it.soporte_finalizado) === 1 ? (
-                          <div className="inline-flex items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-extrabold text-emerald-300">
+                          <div className="inline-flex items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
                             <CircleCheck className="h-4 w-4" />
                             SOPORTE FINALIZADO
                           </div>
@@ -1369,7 +1227,7 @@ export default function Inicio() {
                               type="button"
                               disabled={soportesFinalizando.has(it.idcita)}
                               onClick={() => finalizarSoporte(it)}
-                              className="rounded-full border border-emerald-400/40 bg-emerald-500/20 px-3 py-1 text-xs font-extrabold text-emerald-100 transition hover:bg-emerald-500/30 disabled:cursor-wait disabled:opacity-50">
+                              className="rounded-full border border-emerald-400/40 bg-emerald-500/20 px-3 py-1 text-xs font-extrabold text-emerald-800 transition hover:bg-emerald-500/30 disabled:cursor-wait disabled:opacity-50 dark:text-emerald-100">
                               <CircleCheck className="mr-1 inline h-3.5 w-3.5" />
                               {soportesFinalizando.has(it.idcita)
                                 ? "Finalizando..."
@@ -1397,7 +1255,7 @@ export default function Inicio() {
                         <div className="mt-2">
                           <button
                             onClick={() => toggleInspeccionItems(it.idcita)}
-                            className="text-xs text-white/50 hover:text-white/80 flex items-center gap-1 transition-colors mb-1">
+                            className="text-xs text-[var(--text-3)] hover:text-[var(--text-2)] flex items-center gap-1 transition-colors mb-1">
                             <ListChevronsUpDown className="h-3.5 w-3.5" />
                             {inspeccionItemsMap[it.idcita]?.visible
                               ? "Ocultar materiales"
@@ -1405,27 +1263,27 @@ export default function Inicio() {
                           </button>
 
                           {inspeccionItemsMap[it.idcita]?.visible && (
-                            <div className="rounded-xl border border-white/8 overflow-hidden bg-zinc-900/50">
+                            <div className="rounded-xl border border-[var(--border)] overflow-hidden bg-[var(--surface)]">
                               {inspeccionItemsMap[it.idcita].items.length ===
                               0 ? (
-                                <p className="p-3 text-xs text-white/40 italic">
+                                <p className="p-3 text-xs text-[var(--text-3)] italic">
                                   Sin materiales cargados
                                 </p>
                               ) : (
                                 inspeccionItemsMap[it.idcita].items.map(
-                                  (item: any, idx: number) => (
+                                  (item, idx) => (
                                     <div
                                       key={idx}
-                                      className="flex items-start gap-2 px-3 py-2 border-b border-white/5 last:border-b-0">
-                                      <span className="shrink-0 bg-orange-500/15 border border-orange-500/30 rounded-md px-1.5 py-0.5 text-xs font-bold text-orange-300">
+                                      className="flex items-start gap-2 px-3 py-2 border-b border-[var(--border)] last:border-b-0">
+                                      <span className="shrink-0 bg-orange-500/15 border border-orange-500/30 rounded-md px-1.5 py-0.5 text-xs font-bold text-orange-700 dark:text-orange-300">
                                         ×{item.cantidad}
                                       </span>
                                       <div className="min-w-0">
-                                        <p className="text-xs font-semibold text-white truncate">
+                                        <p className="text-xs font-semibold text-[var(--text-1)] truncate">
                                           {item.producto_descrip}
                                         </p>
                                         {item.detalle && (
-                                          <p className="text-xs text-white/40 italic truncate">
+                                          <p className="text-xs text-[var(--text-3)] italic truncate">
                                             {item.detalle}
                                           </p>
                                         )}
@@ -1442,7 +1300,7 @@ export default function Inicio() {
                       {/* Ver archivos */}
                       <div className="flex flex-wrap items-center gap-2">
                         <div
-                          className="text-xs hover:underline text-white/60 cursor-pointer transition-all flex items-center gap-1 mt-1"
+                          className="text-xs hover:underline text-[var(--text-3)] cursor-pointer transition-all flex items-center gap-1 mt-1"
                           onClick={() => toggleImagenes(it.idcita)}>
                           {it.mostrarImagenes ? (
                             <>
@@ -1485,7 +1343,7 @@ export default function Inicio() {
                           calendarClassName="agenda-timepicker"
                           popperClassName="agenda-timepicker-popper"
                           popperContainer={AgendaTimepickerPortal}
-                          className="inline-flex items-center rounded-full border border-zinc-300 bg-white px-2 py-1 text-xs font-bold text-black text-center w-20 cursor-pointer"
+                          className="inline-flex items-center rounded-full border border-[var(--border-strong)] bg-white px-2 py-1 text-xs font-bold text-black text-center w-20 cursor-pointer"
                           title="Cambiar hora"
                           selected={hora}
                           onChange={handleHoraChange.bind(null, it.idcita)}
@@ -1541,7 +1399,7 @@ export default function Inicio() {
                           </button>
                         )}
                         {esCitaSoporte(it) && Number(it.soporte_finalizado) === 1 ? (
-                          <div className="inline-flex items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-extrabold text-emerald-300">
+                          <div className="inline-flex items-center gap-1 rounded-md border border-emerald-400/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-extrabold text-emerald-700 dark:text-emerald-300">
                             <CircleCheck className="h-4 w-4" />
                             SOPORTE FINALIZADO
                           </div>
@@ -1692,7 +1550,7 @@ export default function Inicio() {
                           )}
                           <button
                             onClick={() => abrirEditar(it)}
-                            className="boton ml-0 flex shrink-0 items-center justify-center border !border-orange-400/60 !bg-orange-500/15 py-0.5! font-bold !text-orange-300 shadow-sm shadow-orange-500/15 transition hover:!border-orange-300 hover:!bg-orange-500/30 hover:!text-white sm:ml-1">
+                            className="boton ml-0 flex shrink-0 items-center justify-center border !border-orange-400/60 !bg-orange-500/15 py-0.5! font-bold !text-orange-700 shadow-sm shadow-orange-500/15 transition hover:!border-orange-500 hover:!bg-orange-500/30 hover:!text-orange-900 sm:ml-1 dark:!text-orange-300 dark:hover:!text-white">
                             <Pencil className="h-3 w-3" />
                             Editar registro
                           </button>
@@ -1703,7 +1561,7 @@ export default function Inicio() {
                               type="button"
                               disabled={soportesFinalizando.has(it.idcita)}
                               onClick={() => finalizarSoporte(it)}
-                              className="rounded-full border border-emerald-400/40 bg-emerald-500/20 px-3 py-1 text-xs font-extrabold text-emerald-100 transition hover:bg-emerald-500/30 disabled:cursor-wait disabled:opacity-50">
+                              className="rounded-full border border-emerald-400/40 bg-emerald-500/20 px-3 py-1 text-xs font-extrabold text-emerald-800 transition hover:bg-emerald-500/30 disabled:cursor-wait disabled:opacity-50 dark:text-emerald-100">
                               <CircleCheck className="mr-1 inline h-3.5 w-3.5" />
                               {soportesFinalizando.has(it.idcita)
                                 ? "Finalizando..."
@@ -1717,7 +1575,7 @@ export default function Inicio() {
                               onClick={() =>
                                 abrirConfirmarInstalacion(it.idhoja)
                               }
-                              className="group flex w-full items-center justify-center gap-1.5 rounded-full border border-green-400/30 bg-green-500/15 px-3 py-1 text-xs font-extrabold text-green-200 shadow-sm shadow-green-500/10 transition-all hover:border-green-300/70 hover:bg-green-500/25 hover:text-white hover:shadow-green-500/20 sm:w-auto">
+                              className="group flex w-full items-center justify-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/15 px-3 py-1 text-xs font-extrabold text-green-800 shadow-sm shadow-green-500/10 transition-all hover:border-green-500/70 hover:bg-green-500/25 hover:text-green-950 hover:shadow-green-500/20 sm:w-auto dark:text-green-200 dark:hover:text-white">
                               <CircleCheck className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
                               Confirmar Instalación
                             </button>
@@ -1726,7 +1584,7 @@ export default function Inicio() {
                           <div className="shrink-0">
                             <button
                               onClick={() => abrirHojaInstalacion(it)}
-                              className="group flex w-full items-center justify-center gap-1.5 rounded-full border border-orange-400/30 bg-orange-500/15 px-3 py-1 text-xs font-extrabold text-orange-200 shadow-sm shadow-orange-500/10 transition-all hover:border-orange-300/70 hover:bg-orange-500/25 hover:text-white hover:shadow-orange-500/20 sm:w-auto">
+                              className="group flex w-full items-center justify-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-500/15 px-3 py-1 text-xs font-extrabold text-orange-800 shadow-sm shadow-orange-500/10 transition-all hover:border-orange-500/70 hover:bg-orange-500/25 hover:text-orange-950 hover:shadow-orange-500/20 sm:w-auto dark:text-orange-200 dark:hover:text-white">
                               <FileText className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
                               Ver Hoja / Firma
                             </button>
@@ -1741,7 +1599,7 @@ export default function Inicio() {
                           it.tipo == "camaras-tiene-nuevo-instalacion" ||
                           it.tipo == "camaras-tiene-existente-instalacion") && (
                           <div
-                            className="text-xs hover:underline text-white/60 cursor-pointer flex items-center gap-1 mt-1"
+                            className="text-xs hover:underline text-[var(--text-3)] cursor-pointer flex items-center gap-1 mt-1"
                             onClick={() => toggleDetalles(it.idcita)}>
                             {it.detalles ? (
                               <>
@@ -1758,7 +1616,7 @@ export default function Inicio() {
                         )}
 
                         <div
-                          className="text-xs hover:underline text-white/60 cursor-pointer transition-all flex items-center gap-1 mt-1"
+                          className="text-xs hover:underline text-[var(--text-3)] cursor-pointer transition-all flex items-center gap-1 mt-1"
                           onClick={() => toggleImagenes(it.idcita)}>
                           {it.mostrarImagenes ? (
                             <>
@@ -1790,16 +1648,16 @@ export default function Inicio() {
                                   backgroundColor: darkenColor(it.color, 0.8),
                                   borderColor: darkenColor(it.color, 0.2),
                                 }}>
-                                <span className="text-white/70 capitalize">
+                                <span className="text-[var(--text-2)] capitalize">
                                   {pregunta.pregunta}:
                                 </span>
-                                <span className="text-white font-bold uppercase">
+                                <span className="text-on-solid font-bold uppercase">
                                   {pregunta.respuesta}
                                 </span>
                               </div>
                             ))
                         ) : (
-                          <div className="text-xs italic text-white/40">
+                          <div className="text-xs italic text-[var(--text-3)]">
                             Sin detalles
                           </div>
                         )}
@@ -1819,10 +1677,10 @@ export default function Inicio() {
                               )!.respuesta,
                               it.idcita,
                             )}>
-                            <span className="text-white/70">
+                            <span className="text-[var(--text-2)]">
                               Modelo de NVR:
                             </span>
-                            <span className="text-white font-bold uppercase">
+                            <span className="text-on-solid font-bold uppercase">
                               {
                                 it.preguntas!.find(
                                   (p) => p.pregunta === "modelonvr",
@@ -1853,6 +1711,144 @@ export default function Inicio() {
             )
           )}
         </div>
+        {cobrosDrawerOpen &&
+          createPortal(
+            <div className="fixed inset-0 z-[90]" role="presentation">
+              <button
+                type="button"
+                aria-label="Cerrar panel de cobros"
+                className="absolute inset-0 h-full w-full cursor-default bg-slate-950/40 backdrop-blur-[1px]"
+                onClick={() => setCobrosDrawerOpen(false)}
+              />
+              <aside
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="cobros-pendientes-title"
+                className="absolute inset-y-0 right-0 flex w-full flex-col border-l border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-md)] sm:max-w-md">
+                <header className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-4 py-4 sm:px-5">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-300">
+                      <TriangleAlert className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <h2 id="cobros-pendientes-title" className="text-base font-extrabold text-[var(--text-1)]">
+                        Cobros pendientes
+                      </h2>
+                      <p className="mt-0.5 text-xs text-[var(--text-3)]">
+                        Alertas de vencimiento y seguimiento de cartera
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Cerrar"
+                    onClick={() => setCobrosDrawerOpen(false)}
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] text-[var(--text-3)] transition-colors hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]">
+                    <X className="h-4 w-4" />
+                  </button>
+                </header>
+
+                <div className="grid grid-cols-3 gap-2 border-b border-[var(--border)] p-4 sm:px-5">
+                  <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-red-700 dark:text-red-300">Vencidas</p>
+                    <p className="mt-1 text-xl font-extrabold text-[var(--text-1)]">{cuotasVencidas.length}</p>
+                  </div>
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">Hoy</p>
+                    <p className="mt-1 text-xl font-extrabold text-[var(--text-1)]">{cuotasHoy.length}</p>
+                  </div>
+                  <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-2.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300">Próximas</p>
+                    <p className="mt-1 text-xl font-extrabold text-[var(--text-1)]">{cuotasProximas.length}</p>
+                  </div>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:px-5">
+                  {cuotasAlertas.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-subtle)] p-6 text-center">
+                      <CircleCheck className="mx-auto h-7 w-7 text-emerald-600 dark:text-emerald-300" />
+                      <p className="mt-2 text-sm font-bold text-[var(--text-1)]">Cartera al día</p>
+                      <p className="mt-1 text-xs text-[var(--text-3)]">No hay cuotas vencidas ni próximas.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-5">
+                      {[
+                        {
+                          titulo: "Vencidas",
+                          items: cuotasVencidas,
+                          clase: "bg-red-500/10 text-red-700 dark:text-red-300",
+                        },
+                        {
+                          titulo: "Hoy",
+                          items: cuotasHoy,
+                          clase: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+                        },
+                        {
+                          titulo: "Próximas",
+                          items: cuotasProximas,
+                          clase: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+                        },
+                      ].map((grupo) => (
+                        <section key={grupo.titulo}>
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <h3 className={`rounded-full px-2 py-1 text-xs font-extrabold ${grupo.clase}`}>
+                              {grupo.titulo}
+                            </h3>
+                            <span className="text-xs font-bold text-[var(--text-3)]">{grupo.items.length}</span>
+                          </div>
+                          {grupo.items.length === 0 ? (
+                            <p className="rounded-lg border border-dashed border-[var(--border)] px-3 py-2 text-xs text-[var(--text-3)]">
+                              Sin cuotas en este grupo.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {grupo.items.map((cuota) => (
+                                <button
+                                  type="button"
+                                  key={cuota.idcuota}
+                                  onClick={() => {
+                                    setCobrosDrawerOpen(false);
+                                    navigate(`/clientes/${cuota.idcliente}`);
+                                  }}
+                                  className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2.5 text-left transition-colors hover:border-orange-500/30 hover:bg-[var(--primary-soft)]">
+                                  <span className="flex min-w-0 items-start justify-between gap-3">
+                                    <span className="min-w-0 truncate text-sm font-bold text-[var(--text-1)]">{cuota.cliente}</span>
+                                    <span className="shrink-0 text-sm font-extrabold text-[var(--primary)]">
+                                      <FormatearNumero numero={Number(cuota.monto)} />
+                                    </span>
+                                  </span>
+                                  <span className="mt-1 flex items-center justify-between gap-3 text-xs text-[var(--text-3)]">
+                                    <span>{formatShortDate(cuota.vencimiento)}</span>
+                                    <span>
+                                      {Number(cuota.dias) < 0
+                                        ? `${Math.abs(Number(cuota.dias))} días tarde`
+                                        : Number(cuota.dias) === 0
+                                          ? "Vence hoy"
+                                          : `Vence en ${cuota.dias} días`}
+                                    </span>
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </section>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <footer className="flex flex-col-reverse gap-2 border-t border-[var(--border)] p-4 sm:flex-row sm:justify-end sm:px-5">
+                  <button type="button" onClick={() => setCobrosDrawerOpen(false)} className="btn-secondary justify-center">
+                    Cerrar
+                  </button>
+                  <Link to="/pagos" onClick={() => setCobrosDrawerOpen(false)} className="btn-primary justify-center">
+                    Ir a Pagos
+                  </Link>
+                </footer>
+              </aside>
+            </div>,
+            document.body,
+          )}
         <ModalEditarRegistro
           open={modalOpen}
           item={selectedItem}
@@ -1918,15 +1914,15 @@ export default function Inicio() {
         )}
         <style>{`
           .react-datepicker {
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            background: rgb(24, 24, 27);
-            color: white;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-1);
             font-family: inherit;
           }
 
           .react-datepicker__header {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgb(39, 39, 42);
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-subtle);
           }
 
           .react-datepicker__current-month,
@@ -1934,16 +1930,16 @@ export default function Inicio() {
           .react-datepicker-year-header,
           .react-datepicker__day-name,
           .react-datepicker__day {
-            color: rgba(255, 255, 255, 0.86);
+            color: var(--text-2);
           }
 
           .react-datepicker__day:hover {
-            background: rgba(249, 115, 22, 0.22);
+            background: var(--primary-soft);
           }
 
           .react-datepicker__day--selected,
           .react-datepicker__day--keyboard-selected {
-            background: rgb(249, 115, 22);
+            background: var(--primary);
             color: white;
           }
 

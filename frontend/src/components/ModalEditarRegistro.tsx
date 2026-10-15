@@ -76,59 +76,59 @@ export default function EditAgendaModal({
     };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 p-4">
-      <div className="my-auto w-full max-w-lg rounded-2xl border border-white/10 bg-zinc-900 p-5 shadow-xl">
+    <div className="modal-overlay overflow-y-auto">
+      <div className="modal my-auto w-full max-w-lg p-5">
         <div className="mb-4 flex items-center gap-2">
-            <Pencil className="text-white h-4 w-4" />
-            <h2 className="text-lg font-bold text-white">Editar cita</h2>
+            <Pencil className="h-4 w-4 text-[var(--primary)]" />
+            <h2 className="mb-0 text-lg font-bold text-[var(--text-1)]">Editar cita</h2>
         </div>
 
         <div className="space-y-2">
           <div>
-            <label className="text-xs text-white/60">Nombre</label>
+            <label className="text-xs text-[var(--text-3)]">Nombre</label>
             <input
               name="nombre"
               value={form.nombre}
               onChange={handleChange}
-              className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40 uppercase"
+              className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-1)] uppercase"
             />
           </div>
 
           <div>
-            <label className="text-xs text-white/60">Teléfono</label>
+            <label className="text-xs text-[var(--text-3)]">Teléfono</label>
             <input
               name="telefono"
               value={form.telefono}
               onChange={handleChange}
-              className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40"
+              className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-1)]"
             />
           </div>
 
           <div>
-            <label className="text-xs text-white/60">Dirección</label>
+            <label className="text-xs text-[var(--text-3)]">Dirección</label>
             <input
               name="direccion"
               value={form.direccion}
               onChange={handleChange}
-              className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40 uppercase"
+              className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-1)] uppercase"
             />
           </div>
 
             <div>
-                <label className="text-xs text-white/60">Notas</label>
+                <label className="text-xs text-[var(--text-3)]">Notas</label>
                 <textarea
                 name="notas"
                 value={form.notas || ""}
                 onChange={handleChange}
                 rows={6}
-                className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40"
+                className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-1)]"
                 />
             </div>
 
             <div className="flex flex-col justify-between gap-3 sm:flex-row">
 
                 <div>
-                    <label className="text-xs text-white/60">Fecha</label>
+                    <label className="text-xs text-[var(--text-3)]">Fecha</label>
                     <DatePicker
                         selected={dateKeyToDate(form.dia)}
                         onChange={(date: Date | null) => {
@@ -145,7 +145,7 @@ export default function EditAgendaModal({
                         dayClassName={agendaDayClassName}
                         dateFormat="MM/dd/yyyy"
                         placeholderText="Seleccionar fecha"
-                        className="w-full rounded-xl border border-white/10 bg-zinc-950/40 px-3 py-2 text-sm text-white outline-none focus:border-orange-500/40"
+                        className="w-full rounded-lg border border-[var(--border-strong)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-1)]"
                         wrapperClassName="w-full"
                         calendarClassName="agenda-datepicker"
                     />
@@ -154,14 +154,14 @@ export default function EditAgendaModal({
                 <div className="flex items-end gap-2">
                     <button
                         onClick={onClose}
-                        className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-white/70 hover:bg-white/10"
+                        className="btn-secondary"
                     >
                         Cancelar
                     </button>
 
                     <button
                         onClick={guardarCambios}
-                        className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-white hover:bg-orange-600"
+                        className="btn-primary"
                     >
                         Guardar cambios
                     </button>

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { CirclePlay, Download, Trash2, Upload, X, Files, FolderUp, Loader2 } from "lucide-react";
-import { darkenColor } from "../utils/colores";
 
 type ArchivoCita = {
   id: number;
@@ -119,7 +118,7 @@ export default function GaleriaCita({ idCita, color }: Props) {
           <iframe
             src={`${API_URL}${archivo.directorio}`}
             title="Vista previa del archivo PDF"
-            className="h-200 w-200 rounded-xl"
+            className="h-[min(80dvh,50rem)] w-[min(92vw,64rem)] max-w-full rounded-xl bg-white"
           />
         );
       case "jpg":
@@ -130,7 +129,7 @@ export default function GaleriaCita({ idCita, color }: Props) {
           <img
             src={`${API_URL}${archivo.directorio}`}
             alt={archivo.original}
-            className="max-h-[90vh] max-w-full rounded-xl object-contain"
+            className="max-h-[calc(100dvh-2rem)] max-w-full rounded-xl object-contain"
           />
         );
       case "mp4":
@@ -146,7 +145,7 @@ export default function GaleriaCita({ idCita, color }: Props) {
             autoPlay
             playsInline
             preload="metadata"
-            className="max-h-[90vh] max-w-full rounded-xl bg-black"
+            className="max-h-[calc(100dvh-2rem)] max-w-full rounded-xl bg-black"
           >
             El navegador no puede reproducir este formato de video.
           </video>
@@ -225,21 +224,23 @@ export default function GaleriaCita({ idCita, color }: Props) {
   };
 
   return (
-    <div className="mt-2 rounded-xl border border-white/10 bg-white/3 p-3" style={{backgroundColor: darkenColor(color, 0.8), borderColor: darkenColor(color, 0.2)}}>
-        <h3 className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-white/60 m-0!">
+    <div
+      className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3"
+      style={{ borderColor: color, boxShadow: `inset 3px 0 0 ${color}` }}>
+        <h3 className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-[var(--text-3)] m-0!">
           <Files className="h-4 w-4" />
           ARCHIVOS
         </h3>
 
       {files.length > 0 && (
         <div className="my-2 rounded-lg border border-orange-500/20 bg-orange-500/10 p-2 ">
-          <div className="mb-2 text-xs text-orange-100">
+          <div className="mb-2 text-xs font-semibold text-[var(--primary)]">
             {files.length} archivo(s) seleccionado(s)
           </div>
 
           <div className="mb-2 space-y-1">
             {files.map((file, index) => (
-              <div key={index} className="truncate text-xs text-white/60">
+              <div key={index} className="truncate text-xs text-[var(--text-3)]">
                 {file.webkitRelativePath || file.name}
               </div>
             ))}
@@ -263,7 +264,7 @@ export default function GaleriaCita({ idCita, color }: Props) {
             )}
           </button>
           {errorSubida && (
-            <div className="mt-2 rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-xs font-semibold text-red-200">
+            <div className="mt-2 rounded-md border border-[var(--danger)] bg-[var(--danger-soft)] px-2 py-1.5 text-xs font-semibold text-[var(--danger)]">
               {errorSubida}
             </div>
           )}
@@ -271,7 +272,7 @@ export default function GaleriaCita({ idCita, color }: Props) {
       )}
 
       {archivos.length === 0 ? (
-        <div className="text-xs italic text-white/40 my-2">
+        <div className="text-xs italic text-[var(--text-3)] my-2">
           No hay archivos cargados.
         </div>
       ) : (
@@ -279,7 +280,7 @@ export default function GaleriaCita({ idCita, color }: Props) {
           {archivos.map((img) => (
             <div
               key={img.id}
-              className="group overflow-hidden rounded-xl border border-white/10 bg-zinc-950/50"
+              className="group overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)]"
             >
               <button
                 type="button"
@@ -290,7 +291,7 @@ export default function GaleriaCita({ idCita, color }: Props) {
               </button>
 
               <div className="flex items-center justify-between gap-1 p-2">
-                <span className="truncate text-[11px] text-white/60">
+                <span className="truncate text-[11px] text-[var(--text-3)]">
                   {img.original}
                 </span>
 
@@ -299,7 +300,7 @@ export default function GaleriaCita({ idCita, color }: Props) {
                     href={`${API_URL}${img.directorio}`}
                     download={img.original}
                     target="_blank"
-                    className="rounded-md p-2 text-white/50 hover:bg-white/10 hover:text-white"
+                    className="rounded-md p-2 text-[var(--text-3)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]"
                   >
                     <Download className="h-3.5 w-3.5" />
                   </a>
@@ -319,7 +320,7 @@ export default function GaleriaCita({ idCita, color }: Props) {
       )}
 
       <div className="flex flex-wrap gap-2">
-        <label className="flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs font-bold text-white/70 hover:border-orange-500/40">
+        <label className="flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-[var(--text-2)] hover:border-orange-500/40">
           <Upload className="h-3.5 w-3.5" />
           Archivos
           <input
@@ -336,7 +337,7 @@ export default function GaleriaCita({ idCita, color }: Props) {
           />
         </label>
 
-        <label className="flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-xs font-bold text-orange-200 hover:bg-orange-500/20">
+        <label className="flex cursor-pointer items-center justify-center gap-1 rounded-lg border border-[var(--primary-border)] bg-[var(--primary-soft)] px-3 py-1.5 text-xs font-bold text-[var(--primary)] hover:border-[var(--primary)]">
           <FolderUp className="h-3.5 w-3.5" />
           Carpeta
           <input
@@ -356,11 +357,16 @@ export default function GaleriaCita({ idCita, color }: Props) {
       </div>
 
       {preview && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/80 p-4">
-          <div className="relative max-h-[90vh] max-w-5xl">
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/80 p-3 backdrop-blur-sm sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Vista previa de ${preview.original}`}>
+          <div className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl items-center justify-center">
             <button
               onClick={() => setPreview(null)}
-              className="absolute right-2 top-2 rounded-full bg-black/60 p-2 text-white hover:bg-black"
+              className="absolute right-2 top-2 z-10 rounded-full bg-black/70 p-2 text-white hover:bg-black"
+              aria-label="Cerrar vista previa"
             >
               <X className="h-5 w-5" />
             </button>

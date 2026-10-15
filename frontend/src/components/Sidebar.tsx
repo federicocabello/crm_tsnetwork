@@ -22,147 +22,94 @@ type NavItem = {
 };
 
 const NAV: NavItem[] = [
-  {
-    label: "Inicio",
-    path: "/inicio",
-    icon: Home,
-    roles: ["invitado", "usuario", "moderador", "administrador", "superadmin", "tecnico"],
-  },
-  {
-    label: "Mis tareas",
-    path: "/mis-tareas",
-    icon: ClipboardCheck,
-    roles: ["invitado", "usuario", "moderador", "administrador", "superadmin", "tecnico"],
-  },
-  {
-    label: "Nuevo Registro",
-    path: "/nuevo-registro",
-    icon: FileHeadphone,
-    roles: ["administrador", "superadmin", "moderador", "usuario"],
-  },
-  {
-    label: "Inventario",
-    path: "/inventario",
-    icon: Package,
-    roles: ["administrador", "superadmin"],
-  },
-  {
-    label: "Pagos",
-    path: "/pagos",
-    icon: CircleDollarSign,
-    roles: ["administrador", "superadmin", "moderador", "usuario"],
-  },
-  {
-    label: "Registros",
-    path: "/registros",
-    icon: ListTodo,
-    roles: ["invitado", "usuario", "moderador", "administrador", "superadmin", "tecnico"],
-  },
-  {
-    label: "Tareas",
-    path: "/tareas-programadas",
-    icon: CalendarClock,
-    roles: ["usuario", "moderador", "administrador", "superadmin"],
-  },
-  {
-    label: "Configuracion",
-    path: "/configuracion",
-    icon: Settings,
-    roles: ["administrador", "superadmin"],
-  },
+  { label: "Inicio", path: "/inicio", icon: Home, roles: ["invitado", "usuario", "moderador", "administrador", "superadmin", "tecnico"] },
+  { label: "Mis tareas", path: "/mis-tareas", icon: ClipboardCheck, roles: ["invitado", "usuario", "moderador", "administrador", "superadmin", "tecnico"] },
+  { label: "Nuevo registro", path: "/nuevo-registro", icon: FileHeadphone, roles: ["administrador", "superadmin", "moderador", "usuario"] },
+  { label: "Inventario", path: "/inventario", icon: Package, roles: ["administrador", "superadmin"] },
+  { label: "Pagos", path: "/pagos", icon: CircleDollarSign, roles: ["administrador", "superadmin", "moderador", "usuario"] },
+  { label: "Registros", path: "/registros", icon: ListTodo, roles: ["invitado", "usuario", "moderador", "administrador", "superadmin", "tecnico"] },
+  { label: "Tareas", path: "/tareas-programadas", icon: CalendarClock, roles: ["usuario", "moderador", "administrador", "superadmin"] },
+  { label: "Configuraci\u00f3n", path: "/configuracion", icon: Settings, roles: ["administrador", "superadmin"] },
 ];
 
 export default function Sidebar() {
   const { user } = useAuth();
   const role: Role = user?.rol ?? "invitado";
-  const items = NAV.filter((i) => i.roles.includes(role));
-  const API_URL = import.meta.env.VITE_API_BASE_URL || "";
+  const items = NAV.filter((item) => item.roles.includes(role));
+  const puedeVerInventario = role === "administrador" || role === "superadmin";
+  const apiUrl = import.meta.env.VITE_API_BASE_URL || "";
   const [cantidadStockBajo, setCantidadStockBajo] = useState(0);
 
   useEffect(() => {
-    if (!items.some((item) => item.path === "/inventario")) return;
+    if (!puedeVerInventario) return;
 
     const cargarStockBajo = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/productos`);
+        const response = await fetch(`${apiUrl}/api/productos`);
         if (!response.ok) return;
         const productos: Array<{ stock: number }> = await response.json();
-        setCantidadStockBajo(
-          productos.filter((producto) => Number(producto.stock) <= 3).length,
-        );
+        setCantidadStockBajo(productos.filter((producto) => Number(producto.stock) <= 3).length);
       } catch (error) {
         console.error("Error verificando stock:", error);
       }
     };
 
     void cargarStockBajo();
-  }, [API_URL, role]);
+  }, [apiUrl, puedeVerInventario]);
 
   return (
-    <aside
-      className="fixed left-0 top-0 z-20 h-screen w-16 border-r backdrop-blur-xl"
-      style={{
-        background: "var(--sidebar-bg)",
-        borderColor: "var(--sidebar-border)",
-      }}>
-      <nav className="flex h-full flex-col gap-2 px-2 py-3">
-        {items.map((it) => {
-          const Icon = it.icon;
-          const alertaStock = it.path === "/inventario" && cantidadStockBajo > 0;
+    <aside className="app-sidebar fixed inset-y-0 left-0 z-40 flex w-16 flex-col border-r md:w-60">
+      <div className="flex h-16 shrink-0 items-center justify-center border-b border-[var(--border)] px-2 md:justify-start md:px-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--primary)] text-xs font-extrabold tracking-tight text-white shadow-sm">
+          TS
+        </div>
+        <div className="ml-3 hidden min-w-0 md:block">
+          <div className="truncate text-sm font-extrabold tracking-tight text-[var(--text-1)]">TS Network</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--text-3)]">CRM</div>
+        </div>
+      </div>
+
+      <nav aria-label={"Navegaci\u00f3n principal"} className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2 py-4 md:px-3">
+        <div className="mb-1 hidden px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--text-3)] md:block">
+          Men&uacute; principal
+        </div>
+
+        {items.map((item) => {
+          const Icon = item.icon;
+          const alertaStock = item.path === "/inventario" && cantidadStockBajo > 0;
 
           return (
-            <div key={it.path} className="relative group">
-              <NavLink
-                to={it.path}
-                title={it.label}
-                className={({ isActive }) =>
-                  [
-                    "relative flex items-center justify-center rounded-xl p-2.5 transition-all duration-200",
-                    "border",
-                    alertaStock
-                      ? "animate-pulse border-red-500/60 bg-red-500/15 text-red-300 shadow-[0_0_12px_rgba(239,68,68,0.3)] hover:bg-red-500/25"
-                      : isActive
-                      ? "border-orange-500/40 bg-orange-500/15 text-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.2)]"
-                      : "border-transparent hover:border-white/10 hover:bg-white/8 hover:text-orange-300",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")
-                }
-                style={({ isActive }) =>
-                  !alertaStock && !isActive
-                    ? { color: "var(--text-muted)" }
-                    : {}
-                }>
-                <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
-
-                {/* Stock badge */}
-                {alertaStock && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black leading-none text-white ring-2 ring-[var(--bg-base)]">
-                    {cantidadStockBajo > 9 ? "9+" : cantidadStockBajo}
-                  </span>
-                )}
-              </NavLink>
-
-              {/* Tooltip on hover */}
-              <div
-                className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-200 translate-x-1 group-hover:translate-x-0"
-                style={{
-                  background: "var(--bg-surface)",
-                  color: "var(--text-primary)",
-                  border: "1px solid var(--bg-border)",
-                  boxShadow: "var(--shadow)",
-                }}>
-                {it.label}
-                {alertaStock && (
-                  <span className="ml-1.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[9px] font-black text-white">
-                    {cantidadStockBajo} bajo stock
-                  </span>
-                )}
-              </div>
-            </div>
+            <NavLink
+              key={item.path}
+              to={item.path}
+              title={item.label}
+              className={({ isActive }) => [
+                "group relative flex h-11 items-center justify-center gap-3 rounded-lg px-2 text-sm font-semibold transition-colors md:justify-start md:px-3",
+                isActive
+                  ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                  : "text-[var(--text-2)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-1)]",
+              ].join(" ")}
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-[var(--primary)]" />}
+                  <Icon className="h-5 w-5 shrink-0" strokeWidth={1.9} />
+                  <span className="hidden truncate md:block">{item.label}</span>
+                  {alertaStock && (
+                    <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 animate-pulse items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-[var(--surface)] md:static md:ml-auto md:h-5 md:min-w-5 md:text-[10px]">
+                      {cantidadStockBajo > 99 ? "99+" : cantidadStockBajo}
+                    </span>
+                  )}
+                </>
+              )}
+            </NavLink>
           );
         })}
       </nav>
+
+      <div className="hidden border-t border-[var(--border)] px-4 py-3 text-[10px] text-[var(--text-3)] md:block">
+        Gesti&oacute;n interna TS Network
+      </div>
     </aside>
   );
 }

@@ -315,15 +315,15 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
               <div className="p-2.5 rounded border text-xs flex justify-between items-center" style={{ backgroundColor: "var(--alt-card-header)", borderColor: "var(--alt-card-border)" }}>
                 <span style={{ color: "var(--alt-text-muted)" }}>Saldo para cuotas:</span>
-                <span className="font-bold text-white"><FormatearNumero numero={saldoFinanciado} /></span>
+                <span className="font-bold text-[var(--alt-text)]"><FormatearNumero numero={saldoFinanciado} /></span>
               </div>
               <div className="p-2.5 rounded border text-xs flex justify-between items-center" style={{ backgroundColor: "var(--alt-card-header)", borderColor: "var(--alt-card-border)" }}>
                 <span style={{ color: "var(--alt-text-muted)" }}>Total con interés:</span>
-                <span className="font-bold text-orange-400"><FormatearNumero numero={totalConEnganche} /></span>
+                <span className="font-bold text-[var(--primary)]"><FormatearNumero numero={totalConEnganche} /></span>
               </div>
               <div className="p-2.5 rounded border text-xs flex justify-between items-center" style={{ backgroundColor: "var(--alt-card-header)", borderColor: "var(--alt-card-border)" }}>
                 <span style={{ color: "var(--alt-text-muted)" }}>Base por cuota:</span>
-                <span className="font-bold text-white"><FormatearNumero numero={montoPorCuota} /></span>
+                <span className="font-bold text-[var(--alt-text)]"><FormatearNumero numero={montoPorCuota} /></span>
               </div>
             </div>
           )}
@@ -336,8 +336,12 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
             <span className="alt-card-header-title text-sm">Cuotas Generadas</span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="alt-table">
+          <div
+            className="table-wrap"
+            role="region"
+            aria-label="Cuotas generadas"
+            tabIndex={0}>
+            <table className="alt-table min-w-[680px]">
               <thead>
                 <tr>
                   <th style={{ width: "60px" }}>#</th>
@@ -384,7 +388,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
                         </div>
                       </td>
                       <td>
-                        <span className="font-mono font-bold text-xs text-orange-400">
+                        <span className="font-mono text-xs font-bold text-[var(--primary)]">
                           <FormatearNumero numero={montoConInteres} />
                         </span>
                       </td>
@@ -406,7 +410,7 @@ export default function PlanDePagos({ idCliente, idCita, onGuardado }: Props) {
           <div className="flex flex-wrap items-center justify-between gap-3 p-3 border-t" style={{ borderColor: "var(--alt-card-border)", backgroundColor: "var(--alt-card-header)" }}>
             <div className="text-xs">
               <span style={{ color: "var(--alt-text-muted)" }}>Total real:</span>
-              <span className={`ml-2 text-sm font-bold ${Math.abs(diferencia) < 0.01 ? "text-green-400" : "text-orange-400"}`}>
+              <span className={`ml-2 text-sm font-bold ${Math.abs(diferencia) < 0.01 ? "text-[var(--success)]" : "text-[var(--primary)]"}`}>
                 <FormatearNumero numero={totalConEnganche} />
               </span>
             </div>
